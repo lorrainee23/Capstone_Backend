@@ -1,0 +1,85 @@
+import { reactive } from 'vue'
+import { authAPI } from '@/services/api'
+
+const state = reactive({
+  user: null,
+  token: null,
+  isAuthenticated: false,
+  loading: false
+})
+
+export const useAuthStore = () => {
+  const login = async (credentials) => {
+    try {
+      state.loading = true
+      const response = await authAPI.login(credentials)
+      
+      if (response.data.success) {
+        state.user = response.data.data.user
+        state.token = response.data.data.token
+        state.isAuthenticated = true
+        
+        localStorage.setItem('auth_token', response.data.data.token)
+        localStorage.setItem('user_data', JSON.stringify(response.data.data.user))
+        
+        return { success: true, user: response.data.data.user }
+      }
+    } catch (error) {
+      console.error('Login error:', error)
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Login failed' 
+      }
+    } finally {
+      state.loading = false
+    }
+  }
+
+  const logout = async () => {
+    try {
+      await authAPI.logout()
+    } catch (error) {
+      console.error('Logout error:', error)
+    } finally {
+      state.user = null
+      state.token = null
+      state.isAuthenticated = false
+      localStorage.removeItem('auth_token')
+      localStorage.removeItem('user_data')
+    }
+  }
+
+  const initAuth = () => {
+    const token = localStorage.getItem('auth_token')
+    const userData = localStorage.getItem('user_data')
+    
+    if (token && userData) {
+      state.token = token
+      state.user = JSON.parse(userData)
+      state.isAuthenticated = true
+    }
+  }
+
+  const register = async (data) => {
+    try {
+      state.loading = true
+      const response = await authAPI.register(data)
+      return { success: true, data: response.data }
+    } catch (error) {
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Registration failed' 
+      }
+    } finally {
+      state.loading = false
+    }
+  }
+
+  return {
+    state,
+    login,
+    logout,
+    register,
+    initAuth
+  }
+}
