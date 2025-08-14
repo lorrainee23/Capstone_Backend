@@ -164,6 +164,7 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import Swal from 'sweetalert2'
 
 export default {
   name: 'SidebarLayout',
@@ -206,8 +207,32 @@ export default {
     }
     
     const handleLogout = async () => {
-      await logout()
-      router.push('/')
+      const result = await Swal.fire({
+        title: 'Logout?',
+        text: 'You will be signed out of your session.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, logout',
+        cancelButtonText: 'Cancel'
+      })
+      if (result.isConfirmed) {
+        try {
+          await logout()
+          await Swal.fire({
+            title: 'Logged out',
+            icon: 'success',
+            timer: 1000,
+            showConfirmButton: false
+          })
+          router.push('/')
+        } catch (e) {
+          await Swal.fire({
+            title: 'Logout failed',
+            text: 'Please try again.',
+            icon: 'error'
+          })
+        }
+      }
     }
     
     return {

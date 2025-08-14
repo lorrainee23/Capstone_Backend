@@ -45,7 +45,7 @@
           </div>
 
           <div class="form-group">
-            <label for="middle_name" class="form-label">Middle Name (Optional)</label>
+            <label for="middle_name" class="form-label">Middle Name</label>
             <input
               id="middle_name"
               v-model="form.middle_name"

@@ -194,6 +194,7 @@
 import { ref, onMounted, computed } from 'vue'
 import SidebarLayout from '@/components/SidebarLayout.vue'
 import { adminAPI } from '@/services/api'
+import Swal from 'sweetalert2'
 
 export default {
   name: 'AdminUsers',
@@ -227,23 +228,25 @@ export default {
     const editingUser = ref(null)
     
     const filteredUsers = computed(() => {
-      let filtered = users.value
+      const base = Array.isArray(users.value) ? users.value : []
+      let filtered = base.filter(u => !!u)
       
       if (filters.value.role) {
-        filtered = filtered.filter(user => user.role === filters.value.role)
+        filtered = filtered.filter(user => user?.role === filters.value.role)
       }
       
       if (filters.value.status) {
-        filtered = filtered.filter(user => user.status === filters.value.status)
+        filtered = filtered.filter(user => user?.status === filters.value.status)
       }
       
       if (filters.value.search) {
         const search = filters.value.search.toLowerCase()
-        filtered = filtered.filter(user => 
-          user.first_name.toLowerCase().includes(search) ||
-          user.last_name.toLowerCase().includes(search) ||
-          user.email.toLowerCase().includes(search)
-        )
+        filtered = filtered.filter(user => {
+          const fn = user?.first_name?.toLowerCase?.() || ''
+          const ln = user?.last_name?.toLowerCase?.() || ''
+          const em = user?.email?.toLowerCase?.() || ''
+          return fn.includes(search) || ln.includes(search) || em.includes(search)
+        })
       }
       
       return filtered
@@ -314,12 +317,32 @@ export default {
     }
     
     const deleteUser = async (user) => {
-      if (confirm(`Are you sure you want to delete ${user.first_name} ${user.last_name}?`)) {
+      const result = await Swal.fire({
+        title: 'Delete user?',
+        html: `${user?.first_name || ''} ${user?.last_name || ''}`.trim(),
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, delete',
+        cancelButtonText: 'Cancel'
+      })
+      if (result.isConfirmed) {
         try {
           await adminAPI.deleteUser(user.id)
           await loadUsers()
+          await Swal.fire({
+            title: 'Deleted',
+            text: 'User has been deleted.',
+            icon: 'success',
+            timer: 1500,
+            showConfirmButton: false
+          })
         } catch (error) {
           console.error('Failed to delete user:', error)
+          await Swal.fire({
+            title: 'Delete failed',
+            text: 'Could not delete user. Please try again.',
+            icon: 'error'
+          })
         }
       }
     }

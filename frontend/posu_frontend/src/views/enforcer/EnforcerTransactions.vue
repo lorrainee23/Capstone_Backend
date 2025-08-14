@@ -212,6 +212,7 @@
 import { ref, onMounted, computed } from 'vue'
 import SidebarLayout from '@/components/SidebarLayout.vue'
 import { enforcerAPI } from '@/services/api'
+import Swal from 'sweetalert2'
 
 export default {
   name: 'EnforcerTransactions',
@@ -231,7 +232,8 @@ export default {
     })
     
     const filteredTransactions = computed(() => {
-      let filtered = transactions.value
+      const base = Array.isArray(transactions.value) ? transactions.value : []
+      let filtered = [...base]
       
       // Status filter
       if (filters.value.status) {
@@ -303,13 +305,31 @@ export default {
     }
     
     const markAsPaid = async (transaction) => {
-      if (confirm(`Mark transaction #${transaction.id} as paid?`)) {
+      const result = await Swal.fire({
+        title: `Mark transaction #${transaction.id} as paid?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, mark as paid',
+        cancelButtonText: 'Cancel'
+      })
+      if (result.isConfirmed) {
         try {
           await enforcerAPI.updateTransaction(transaction.id, { status: 'Paid' })
           await loadTransactions()
+          await Swal.fire({
+            title: 'Updated',
+            text: 'Transaction marked as paid.',
+            icon: 'success',
+            timer: 1500,
+            showConfirmButton: false
+          })
         } catch (error) {
           console.error('Failed to update transaction:', error)
-          alert('Failed to update transaction status')
+          await Swal.fire({
+            title: 'Update failed',
+            text: 'Failed to update transaction status',
+            icon: 'error'
+          })
         }
       }
     }

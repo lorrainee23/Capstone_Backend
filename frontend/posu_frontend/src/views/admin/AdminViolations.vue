@@ -164,6 +164,7 @@
 import { ref, onMounted, computed } from 'vue'
 import SidebarLayout from '@/components/SidebarLayout.vue'
 import { adminAPI } from '@/services/api'
+import Swal from 'sweetalert2'
 
 export default {
   name: 'AdminViolations',
@@ -265,12 +266,31 @@ export default {
     }
     
     const deleteViolation = async (violation) => {
-      if (confirm(`Are you sure you want to delete "${violation.name}"?`)) {
+      const result = await Swal.fire({
+        title: 'Delete violation?',
+        text: violation?.name || 'This violation',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, delete',
+        cancelButtonText: 'Cancel'
+      })
+      if (result.isConfirmed) {
         try {
           await adminAPI.deleteViolation(violation.id)
           await loadViolations()
+          await Swal.fire({
+            title: 'Deleted',
+            icon: 'success',
+            timer: 1500,
+            showConfirmButton: false
+          })
         } catch (error) {
           console.error('Failed to delete violation:', error)
+          await Swal.fire({
+            title: 'Delete failed',
+            text: 'Please try again.',
+            icon: 'error'
+          })
         }
       }
     }
