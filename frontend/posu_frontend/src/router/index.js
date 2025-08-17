@@ -143,36 +143,37 @@ const router = createRouter({
 // Navigation guards
 router.beforeEach((to, from, next) => {
   const { state } = useAuthStore()
-  
+
   if (to.meta.requiresAuth) {
     if (!state.isAuthenticated) {
       next('/login')
       return
     }
-    
-    if (to.meta.role && state.user?.role !== to.meta.role) {
-      // Redirect to appropriate dashboard based on user role
-      const roleRoutes = {
-        'Admin': '/admin/dashboard',
-        'Enforcer': '/enforcer/dashboard',
-        'Violator': '/violator/dashboard'
-      }
-      next(roleRoutes[state.user.role] || '/')
-      return
-    }
-  }
-  
-  if (to.meta.requiresGuest && state.isAuthenticated) {
-    // Redirect authenticated users to their dashboard
+
     const roleRoutes = {
       'Admin': '/admin/dashboard',
       'Enforcer': '/enforcer/dashboard',
       'Violator': '/violator/dashboard'
     }
-    next(roleRoutes[state.user.role] || '/')
+
+    if (to.meta.role) {
+      if (state.user?.role !== to.meta.role && state.user?.type !== to.meta.role) {
+        next(roleRoutes[state.user.role || state.user.type] || '/')
+        return
+      }
+    }
+  }
+
+  if (to.meta.requiresGuest && state.isAuthenticated) {
+    const roleRoutes = {
+      'Admin': '/admin/dashboard',
+      'Enforcer': '/enforcer/dashboard',
+      'Violator': '/violator/dashboard'
+    }
+    next(roleRoutes[state.user.role || state.user.type] || '/')
     return
   }
-  
+
   next()
 })
 

@@ -10,30 +10,37 @@ const state = reactive({
 
 export const useAuthStore = () => {
   const login = async (credentials) => {
-    try {
-      state.loading = true
-      const response = await authAPI.login(credentials)
-      
-      if (response.data.success) {
-        state.user = response.data.data.user
-        state.token = response.data.data.token
-        state.isAuthenticated = true
-        
-        localStorage.setItem('auth_token', response.data.data.token)
-        localStorage.setItem('user_data', JSON.stringify(response.data.data.user))
-        
-        return { success: true, user: response.data.data.user }
+      try {
+          state.loading = true;
+          const response = await authAPI.login(credentials);
+
+          if (response.data.success) {
+              const data = response.data.data;
+              const user = data.user || data.violator || null;
+              if (user && !user.role && data.user_type) {
+                  user.role = data.user_type;
+              }
+
+              state.user = user;
+              state.token = data.token;
+              state.isAuthenticated = true;
+
+              localStorage.setItem("auth_token", data.token);
+              localStorage.setItem("user_data", JSON.stringify(user));
+
+              return { success: true, user };
+          }
+      } catch (error) {
+          console.error("Login error:", error);
+          return {
+              success: false,
+              message: error.response?.data?.message || "Login failed",
+          };
+      } finally {
+          state.loading = false;
       }
-    } catch (error) {
-      console.error('Login error:', error)
-      return { 
-        success: false, 
-        message: error.response?.data?.message || 'Login failed' 
-      }
-    } finally {
-      state.loading = false
-    }
-  }
+  };
+
 
   const logout = async () => {
     try {

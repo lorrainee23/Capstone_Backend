@@ -67,7 +67,7 @@ class AuthController extends Controller
             'data' => [
                 'violator' => $violator,
                 'token' => $token,
-                'user_type' => 'violator'
+                'user_type' => 'Violator'
             ]
         ]);
     }

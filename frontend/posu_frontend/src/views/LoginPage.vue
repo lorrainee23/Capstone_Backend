@@ -16,13 +16,13 @@
           </div>
 
           <div class="form-group">
-            <label for="identifier" class="form-label">Email or License Number</label>
+            <label for="identifier" class="form-label">Email or Mobile Number</label>
             <input
               id="identifier"
               v-model="form.identifier"
               type="text"
               class="form-input"
-              placeholder="Enter your email or license number"
+              placeholder="Enter your email or mobile number"
               required
             />
           </div>
@@ -65,30 +65,35 @@ export default {
   setup() {
     const router = useRouter()
     const { login } = useAuthStore()
-    
+
     const form = ref({
       identifier: '',
       password: ''
     })
-    
+
     const error = ref('')
     const loading = ref(false)
-    
+
     const handleLogin = async () => {
       try {
         loading.value = true
         error.value = ''
-        
+
         const result = await login(form.value)
-        
+
         if (result.success) {
           const roleRoutes = {
             'Admin': '/admin/dashboard',
             'Enforcer': '/enforcer/dashboard',
             'Violator': '/violator/dashboard'
           }
-          
-          const redirectTo = roleRoutes[result.user.role] || '/'
+
+          const role =
+            result.user?.role ||
+            result.violator?.role ||
+            result.user_type
+
+          const redirectTo = roleRoutes[role] || '/'
           router.push(redirectTo)
         } else {
           error.value = result.message
@@ -100,7 +105,7 @@ export default {
         loading.value = false
       }
     }
-    
+
     return {
       form,
       error,
@@ -110,6 +115,7 @@ export default {
   }
 }
 </script>
+
 
 <style scoped>
 .login-page {
