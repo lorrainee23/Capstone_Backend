@@ -7,7 +7,7 @@
             <span class="logo-text">POSU Echague</span>
           </div>
           <h1>Create Account</h1>
-          <p>Register as a violator to access your violation records</p>
+          <p>Register using your Email or Mobile Number</p>
         </div>
 
         <form @submit.prevent="handleRegister" class="register-form">
@@ -19,90 +19,20 @@
             {{ success }}
           </div>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label for="first_name" class="form-label">First Name</label>
-              <input
-                id="first_name"
-                v-model="form.first_name"
-                type="text"
-                class="form-input"
-                placeholder="Enter your first name"
-                required
-              />
-            </div>
-            <div class="form-group">
-              <label for="last_name" class="form-label">Last Name</label>
-              <input
-                id="last_name"
-                v-model="form.last_name"
-                type="text"
-                class="form-input"
-                placeholder="Enter your last name"
-                required
-              />
-            </div>
-          </div>
-
+          <!-- Identifier (Email or Mobile) -->
           <div class="form-group">
-            <label for="middle_name" class="form-label">Middle Name</label>
+            <label for="identifier" class="form-label">Email or Mobile Number</label>
             <input
-              id="middle_name"
-              v-model="form.middle_name"
+              id="identifier"
+              v-model="form.identifier"
               type="text"
               class="form-input"
-              placeholder="Enter your middle name"
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="license_number" class="form-label">License Number</label>
-            <input
-              id="license_number"
-              v-model="form.license_number"
-              type="text"
-              class="form-input"
-              placeholder="Enter your driver's license number"
+              placeholder="Enter your email or mobile number"
               required
             />
           </div>
 
-          <div class="form-group">
-            <label for="email" class="form-label">Email Address</label>
-            <input
-              id="email"
-              v-model="form.email"
-              type="email"
-              class="form-input"
-              placeholder="Enter your email address"
-              required
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="phone" class="form-label">Phone Number</label>
-            <input
-              id="phone"
-              v-model="form.phone"
-              type="tel"
-              class="form-input"
-              placeholder="Enter your phone number"
-              required
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="address" class="form-label">Address</label>
-            <textarea
-              id="address"
-              v-model="form.address"
-              class="form-input"
-              rows="3"
-              placeholder="Enter your complete address"
-              required
-            ></textarea>
-          </div>
-
+          <!-- Password -->
           <div class="form-group">
             <label for="password" class="form-label">Password</label>
             <input
@@ -115,6 +45,7 @@
             />
           </div>
 
+          <!-- Confirm Password -->
           <div class="form-group">
             <label for="password_confirmation" class="form-label">Confirm Password</label>
             <input
@@ -155,13 +86,7 @@ export default {
     const { register } = useAuthStore()
     
     const form = ref({
-      first_name: '',
-      middle_name: '',
-      last_name: '',
-      license_number: '',
-      email: '',
-      phone: '',
-      address: '',
+      identifier: '',   
       password: '',
       password_confirmation: ''
     })
@@ -188,13 +113,7 @@ export default {
           success.value = 'Account created successfully! You can now sign in.'
           // Reset form
           form.value = {
-            first_name: '',
-            middle_name: '',
-            last_name: '',
-            license_number: '',
-            email: '',
-            phone: '',
-            address: '',
+            identifier: '',
             password: '',
             password_confirmation: ''
           }
