@@ -10,7 +10,7 @@
         </div>
         <div class="profile-info">
           <h2>{{ fullName }}</h2>
-          <p class="license-number">License: {{ user?.license_number || 'N/A' }}</p>
+          <p class="mobile-number">Mobile: {{ user?.mobile_number || 'N/A' }}</p>
           <p class="member-since">Member since {{ formatDate(user?.created_at) }}</p>
         </div>
         <div class="profile-actions">
@@ -35,7 +35,7 @@
                 class="form-input"
                 :class="{ error: errors.first_name }"
               >
-              <span v-if="errors.first_name" class="error-message">{{ errors.first_name }}</span>
+              <span v-if="errors.first_name" class="error-message">{{ errors.first_name[0] }}</span>
             </div>
 
             <div class="form-group">
@@ -46,7 +46,9 @@
                 v-model="formData.middle_name"
                 :disabled="!editMode"
                 class="form-input"
+                :class="{ error: errors.middle_name }"
               >
+              <span v-if="errors.middle_name" class="error-message">{{ errors.middle_name[0] }}</span>
             </div>
 
             <div class="form-group">
@@ -59,108 +61,24 @@
                 class="form-input"
                 :class="{ error: errors.last_name }"
               >
-              <span v-if="errors.last_name" class="error-message">{{ errors.last_name }}</span>
+              <span v-if="errors.last_name" class="error-message">{{ errors.last_name[0] }}</span>
             </div>
 
             <div class="form-group">
-              <label for="license_number">License Number *</label>
+              <label for="mobile_number">Mobile Number *</label>
               <input
-                id="license_number"
+                id="mobile_number"
                 type="text"
-                v-model="formData.license_number"
+                v-model="formData.mobile_number"
                 :disabled="!editMode"
                 class="form-input"
-                :class="{ error: errors.license_number }"
+                :class="{ error: errors.mobile_number }"
+                placeholder="09XXXXXXXXX"
+                maxlength="11"
               >
-              <span v-if="errors.license_number" class="error-message">{{ errors.license_number }}</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="form-section">
-          <h3>Contact Information</h3>
-          <div class="form-grid">
-            <div class="form-group">
-              <label for="email">Email Address *</label>
-              <input
-                id="email"
-                type="email"
-                v-model="formData.email"
-                :disabled="!editMode"
-                class="form-input"
-                :class="{ error: errors.email }"
-              >
-              <span v-if="errors.email" class="error-message">{{ errors.email }}</span>
+              <span v-if="errors.mobile_number" class="error-message">{{ errors.mobile_number[0] }}</span>
             </div>
 
-            <div class="form-group">
-              <label for="phone_number">Phone Number</label>
-              <input
-                id="phone_number"
-                type="tel"
-                v-model="formData.phone_number"
-                :disabled="!editMode"
-                class="form-input"
-                :class="{ error: errors.phone_number }"
-              >
-              <span v-if="errors.phone_number" class="error-message">{{ errors.phone_number }}</span>
-            </div>
-
-            <div class="form-group full-width">
-              <label for="address">Address</label>
-              <textarea
-                id="address"
-                v-model="formData.address"
-                :disabled="!editMode"
-                class="form-textarea"
-                rows="3"
-                placeholder="Enter your complete address"
-              ></textarea>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="editMode" class="form-section">
-          <h3>Change Password</h3>
-          <div class="form-grid">
-            <div class="form-group">
-              <label for="current_password">Current Password</label>
-              <input
-                id="current_password"
-                type="password"
-                v-model="formData.current_password"
-                class="form-input"
-                :class="{ error: errors.current_password }"
-              >
-              <span v-if="errors.current_password" class="error-message">{{ errors.current_password }}</span>
-            </div>
-
-            <div class="form-group">
-              <label for="new_password">New Password</label>
-              <input
-                id="new_password"
-                type="password"
-                v-model="formData.new_password"
-                class="form-input"
-                :class="{ error: errors.new_password }"
-              >
-              <span v-if="errors.new_password" class="error-message">{{ errors.new_password }}</span>
-            </div>
-
-            <div class="form-group">
-              <label for="confirm_password">Confirm New Password</label>
-              <input
-                id="confirm_password"
-                type="password"
-                v-model="formData.confirm_password"
-                class="form-input"
-                :class="{ error: errors.confirm_password }"
-              >
-              <span v-if="errors.confirm_password" class="error-message">{{ errors.confirm_password }}</span>
-            </div>
-          </div>
-          <div class="password-note">
-            <p>Leave password fields empty if you don't want to change your password.</p>
           </div>
         </div>
 
@@ -172,6 +90,60 @@
             <span v-if="saving" class="spinner-sm"></span>
             {{ saving ? 'Saving...' : 'Save Changes' }}
           </button>
+        </div>
+      </div>
+
+      <!-- Change Password Section -->
+      <div class="profile-form">
+        <div class="form-section">
+          <h3>Change Password</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="current_password">Current Password *</label>
+              <input
+                id="current_password"
+                type="password"
+                v-model="passwordData.current_password"
+                class="form-input"
+                :class="{ error: passwordErrors.current_password }"
+                placeholder="Enter Current Password"
+              >
+              <span v-if="passwordErrors.current_password" class="error-message">{{ passwordErrors.current_password[0] }}</span>
+            </div>
+
+            <div class="form-group">
+              <label for="new_password">New Password *</label>
+              <input
+                id="new_password"
+                type="password"
+                v-model="passwordData.new_password"
+                class="form-input"
+                :class="{ error: passwordErrors.new_password }"
+                placeholder="Minimum 6 characters"
+              >
+              <span v-if="passwordErrors.new_password" class="error-message">{{ passwordErrors.new_password[0] }}</span>
+            </div>
+
+            <div class="form-group">
+              <label for="new_password_confirmation">Confirm New Password *</label>
+              <input
+                id="new_password_confirmation"
+                type="password"
+                v-model="passwordData.new_password_confirmation"
+                class="form-input"
+                :class="{ error: passwordErrors.new_password_confirmation }"
+                placeholder="Minimum 6 characters"
+              >
+              <span v-if="passwordErrors.new_password_confirmation" class="error-message">{{ passwordErrors.new_password_confirmation[0] }}</span>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button @click="changePassword" :disabled="changingPassword" class="btn btn-primary">
+              <span v-if="changingPassword" class="spinner-sm"></span>
+              {{ changingPassword ? 'Changing...' : 'Change Password' }}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -213,66 +185,6 @@
         </div>
       </div>
 
-      <!-- Account Actions -->
-      <div class="account-actions">
-        <h3>Account Actions</h3>
-        <div class="actions-grid">
-          <div class="action-card">
-            <div class="action-icon">🔔</div>
-            <div class="action-content">
-              <h4>Notification Preferences</h4>
-              <p>Manage how you receive notifications about violations and payments.</p>
-              <div class="notification-settings">
-                <label class="checkbox-label">
-                  <input type="checkbox" v-model="notificationSettings.email_notifications">
-                  <span class="checkmark"></span>
-                  Email Notifications
-                </label>
-                <label class="checkbox-label">
-                  <input type="checkbox" v-model="notificationSettings.sms_notifications">
-                  <span class="checkmark"></span>
-                  SMS Notifications
-                </label>
-                <label class="checkbox-label">
-                  <input type="checkbox" v-model="notificationSettings.payment_reminders">
-                  <span class="checkmark"></span>
-                  Payment Reminders
-                </label>
-              </div>
-            </div>
-          </div>
-
-          <div class="action-card">
-            <div class="action-icon">📱</div>
-            <div class="action-content">
-              <h4>Download Data</h4>
-              <p>Download your violation history and payment records.</p>
-              <button @click="downloadData" class="btn btn-primary btn-sm">
-                Download Report
-              </button>
-            </div>
-          </div>
-
-          <div class="action-card">
-            <div class="action-icon">🔒</div>
-            <div class="action-content">
-              <h4>Account Security</h4>
-              <p>Your account is secured with password authentication.</p>
-              <div class="security-info">
-                <div class="security-item">
-                  <span class="security-label">Last Login:</span>
-                  <span class="security-value">{{ formatDateTime(user?.last_login_at) || 'N/A' }}</span>
-                </div>
-                <div class="security-item">
-                  <span class="security-label">Account Created:</span>
-                  <span class="security-value">{{ formatDate(user?.created_at) }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- Success/Error Messages -->
       <div v-if="message" class="message" :class="messageType">
         {{ message }}
@@ -284,8 +196,9 @@
 <script>
 import { ref, computed, onMounted } from 'vue'
 import SidebarLayout from '@/components/SidebarLayout.vue'
-import { violatorAPI } from '@/services/api'
+import { violatorAPI,authAPI } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
+import Swal from 'sweetalert2'
 
 export default {
   name: 'ViolatorProfile',
@@ -296,27 +209,27 @@ export default {
     const { state } = useAuthStore()
     const editMode = ref(false)
     const saving = ref(false)
-    const message = ref('')
-    const messageType = ref('success')
+    const changingPassword = ref(false)
     const accountStats = ref({})
     
     const formData = ref({
       first_name: '',
       middle_name: '',
       last_name: '',
-      license_number: '',
-      email: '',
-      phone_number: '',
-      address: '',
+      mobile_number: '',
+
+    })
+
+    const passwordData = ref({
       current_password: '',
       new_password: '',
-      confirm_password: ''
+      new_password_confirmation: ''
     })
     
     const errors = ref({})
+    const passwordErrors = ref({})
     
     const notificationSettings = ref({
-      email_notifications: true,
       sms_notifications: false,
       payment_reminders: true
     })
@@ -338,31 +251,20 @@ export default {
     
     const loadProfileData = async () => {
       try {
-        const response = await violatorAPI.profile()
+        const response = await authAPI.profile()
         
-        if (response.data.status === 'success') {
-          const data = response.data.data
-          
-          // Update form data with user info
-          formData.value = {
-            first_name: data.user?.first_name || '',
-            middle_name: data.user?.middle_name || '',
-            last_name: data.user?.last_name || '',
-            license_number: data.user?.license_number || '',
-            email: data.user?.email || '',
-            phone_number: data.user?.phone_number || '',
-            address: data.user?.address || '',
-            current_password: '',
-            new_password: '',
-            confirm_password: ''
-          }
-          
-          accountStats.value = data.stats || {}
-          
-          if (data.notification_settings) {
-            notificationSettings.value = data.notification_settings
-          }
-        }
+        if (response.data.success) {
+  const data = response.data.data
+  formData.value = {
+    first_name: data.violator?.first_name || '',
+    middle_name: data.violator?.middle_name || '',
+    last_name: data.violator?.last_name || '',
+    mobile_number: data.violator?.mobile_number || '',   
+  }
+
+  // Update auth store as well
+  state.user = data.violator
+}
       } catch (error) {
         console.error('Failed to load profile data:', error)
         
@@ -372,13 +274,7 @@ export default {
             first_name: user.value.first_name || '',
             middle_name: user.value.middle_name || '',
             last_name: user.value.last_name || '',
-            license_number: user.value.license_number || '',
-            email: user.value.email || '',
-            phone_number: user.value.phone_number || '',
-            address: user.value.address || '',
-            current_password: '',
-            new_password: '',
-            confirm_password: ''
+            mobile_number: user.value.mobile_number || '',
           }
         }
         
@@ -392,85 +288,31 @@ export default {
       }
     }
     
-    const validateForm = () => {
-      errors.value = {}
-      
-      if (!formData.value.first_name.trim()) {
-        errors.value.first_name = 'First name is required'
-      }
-      
-      if (!formData.value.last_name.trim()) {
-        errors.value.last_name = 'Last name is required'
-      }
-      
-      if (!formData.value.license_number.trim()) {
-        errors.value.license_number = 'License number is required'
-      }
-      
-      if (!formData.value.email.trim()) {
-        errors.value.email = 'Email is required'
-      } else if (!/\S+@\S+\.\S+/.test(formData.value.email)) {
-        errors.value.email = 'Please enter a valid email address'
-      }
-      
-      if (formData.value.phone_number && !/^[\d\s\-+()]+$/.test(formData.value.phone_number)) {
-        errors.value.phone_number = 'Please enter a valid phone number'
-      }
-      
-      // Password validation
-      if (formData.value.new_password) {
-        if (!formData.value.current_password) {
-          errors.value.current_password = 'Current password is required to change password'
-        }
-        
-        if (formData.value.new_password.length < 8) {
-          errors.value.new_password = 'New password must be at least 8 characters long'
-        }
-        
-        if (formData.value.new_password !== formData.value.confirm_password) {
-          errors.value.confirm_password = 'Password confirmation does not match'
-        }
-      }
-      
-      return Object.keys(errors.value).length === 0
-    }
-    
     const saveProfile = async () => {
-      if (!validateForm()) {
-        showMessage('Please fix the errors before saving.', 'error')
-        return
-      }
-      
       try {
         saving.value = true
+        errors.value = {}
         
-        const profileData = {
-          first_name: formData.value.first_name,
-          middle_name: formData.value.middle_name,
-          last_name: formData.value.last_name,
-          license_number: formData.value.license_number,
-          email: formData.value.email,
-          phone_number: formData.value.phone_number,
-          address: formData.value.address
-        }
+        const formDataToSend = new FormData()
+        formDataToSend.append('first_name', formData.value.first_name)
+        formDataToSend.append('middle_name', formData.value.middle_name || '')
+        formDataToSend.append('last_name', formData.value.last_name)
+        formDataToSend.append('mobile_number', formData.value.mobile_number)
         
-        // Add password fields if changing password
-        if (formData.value.new_password) {
-          profileData.current_password = formData.value.current_password
-          profileData.new_password = formData.value.new_password
-          profileData.new_password_confirmation = formData.value.confirm_password
-        }
-        
-        const response = await violatorAPI.updateProfile(profileData)
+        const response = await violatorAPI.updateProfile(formDataToSend)
         
         if (response.data.status === 'success') {
-          showMessage('Profile updated successfully!', 'success')
+          await Swal.fire({
+            icon: 'success',
+            title: 'Success!',
+            text: 'Profile updated successfully!',
+            confirmButtonColor: '#10b981'
+          })
+          
           editMode.value = false
           
-          // Clear password fields
-          formData.value.current_password = ''
-          formData.value.new_password = ''
-          formData.value.confirm_password = ''
+          // Update auth store with new data
+          state.user = response.data.data.violator
           
           // Reload profile data
           await loadProfileData()
@@ -482,9 +324,62 @@ export default {
           errors.value = error.response.data.errors
         }
         
-        showMessage('Failed to update profile. Please try again.', 'error')
+        const errorMessage = error.response?.data?.message || 'Failed to update profile. Please try again.'
+        
+        await Swal.fire({
+          icon: 'error',
+          title: 'Update Failed',
+          text: errorMessage,
+          confirmButtonColor: '#ef4444'
+        })
       } finally {
         saving.value = false
+      }
+    }
+
+    const changePassword = async () => {
+      try {
+        changingPassword.value = true
+        passwordErrors.value = {}
+
+        const response = await violatorAPI.changePassword({
+          current_password: passwordData.value.current_password,
+          new_password: passwordData.value.new_password,
+          new_password_confirmation: passwordData.value.new_password_confirmation
+        })
+
+        if (response.data.status === 'success') {
+          await Swal.fire({
+            icon: 'success',
+            title: 'Success!',
+            text: 'Password changed successfully!',
+            confirmButtonColor: '#10b981'
+          })
+          
+          // Clear password form
+          passwordData.value = {
+            current_password: '',
+            new_password: '',
+            new_password_confirmation: ''
+          }
+        }
+      } catch (error) {
+        console.error('Failed to change password:', error)
+        
+        if (error.response?.data?.errors) {
+          passwordErrors.value = error.response.data.errors
+        }
+        
+        const errorMessage = error.response?.data?.message || 'Failed to change password. Please try again.'
+        
+        await Swal.fire({
+          icon: 'error',
+          title: 'Password Change Failed',
+          text: errorMessage,
+          confirmButtonColor: '#ef4444'
+        })
+      } finally {
+        changingPassword.value = false
       }
     }
     
@@ -492,19 +387,6 @@ export default {
       editMode.value = false
       errors.value = {}
       loadProfileData() // Reload original data
-    }
-    
-    const downloadData = () => {
-      // In a real app, this would generate and download a report
-      alert('Data download feature would be implemented here. This would generate a PDF or CSV file with your violation history and payment records.')
-    }
-    
-    const showMessage = (text, type = 'success') => {
-      message.value = text
-      messageType.value = type
-      setTimeout(() => {
-        message.value = ''
-      }, 5000)
     }
     
     const formatCurrency = (amount) => {
@@ -538,18 +420,19 @@ export default {
     return {
       editMode,
       saving,
-      message,
-      messageType,
+      changingPassword,
       formData,
+      passwordData,
       errors,
+      passwordErrors,
       accountStats,
       notificationSettings,
       user,
       fullName,
       userInitials,
       saveProfile,
+      changePassword,
       cancelEdit,
-      downloadData,
       formatCurrency,
       formatDate,
       formatDateTime
@@ -602,7 +485,7 @@ export default {
   margin: 0 0 8px 0;
 }
 
-.license-number {
+.mobile-number {
   font-size: 16px;
   opacity: 0.9;
   margin: 0 0 4px 0;
@@ -680,6 +563,10 @@ export default {
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
+.form-input[type="file"] {
+  padding: 8px 12px;
+}
+
 .form-input:focus,
 .form-textarea:focus {
   outline: none;
@@ -704,15 +591,15 @@ export default {
   color: #ef4444;
 }
 
-.password-note {
-  margin-top: 16px;
-  padding: 12px;
+.file-note {
+  margin-top: 8px;
+  padding: 8px 12px;
   background: #f3f4f6;
-  border-radius: 8px;
+  border-radius: 6px;
 }
 
-.password-note p {
-  font-size: 14px;
+.file-note p {
+  font-size: 12px;
   color: #6b7280;
   margin: 0;
 }
