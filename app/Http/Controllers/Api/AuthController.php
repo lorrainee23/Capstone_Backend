@@ -146,6 +146,9 @@ class AuthController extends Controller
         $user = $request->user();
 
         if ($user instanceof User) {
+
+            $user = User::find($user->id);
+
             // Admin or Enforcer
             return response()->json([
                 'success' => true,
@@ -155,6 +158,9 @@ class AuthController extends Controller
                 ]
             ]);
         } else {
+            
+            $violator = Violator::find($user->id);
+
             // Violator
             return response()->json([
                 'success' => true,

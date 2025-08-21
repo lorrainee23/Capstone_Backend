@@ -384,6 +384,46 @@ class EnforcerController extends Controller
             ]
         ]);
     }
+   /**
+ * Update enforcer's profile (name + image)
+ */
+public function updateProfile(Request $request)
+{
+    $validator = Validator::make($request->all(), [
+        'first_name'   => 'required|string|max:100',
+        'middle_name'  => 'nullable|string|max:100',
+        'last_name'    => 'required|string|max:100',
+        'image'        => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Validation failed',
+            'errors' => $validator->errors()
+        ], 422);
+    }
+
+    $user = $request->user();
+
+    $user->first_name  = $request->first_name;
+    $user->middle_name = $request->middle_name;
+    $user->last_name   = $request->last_name;
+
+    if ($request->hasFile('image')) {
+        $imagePath = $request->file('image')->store('profile_images', 'public');
+
+        $user->image = $imagePath;
+    }
+
+    $user->save();
+
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Profile updated successfully',
+        'data' => $user
+    ]);
+}
     /**
  * Change enforcer's password
  */

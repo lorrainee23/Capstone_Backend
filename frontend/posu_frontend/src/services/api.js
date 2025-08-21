@@ -76,6 +76,7 @@ export const enforcerAPI = {
     updateTransaction: (id, data) =>
         api.put(`/enforcer/transactions/${id}`, data),
     getPerformanceStats: () => api.get("/enforcer/performance"),
+    updatePassword: (data) => api.post("/enforcer/change", data),
 };
 
 /* ============================

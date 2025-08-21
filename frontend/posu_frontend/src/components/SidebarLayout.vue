@@ -125,6 +125,17 @@
             </svg>
             <span class="nav-text" v-if="!sidebarCollapsed">Performance</span>
           </router-link>
+          <router-link 
+            to="/enforcer/profile" 
+            class="nav-item"
+            :class="{ active: $route.path === '/enforcer/profile' }"
+          >
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+            <span class="nav-text" v-if="!sidebarCollapsed">Profile</span>
+          </router-link>
         </div>
 
         <!-- Violator Navigation -->

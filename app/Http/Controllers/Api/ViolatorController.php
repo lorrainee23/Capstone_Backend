@@ -109,7 +109,6 @@ class ViolatorController extends Controller
             'middle_name' => 'nullable|string|max:255',
             'last_name' => 'required|string|max:255',
             'mobile_number' => 'required|string|size:11',
-            'address' => 'required|string|max:255',
             'id_photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
@@ -122,7 +121,7 @@ class ViolatorController extends Controller
         }
 
         $violator->update($request->only([
-            'first_name', 'middle_name', 'last_name', 'mobile_number', 'address'
+            'first_name', 'middle_name', 'last_name', 'mobile_number'
         ]));
 
         return response()->json([

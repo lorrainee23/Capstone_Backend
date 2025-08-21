@@ -49,6 +49,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/transactions/{id}', [EnforcerController::class, 'updateTransaction']);
         Route::get('/performance', [EnforcerController::class, 'getPerformanceStats']);
         Route::post('/change', [EnforcerController::class, 'changePassword']);
+        Route::post('/update', [EnforcerController::class, 'updateProfile']);
     });
     
     // Violator routes (no role middleware needed, handled by auth:sanctum)
