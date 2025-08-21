@@ -121,12 +121,6 @@ class ViolatorController extends Controller
             ], 422);
         }
 
-        // Handle ID photo upload
-        if ($request->hasFile('id_photo')) {
-            $idPhotoPath = $request->file('id_photo')->store('violator-photos', 'public');
-            $violator->id_photo = $idPhotoPath;
-        }
-
         $violator->update($request->only([
             'first_name', 'middle_name', 'last_name', 'mobile_number', 'address'
         ]));
@@ -143,10 +137,6 @@ class ViolatorController extends Controller
                     'full_name' => $violator->full_name,
                     'email' => $violator->email,
                     'mobile_number' => $violator->mobile_number,
-                    'license_number' => $violator->license_number,
-                    'plate_number' => $violator->plate_number,
-                    'model' => $violator->model,
-                    'address' => $violator->address,
                 ]
             ]
         ]);
@@ -159,13 +149,13 @@ class ViolatorController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'current_password' => 'required|string',
-            'new_password' => 'required|string|min:8|confirmed',
+            'new_password' => 'required|string|min:6|confirmed',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Validation failed',
+                'message' => 'The new password field confirmation does not match',
                 'errors' => $validator->errors()
             ], 422);
         }
