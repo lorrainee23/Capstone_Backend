@@ -250,44 +250,31 @@ export default {
     })
     
     const loadProfileData = async () => {
-      try {
-        const response = await authAPI.profile()
-        
-        if (response.data.success) {
-  const data = response.data.data
-  formData.value = {
-    first_name: data.violator?.first_name || '',
-    middle_name: data.violator?.middle_name || '',
-    last_name: data.violator?.last_name || '',
-    mobile_number: data.violator?.mobile_number || '',   
-  }
+  try {
+    const response = await authAPI.profile()
+    if (response.data.success) {
+      const profileUser = response.data.data
 
-  // Update auth store as well
-  state.user = data.violator
-}
-      } catch (error) {
-        console.error('Failed to load profile data:', error)
-        
-        // Use current user data as fallback
-        if (user.value) {
-          formData.value = {
-            first_name: user.value.first_name || '',
-            middle_name: user.value.middle_name || '',
-            last_name: user.value.last_name || '',
-            mobile_number: user.value.mobile_number || '',
-          }
-        }
-        
-        // Mock stats for demo
-        accountStats.value = {
-          total_violations: 3,
-          pending_violations: 1,
-          paid_violations: 2,
-          total_amount: 2500
-        }
+      state.user = {
+        ...state.user,
+        ...profileUser
+      }
+
+      localStorage.setItem("user_data", JSON.stringify(state.user))
+
+      formData.value = {
+        first_name: state.user.first_name || '',
+        middle_name: state.user.middle_name || '',
+        last_name: state.user.last_name || '',
+        mobile_number: state.user.mobile_number || ''
       }
     }
-    
+  } catch (error) {
+    console.error("Failed to load profile:", error)
+  }
+}
+
+
     const saveProfile = async () => {
       try {
         saving.value = true
@@ -311,11 +298,15 @@ export default {
           
           editMode.value = false
           
-          // Update auth store with new data
-          state.user = response.data.data.violator
-          
-          // Reload profile data
-          await loadProfileData()
+          state.user = {
+  ...state.user,   
+  ...response.data.data.violator
+}
+
+
+localStorage.setItem("user_data", JSON.stringify(state.user))
+
+await loadProfileData()
         }
       } catch (error) {
         console.error('Failed to update profile:', error)

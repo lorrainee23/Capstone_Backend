@@ -180,7 +180,14 @@
       <div class="sidebar-footer">
         <div class="user-info" v-if="!sidebarCollapsed">
           <div class="user-avatar">
-            {{ userInitials }}
+             <img 
+    v-if="profileImage" 
+    :src="profileImage" 
+    alt="Profile" 
+    class="profile-image"
+  />
+  <span v-else>{{ userInitials }}</span>
+
           </div>
           <div class="user-details">
             <div class="user-name">{{ userName }}</div>
@@ -242,7 +249,13 @@
           <!-- User Menu -->
           <div class="user-menu-container">
             <button @click="toggleUserMenu" class="user-menu-btn">
-              <div class="user-avatar-small">{{ userInitials }}</div>
+              <div class="user-avatar-small">  <img 
+    v-if="profileImage" 
+    :src="profileImage" 
+    alt="Profile" 
+    class="profile-image-small"
+  />
+  <span v-else>{{ userInitials }}</span></div>
               <span class="user-name-small">{{ userName }}</span>
               <svg class="dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="6,9 12,15 18,9"/>
@@ -311,7 +324,12 @@ export default {
     const showUserMenu = ref(false)
     const notificationsDropdown = ref(null)
     const userDropdown = ref(null)
-    
+
+    const profileImage = computed(() => {
+  if (!state.user?.image) return null
+  return `http://127.0.0.1:8000/storage/${state.user.image}`
+    })
+
     // Sample notifications data
     const notifications = ref([
       {
@@ -442,6 +460,7 @@ export default {
     })
     
     return {
+      profileImage,
       sidebarCollapsed,
       showNotifications,
       showUserMenu,
@@ -968,6 +987,19 @@ export default {
   flex: 1;
   padding: 32px;
   overflow-y: auto;
+}
+.profile-image {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.profile-image-small {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 /* Responsive Design */

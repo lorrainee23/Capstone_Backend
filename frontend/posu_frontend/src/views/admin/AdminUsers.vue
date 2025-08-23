@@ -129,7 +129,6 @@
           </div>
           
           <form @submit.prevent="saveUser" class="modal-body">
-            <div v-if="error" class="alert alert-error">{{ error }}</div>
             
             <div class="form-row">
               <div class="form-group">
@@ -175,15 +174,16 @@
               <label class="form-label">Password *</label>
               <input v-model="userForm.password" type="password" class="form-input" :required="!showEditModal" />
             </div>
-          </form>
+         
           
           <div class="modal-footer">
             <button @click="closeModals" type="button" class="btn btn-secondary">Cancel</button>
-            <button @click="saveUser" type="submit" class="btn btn-primary" :disabled="saving">
+            <button type="submit" class="btn btn-primary" :disabled="saving">
               <span v-if="saving" class="spinner-small"></span>
               {{ saving ? 'Saving...' : (showEditModal ? 'Update User' : 'Create User') }}
             </button>
           </div>
+           </form>
         </div>
       </div>
     </div>
@@ -268,30 +268,56 @@ export default {
     }
     
     const saveUser = async () => {
-      try {
-        saving.value = true
-        error.value = ''
-        
-        let response
-        if (showEditModal.value && editingUser.value) {
-          response = await adminAPI.updateUser(editingUser.value.id, userForm.value)
-        } else {
-          response = await adminAPI.createUser(userForm.value)
-        }
-        
-        if (response.data.success) {
-          await loadUsers()
-          closeModals()
-        } else {
-          error.value = response.data.message || 'Failed to save user'
-        }
-      } catch (err) {
-        error.value = err.response?.data?.message || 'Failed to save user'
-      } finally {
-        saving.value = false
-      }
+  saving.value = true
+  error.value = ''
+
+  try {
+    let response
+    if (showEditModal.value && editingUser.value) {
+      response = await adminAPI.updateUser(editingUser.value.id, userForm.value)
+    } else {
+      response = await adminAPI.createUser(userForm.value)
     }
-    
+
+    if (response.data.status === 'success') {
+      await loadUsers()
+      closeModals()
+      Swal.fire({
+        icon: 'success',
+        title: 'Success',
+        text: showEditModal.value ? 'User updated successfully' : 'User created successfully',
+        timer: 1500,
+        showConfirmButton: false
+      })
+    } else {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: response.data.message || 'Failed to save user'
+      })
+    }
+  } catch (err) {
+    if (err.response?.status === 422) {
+      // Validation errors
+      const errors = err.response.data.errors
+      const messages = Object.values(errors).flat().join('\n')
+      Swal.fire({
+        icon: 'error',
+        title: 'Validation Error',
+        html: messages.replace(/\n/g, '<br/>')
+      })
+    } else {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: err.response?.data?.message || err.message || 'Failed to save user'
+      })
+    }
+  } finally {
+    saving.value = false
+  }
+}
+
     const editUser = (user) => {
       editingUser.value = user
       userForm.value = {
