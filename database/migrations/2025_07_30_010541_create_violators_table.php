@@ -12,24 +12,24 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('violators', function (Blueprint $table) {
-            $table->id();
-            $table->tinyInteger('violator_user_id', false, true)->nullable();
-            $table->string('email', 255);
-            $table->string('password', 255);
+            $table->increments('id');
+
+            $table->string('email', 255)->nullable();
+            $table->string('password', 255)->nullable();
             $table->boolean('email_verified')->default(false);
             $table->string('first_name', 255);
             $table->string('middle_name', 255)->nullable();
             $table->string('last_name', 255);
             $table->char('mobile_number', 11);
             $table->boolean('gender');
-            $table->char('license_number', 16);
-            $table->char('plate_number', 8);
-            $table->string('model', 100);
+            $table->char('license_number', 16)->unique();
+            $table->string('barangay', 255);
+            $table->string('city', 255);
+            $table->string('province', 255);
+            $table->boolean('professional');
             $table->string('id_photo', 255)->nullable();
-            $table->string('address', 255);
             $table->timestamps();
-            
-            $table->foreign('violator_user_id')->references('id')->on('users')->onDelete('set null');
+
         });
     }
 

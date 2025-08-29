@@ -265,7 +265,14 @@
             <!-- User Dropdown -->
             <div v-if="showUserMenu" class="user-dropdown" ref="userDropdown">
               <div class="user-dropdown-header">
-                <div class="user-avatar-large">{{ userInitials }}</div>
+                <div class="profile-image"><img 
+    v-if="profileImage" 
+    :src="profileImage" 
+    alt="Profile" 
+    class="profile-image"
+  />
+  <span v-else>{{ userInitials }}</span></div>
+
                 <div class="user-info-dropdown">
                   <div class="user-name-dropdown">{{ userName }}</div>
                   <div class="user-role-dropdown">{{ userRole }}</div>

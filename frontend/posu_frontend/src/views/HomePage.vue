@@ -30,7 +30,7 @@
             <router-link to="/register" class="btn btn-primary btn-large">
               Get Started
             </router-link>
-            <router-link to="/login" class="btn btn-outline btn-large">
+            <router-link to="/login" class="btn btn-outline2 btn-large">
               Sign In
             </router-link>
           </div>
@@ -217,7 +217,16 @@ export default {
   background: #1e3a8a;
   color: white;
 }
+.btn-outline2 {
+  background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+  color: white;
+  border: 2px solid #1e3a8a;
+}
 
+.btn-outline2:hover {
+  background: #1e3a8a;
+  color: white;
+}
 /* Hero Section */
 .hero {
   background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);

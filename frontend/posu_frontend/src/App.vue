@@ -39,7 +39,9 @@ body {
   margin: 0;
   padding: 0;
 }
-
+.swal2-popup {
+  font-family: 'Poppins', sans-serif !important;
+}
 /* Global utility classes */
 .btn {
   padding: 10px 20px;
