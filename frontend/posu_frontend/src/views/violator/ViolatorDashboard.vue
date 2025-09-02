@@ -5,7 +5,7 @@
       <div class="welcome-section">
         <div class="welcome-content">
           <h2>Welcome back, {{ userName }}!</h2>
-          <p>Here's an overview of your traffic violation records and payment status.</p>
+          <p>Here's an overview of your traffic violation records.</p>
         </div>
         <div class="welcome-actions">
           <router-link to="/violator/history" class="btn btn-primary">
@@ -28,7 +28,7 @@
           <div class="stat-icon pending">⏳</div>
           <div class="stat-content">
             <div class="stat-number">{{ stats.pending_violations || 0 }}</div>
-            <div class="stat-label">Pending Payments</div>
+            <div class="stat-label">Unpaid Violations</div>
           </div>
         </div>
         
@@ -43,25 +43,20 @@
         <div class="stat-card">
           <div class="stat-icon amount">💰</div>
           <div class="stat-content">
-            <div class="stat-number">₱{{ formatCurrency(stats.total_amount || 0) }}</div>
-            <div class="stat-label">Total Amount</div>
+             <div class="stat-number">₱{{ formatCurrency(stats.total_fines || 0) }}</div>
+<div class="stat-label">Total Fines</div>
           </div>
         </div>
       </div>
 
-      <!-- Pending Payments Alert -->
-      <div v-if="stats.pending_violations > 0" class="alert-card">
+      <!-- Outstanding Violations Info -->
+<div v-if="stats.unpaid_fines > 0" class="alert-card">
         <div class="alert-icon">⚠️</div>
         <div class="alert-content">
-          <h3>Outstanding Payments</h3>
-          <p>You have {{ stats.pending_violations }} pending violation{{ stats.pending_violations > 1 ? 's' : '' }} 
-             with a total amount of ₱{{ formatCurrency(stats.pending_amount || 0) }}. 
-             Please settle your payments to avoid additional penalties.</p>
-        </div>
-        <div class="alert-actions">
-          <router-link to="/violator/history" class="btn btn-warning">
-            Pay Now
-          </router-link>
+          <h3>Outstanding Violations</h3>
+          <p>You have {{ stats.pending_violations }} unpaid violation{{ stats.pending_violations > 1 ? 's' : '' }} 
+  with a total amount of ₱{{ formatCurrency(stats.unpaid_fines || 0) }}. 
+       Please visit the office to settle your payments.</p>
         </div>
       </div>
 
@@ -102,13 +97,6 @@
                 <button @click="viewViolation(violation)" class="btn btn-secondary btn-sm">
                   View Details
                 </button>
-                <button 
-                  v-if="violation.status === 'Pending'"
-                  @click="payViolation(violation)" 
-                  class="btn btn-success btn-sm"
-                >
-                  Pay Fine
-                </button>
               </div>
             </div>
           </div>
@@ -126,9 +114,9 @@
           </router-link>
           
           <router-link to="/violator/profile" class="action-card">
-            <div class="action-icon">👤</div>
-            <div class="action-title">Update Profile</div>
-            <div class="action-desc">Manage your personal information</div>
+            <div class="action-icon">🔒</div>
+            <div class="action-title">Security Settings</div>
+            <div class="action-desc">Change your password and security settings</div>
           </router-link>
           
           <router-link to="/violator/notifications" class="action-card">
@@ -201,17 +189,18 @@
                   </div>
                 </div>
               </div>
+              
+              <div v-if="selectedViolation.status === 'Pending'" class="payment-notice">
+                <div class="notice-icon">ℹ️</div>
+                <div class="notice-content">
+                  <h4>Payment Required</h4>
+                  <p>Please visit the POSU office to settle this violation. Bring a valid ID and reference this Ticket Number: #{{ selectedViolation.ticket_number }}</p>
+                </div>
+              </div>
             </div>
           </div>
           <div class="modal-footer">
             <button @click="closeViolationModal" class="btn btn-secondary">Close</button>
-            <button 
-              v-if="selectedViolation?.status === 'Pending'"
-              @click="paySelectedViolation" 
-              class="btn btn-success"
-            >
-              Pay Fine
-            </button>
           </div>
         </div>
       </div>
@@ -244,50 +233,22 @@ export default {
     })
     
     const loadDashboardData = async () => {
-      try {
-        loading.value = true
-        const response = await violatorAPI.dashboard()
-        
-        if (response.data.status === 'success') {
-          const data = response.data.data
-          stats.value = data.stats || {}
-          recentViolations.value = data.recent_violations || []
-        }
-      } catch (error) {
-        console.error('Failed to load dashboard data:', error)
-        // Mock data for demo
-        stats.value = {
-          total_violations: 3,
-          pending_violations: 1,
-          paid_violations: 2,
-          total_amount: 2500,
-          pending_amount: 1000
-        }
-        
-        recentViolations.value = [
-          {
-            id: 1,
-            violation: { name: 'Speeding', description: 'Exceeding speed limit' },
-            fine_amount: 1000,
-            status: 'Pending',
-            location: 'EDSA, Quezon City',
-            date_time: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-            enforcer: { first_name: 'Juan', last_name: 'Cruz' }
-          },
-          {
-            id: 2,
-            violation: { name: 'Illegal Parking', description: 'Parking in no parking zone' },
-            fine_amount: 750,
-            status: 'Paid',
-            location: 'Ayala Avenue, Makati',
-            date_time: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-            enforcer: { first_name: 'Maria', last_name: 'Santos' }
-          }
-        ]
-      } finally {
-        loading.value = false
-      }
+  try {
+    loading.value = true
+    const response = await violatorAPI.dashboard()
+
+    if (response.data.status === 'success') {
+      const data = response.data.data
+      stats.value = data.stats || {}
+      recentViolations.value = data.recent_violations || []
     }
+  } catch (error) {
+    console.error('Failed to load dashboard data:', error)
+  } finally {
+    loading.value = false
+  }
+}
+
     
     const viewViolation = (violation) => {
       selectedViolation.value = violation
@@ -297,18 +258,6 @@ export default {
     const closeViolationModal = () => {
       showViolationModal.value = false
       selectedViolation.value = null
-    }
-    
-    const payViolation = (violation) => {
-      // In a real app, this would integrate with a payment gateway
-      alert(`Payment feature for violation #${violation.id} would be implemented here.`)
-    }
-    
-    const paySelectedViolation = () => {
-      if (selectedViolation.value) {
-        payViolation(selectedViolation.value)
-        closeViolationModal()
-      }
     }
     
     const formatCurrency = (amount) => {
@@ -339,8 +288,6 @@ export default {
       userName,
       viewViolation,
       closeViolationModal,
-      payViolation,
-      paySelectedViolation,
       formatCurrency,
       formatDateTime
     }
@@ -349,6 +296,40 @@ export default {
 </script>
 
 <style scoped>
+/* Keep existing styles but add these new ones */
+
+.payment-notice {
+  background: linear-gradient(135deg, #e0f2fe, #b3e5fc);
+  border: 1px solid #0288d1;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.notice-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.notice-content h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #01579b;
+  margin: 0 0 8px 0;
+}
+
+.notice-content p {
+  font-size: 13px;
+  color: #0277bd;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* All other existing styles remain the same */
 .violator-dashboard {
   max-width: 1400px;
   margin: 0 auto;

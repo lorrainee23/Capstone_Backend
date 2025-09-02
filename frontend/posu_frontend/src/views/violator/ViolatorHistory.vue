@@ -5,7 +5,7 @@
       <div class="page-header">
         <div class="header-content">
           <h2>My Violation History</h2>
-          <p>View and manage all your traffic violations and payment records.</p>
+          <p>View your traffic violations and payment records. For payments, please visit the POSU office.</p>
         </div>
         <div class="header-stats">
           <div class="stat-item">
@@ -14,7 +14,7 @@
           </div>
           <div class="stat-item">
             <span class="stat-number pending">{{ pendingCount }}</span>
-            <span class="stat-label">Pending</span>
+            <span class="stat-label">Unpaid</span>
           </div>
           <div class="stat-item">
             <span class="stat-number paid">{{ paidCount }}</span>
@@ -32,7 +32,6 @@
               <option value="">All Status</option>
               <option value="Pending">Pending</option>
               <option value="Paid">Paid</option>
-              <option value="Overdue">Overdue</option>
             </select>
           </div>
           
@@ -53,19 +52,21 @@
         </div>
       </div>
 
-      <!-- Summary Cards -->
-      <div class="summary-cards" v-if="pendingViolations.length > 0">
-        <div class="summary-card urgent">
-          <div class="card-icon">⚠️</div>
-          <div class="card-content">
-            <h3>Outstanding Payments</h3>
-            <div class="card-stats">
-              <span class="amount">₱{{ formatCurrency(totalPendingAmount) }}</span>
-              <span class="count">{{ pendingViolations.length }} violation{{ pendingViolations.length > 1 ? 's' : '' }}</span>
-            </div>
-            <button @click="payAllPending" class="btn btn-warning btn-sm">
-              Pay All Pending
-            </button>
+      <!-- Payment Notice Card -->
+      <div class="payment-notice-card" v-if="pendingViolations.length > 0">
+        <div class="card-icon">🏢</div>
+        <div class="card-content">
+          <h3>Payment Information</h3>
+          <div class="card-stats">
+            <span class="amount">₱{{ formatCurrency(totalPendingAmount) }}</span>
+            <span class="count">{{ pendingViolations.length }} unpaid violation{{ pendingViolations.length > 1 ? 's' : '' }}</span>
+          </div>
+          <div class="office-info">
+            <p><strong>To pay your fines, visit the POSU office:</strong></p>
+            <p>📍 San Fabian Bancheto</p>
+            <p>🕐 Monday - Friday, 8:00 AM - 5:00 PM</p>
+            <p>📞 09123456789</p>
+            <p><small>Bring valid ID and reference your violation ID numbers</small></p>
           </div>
         </div>
       </div>
@@ -93,6 +94,7 @@
           <table>
             <thead>
               <tr>
+                <th>Ticket Number</th>
                 <th>Date</th>
                 <th>Violation</th>
                 <th>Location</th>
@@ -103,11 +105,12 @@
             </thead>
             <tbody>
               <tr v-for="violation in paginatedViolations" :key="violation.id">
-                <td>{{ formatDate(violation.date_time) }}</td>
+                <td class="id-cell">#{{ violation.ticket_number }}</td>
+                <td>{{ formatDateTime(violation.date_time) }}</td>
                 <td>
                   <div class="violation-cell">
                     <span class="violation-name">{{ violation.violation?.name }}</span>
-                    <span class="enforcer-name">by {{ violation.enforcer?.first_name }} {{ violation.enforcer?.last_name }}</span>
+                    <span class="enforcer-name">by {{ violation.apprehending_officer?.first_name }} {{ violation.apprehending_officer?.middle_name }} {{ violation.apprehending_officer?.last_name }}</span>
                   </div>
                 </td>
                 <td>{{ violation.location }}</td>
@@ -120,14 +123,7 @@
                 <td>
                   <div class="action-buttons">
                     <button @click="viewViolation(violation)" class="btn btn-secondary btn-xs">
-                      View
-                    </button>
-                    <button 
-                      v-if="violation.status === 'Pending'"
-                      @click="payViolation(violation)" 
-                      class="btn btn-success btn-xs"
-                    >
-                      Pay
+                      View Details
                     </button>
                   </div>
                 </td>
@@ -174,6 +170,19 @@
         </div>
       </div>
 
+      <!-- Export/Print Options -->
+      <div class="export-section">
+        <h3>Export Options</h3>
+        <div class="export-buttons">
+          <button @click="printViolations" class="btn btn-secondary">
+            🖨️ Print Violations
+          </button>
+          <button @click="exportToPDF" class="btn btn-secondary">
+            📄 Export to PDF
+          </button>
+        </div>
+      </div>
+
       <!-- Violation Details Modal -->
       <div v-if="showViolationModal" class="modal-overlay" @click="closeViolationModal">
         <div class="modal" @click.stop>
@@ -186,6 +195,10 @@
               <div class="detail-section">
                 <h4>Violation Information</h4>
                 <div class="detail-grid">
+                  <div class="detail-item">
+                    <label>ticket_number:</label>
+                    <span>#{{ selectedViolation.ticket_number }}</span>
+                  </div>
                   <div class="detail-item">
                     <label>Violation Type:</label>
                     <span>{{ selectedViolation.violation?.name }}</span>
@@ -212,7 +225,7 @@
                 <div class="detail-item full-width">
                   <label>Location:</label>
                   <span>{{ selectedViolation.location }}</span>
-                </div>
+                </div><br>
                 <div class="detail-item full-width">
                   <label>Description:</label>
                   <span>{{ selectedViolation.violation?.description }}</span>
@@ -228,11 +241,11 @@
                 <div class="detail-grid">
                   <div class="detail-item">
                     <label>Enforcer:</label>
-                    <span>{{ selectedViolation.enforcer?.first_name }} {{ selectedViolation.enforcer?.last_name }}</span>
+                    <span>{{ selectedViolation.apprehending_officer?.apprehen }} {{ selectedViolation.apprehending_officer?.middle_name }} {{ selectedViolation.apprehending_officer?.last_name }}</span>
                   </div>
                   <div class="detail-item">
                     <label>Badge Number:</label>
-                    <span>{{ selectedViolation.enforcer?.id || 'N/A' }}</span>
+                    <span>{{ selectedViolation.apprehending_officer?.id || 'N/A' }}</span>
                   </div>
                 </div>
               </div>
@@ -246,20 +259,30 @@
                   </div>
                   <div class="detail-item">
                     <label>Payment Method:</label>
-                    <span>{{ selectedViolation.payment_method || 'N/A' }}</span>
+                    <span>{{ selectedViolation.payment_method || 'Office Payment' }}</span>
                   </div>
+                </div>
+              </div>
+
+              <div v-if="selectedViolation.status === 'Pending'" class="payment-instructions">
+                <div class="instructions-icon">💡</div>
+                <div class="instructions-content">
+                  <h4>Payment Instructions</h4>
+                  <p>To pay this violation fine:</p>
+                  <ol>
+                    <li>Visit the POSU office during business hours</li>
+                    <li>Bring a valid government-issued ID</li>
+                    <li>Reference Violation ID: <strong>#{{ selectedViolation.ticket_number}}</strong></li>
+                    <li>Pay the amount of <strong>₱{{ formatCurrency(selectedViolation.fine_amount) }}</strong></li>
+                  </ol>
                 </div>
               </div>
             </div>
           </div>
           <div class="modal-footer">
             <button @click="closeViolationModal" class="btn btn-secondary">Close</button>
-            <button 
-              v-if="selectedViolation?.status === 'Pending'"
-              @click="paySelectedViolation" 
-              class="btn btn-success"
-            >
-              Pay Fine
+            <button @click="printViolation(selectedViolation)" class="btn btn-primary">
+              Print Details
             </button>
           </div>
         </div>
@@ -294,48 +317,13 @@ export default {
     const loadViolations = async () => {
       try {
         loading.value = true
-        const response = await violatorAPI.history()
+        const response = await violatorAPI.getHistory()
         
         if (response.data.status === 'success') {
-          violations.value = response.data.data || []
+          violations.value = response.data.data.data
         }
       } catch (error) {
         console.error('Failed to load violations:', error)
-        // Mock data for demo
-        violations.value = [
-          {
-            id: 1,
-            violation: { name: 'Speeding', description: 'Exceeding speed limit by 20 km/h' },
-            fine_amount: 1000,
-            status: 'Pending',
-            location: 'EDSA, Quezon City',
-            date_time: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-            enforcer: { first_name: 'Juan', last_name: 'Cruz' },
-            remarks: 'Caught by speed camera'
-          },
-          {
-            id: 2,
-            violation: { name: 'Illegal Parking', description: 'Parking in no parking zone' },
-            fine_amount: 750,
-            status: 'Paid',
-            location: 'Ayala Avenue, Makati',
-            date_time: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-            enforcer: { first_name: 'Maria', last_name: 'Santos' },
-            payment_date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-            payment_method: 'Online Payment'
-          },
-          {
-            id: 3,
-            violation: { name: 'Running Red Light', description: 'Failure to stop at red light' },
-            fine_amount: 1500,
-            status: 'Paid',
-            location: 'Ortigas Avenue, Pasig',
-            date_time: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
-            enforcer: { first_name: 'Pedro', last_name: 'Reyes' },
-            payment_date: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-            payment_method: 'Cash Payment'
-          }
-        ]
       } finally {
         loading.value = false
       }
@@ -353,7 +341,8 @@ export default {
         result = result.filter(v => 
           v.violation?.name.toLowerCase().includes(search) ||
           v.location.toLowerCase().includes(search) ||
-          `${v.enforcer?.first_name} ${v.enforcer?.last_name}`.toLowerCase().includes(search)
+          `${v.apprehending_officer?.first_name} ${v.apprehending_officer?.middle_name} ${v.sapprehending_officer?.last_name}`.toLowerCase().includes(search) ||
+          v.id.toString().includes(search)
         )
       }
       
@@ -376,8 +365,9 @@ export default {
     
     const pendingViolations = computed(() => violations.value.filter(v => v.status === 'Pending'))
     const totalPendingAmount = computed(() => 
-      pendingViolations.value.reduce((sum, v) => sum + v.fine_amount, 0)
-    )
+  pendingViolations.value.reduce((sum, v) => sum + Number(v.fine_amount || 0), 0)
+)
+
     
     const hasActiveFilters = computed(() => 
       filters.value.status || filters.value.search
@@ -405,32 +395,20 @@ export default {
       selectedViolation.value = null
     }
     
-    const payViolation = (violation) => {
-      alert(`Payment feature for violation #${violation.id} would be implemented here.`)
+    const printViolations = () => {
+      alert('Print functionality would open a print-friendly version of your violations list.')
     }
     
-    const paySelectedViolation = () => {
-      if (selectedViolation.value) {
-        payViolation(selectedViolation.value)
-        closeViolationModal()
-      }
+    const exportToPDF = () => {
+      alert('Export functionality would generate a PDF of your violations history.')
     }
     
-    const payAllPending = () => {
-      alert(`Payment feature for all pending violations (₱${formatCurrency(totalPendingAmount.value)}) would be implemented here.`)
+    const printViolation = (violation) => {
+      alert(`Print functionality would generate a detailed report for violation #${violation.ticket_number}.`)
     }
     
     const formatCurrency = (amount) => {
       return new Intl.NumberFormat('en-PH').format(amount)
-    }
-    
-    const formatDate = (dateString) => {
-      if (!dateString) return ''
-      return new Date(dateString).toLocaleDateString('en-PH', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      })
     }
     
     const formatDateTime = (dateString) => {
@@ -468,11 +446,10 @@ export default {
       clearFilters,
       viewViolation,
       closeViolationModal,
-      payViolation,
-      paySelectedViolation,
-      payAllPending,
+      printViolations,
+      exportToPDF,
+      printViolation,
       formatCurrency,
-      formatDate,
       formatDateTime
     }
   }
@@ -583,57 +560,68 @@ export default {
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-.summary-cards {
-  margin-bottom: 24px;
-}
-
-.summary-card {
+.payment-notice-card {
   background: white;
   border-radius: 12px;
   padding: 24px;
+  margin-bottom: 24px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border-left: 4px solid #3b82f6;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 20px;
-}
-
-.summary-card.urgent {
-  border-left: 4px solid #f59e0b;
-  background: linear-gradient(135deg, #fef3c7, #fde68a);
 }
 
 .card-icon {
   font-size: 32px;
-}
-
-.card-content {
-  flex: 1;
+  flex-shrink: 0;
 }
 
 .card-content h3 {
   font-size: 18px;
   font-weight: 600;
-  color: #92400e;
-  margin: 0 0 8px 0;
+  color: #1f2937;
+  margin: 0 0 12px 0;
 }
 
 .card-stats {
   display: flex;
   align-items: center;
   gap: 16px;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .card-stats .amount {
   font-size: 24px;
   font-weight: 700;
-  color: #92400e;
+  color: #059669;
 }
 
 .card-stats .count {
   font-size: 14px;
-  color: #92400e;
-  opacity: 0.8;
+  color: #6b7280;
+}
+
+.office-info {
+  background: #f8fafc;
+  padding: 16px;
+  border-radius: 8px;
+  border-left: 3px solid #3b82f6;
+}
+
+.office-info p {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: #374151;
+}
+
+.office-info p:last-child {
+  margin-bottom: 0;
+}
+
+.office-info small {
+  color: #6b7280;
+  font-style: italic;
 }
 
 .violations-section {
@@ -641,14 +629,12 @@ export default {
   border-radius: 12px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
   overflow: hidden;
+  margin-bottom: 32px;
 }
 
 .section-header {
   padding: 24px;
   border-bottom: 1px solid #e5e7eb;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
 }
 
 .section-header h3 {
@@ -682,6 +668,11 @@ export default {
   vertical-align: top;
 }
 
+.id-cell {
+  font-weight: 600;
+  color: #3b82f6;
+}
+
 .violation-cell {
   display: flex;
   flex-direction: column;
@@ -711,6 +702,27 @@ export default {
 .btn-xs {
   padding: 4px 8px;
   font-size: 12px;
+}
+
+.export-section {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  padding: 24px;
+  margin-bottom: 32px;
+}
+
+.export-section h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 16px 0;
+}
+
+.export-buttons {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .pagination {
@@ -750,7 +762,48 @@ export default {
   margin: 0;
 }
 
-/* Modal styles */
+.payment-instructions {
+  background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
+  border: 1px solid #0ea5e9;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.instructions-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.instructions-content h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #0c4a6e;
+  margin: 0 0 8px 0;
+}
+
+.instructions-content p {
+  font-size: 13px;
+  color: #075985;
+  margin: 0 0 8px 0;
+}
+
+.instructions-content ol {
+  font-size: 13px;
+  color: #075985;
+  margin: 0;
+  padding-left: 16px;
+}
+
+.instructions-content li {
+  margin-bottom: 4px;
+}
+
+/* Modal styles remain the same as previous components */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -875,12 +928,21 @@ export default {
     align-items: stretch;
   }
   
+  .payment-notice-card {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
   .violations-table {
     font-size: 14px;
   }
   
   .detail-grid {
     grid-template-columns: 1fr;
+  }
+  
+  .export-buttons {
+    flex-direction: column;
   }
 }
 </style>

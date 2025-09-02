@@ -40,7 +40,7 @@ api.interceptors.response.use(
 ============================ */
 export const authAPI = {
     login: (credentials) => api.post("/login", credentials),
-    register: (data) => api.post("/violator-register", data),
+    register: (data) => api.post("/violator/register", data),
     logout: () => api.post("/logout"),
     profile: () => api.get("/profile"),
 };
