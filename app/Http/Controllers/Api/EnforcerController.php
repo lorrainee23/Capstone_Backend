@@ -139,6 +139,12 @@ class EnforcerController extends Controller
             'barangay'        => 'required|string|max:255',
             'city'            => 'required|string|max:255',
             'province'        => 'required|string|max:255',
+            'owner_first_name'      => 'required|string|max:100',
+            'owner_middle_name'     => 'nullable|string|max:100',
+            'owner_last_name'       => 'required|string|max:100',
+            'owner_barangay'        => 'required|string|max:255',
+            'owner_city'            => 'required|string|max:255',
+            'owner_province'        => 'required|string|max:255',
             'id_photo'        => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
@@ -179,14 +185,14 @@ class EnforcerController extends Controller
                     'violators_id' => $violator->id
                 ],
                 [
-                    'first_name'   => $request->first_name,
-                    'middle_name'  => $request->middle_name,
-                    'last_name'    => $request->last_name,
+                    'owner_first_name'   => $request->owner_first_name,
+                    'owner_middle_name'  => $request->owner_middle_name,
+                    'owner_last_name'    => $request->owner_last_name,
                     'make'         => $request->make,
                     'model'        => $request->model,
-                    'barangay'     => $request->barangay,
-                    'city'         => $request->city,
-                    'province'     => $request->province,
+                    'owner_barangay'     => $request->owner_barangay,
+                    'owner_city'         => $request->owner_city,
+                    'owner_province'     => $request->owner_province,
                     'vehicle_type' => $request->vehicle_type,
                 ]
             );

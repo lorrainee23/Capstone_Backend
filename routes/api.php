@@ -23,20 +23,45 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/profile', [AuthController::class, 'profile']);
     
     // Admin routes
-    Route::middleware('role:Admin')->prefix('admin')->group(function () {
-        Route::get('/dashboard', [AdminController::class, 'dashboard']);
-        Route::get('/users', [AdminController::class, 'getUsers']);
-        Route::post('/users', [AdminController::class, 'createUser']);
-        Route::put('/users/{id}', [AdminController::class, 'updateUser']);
-        Route::delete('/users/{id}', [AdminController::class, 'deleteUser']);
-        Route::get('/violations', [AdminController::class, 'getViolations']);
-        Route::post('/violations', [AdminController::class, 'createViolation']);
-        Route::put('/violations/{id}', [AdminController::class, 'updateViolation']);
-        Route::delete('/violations/{id}', [AdminController::class, 'deleteViolation']);
-        Route::get('/repeat-offenders', [AdminController::class, 'getRepeatOffenders']);
-        Route::post('/reports', [AdminController::class, 'generateReport']);
-        Route::post('/notifications', [AdminController::class, 'sendNotification']);
-    });
+Route::middleware('role:Admin')->prefix('admin')->group(function () {
+    Route::get('/dashboard', [AdminController::class, 'dashboard']);
+    Route::post('toggle-status', [AdminController::class, 'toggleUserStatus']);
+    // Transactions
+    Route::get('/transactions', [AdminController::class, 'getTransactions']);
+    Route::delete('/transactions/{id}', [AdminController::class, 'archiveTransaction']);
+    Route::post('/transactions/{id}/restore', [AdminController::class, 'restoreTransaction']);
+    Route::get('/transactions/archived', [AdminController::class, 'getArchivedTransactions']);
+
+    // Users
+    Route::get('/users', [AdminController::class, 'getUsers']);
+    Route::post('/users', [AdminController::class, 'createUser']);
+    Route::put('/users/{id}', [AdminController::class, 'updateUser']);
+    Route::delete('/users/{id}', [AdminController::class, 'archiveUser']);
+    Route::get('/users/archived', [AdminController::class, 'getArchivedUsers']);
+    Route::post('/users/{id}/restore', [AdminController::class, 'restoreUser']);
+    Route::delete('/users/{id}/force-delete', [AdminController::class, 'forceDeleteUser']);
+
+    // Violators
+    Route::get('/violators', [AdminController::class, 'getViolators']);
+    Route::put('/update-violator', [AdminController::class, 'updateViolator']);
+    Route::delete('/violators/{id}', [AdminController::class, 'archiveViolator']);
+    Route::get('/violators/archived', [AdminController::class, 'getArchivedViolators']);
+    Route::post('/violators/{id}/restore', [AdminController::class, 'restoreViolator']);
+    Route::delete('/violators/{id}/force-delete', [AdminController::class, 'forceDeleteViolator']);
+
+    // Violations
+    Route::get('/violations', [AdminController::class, 'getViolations']);
+    Route::post('/violations', [AdminController::class, 'createViolation']);
+    Route::put('/violations/{id}', [AdminController::class, 'updateViolation']);
+    Route::delete('/violations/{id}', [AdminController::class, 'archiveViolation']);
+    Route::get('/violations/archived', [AdminController::class, 'getArchivedViolations']);
+    Route::post('/violations/{id}/restore', [AdminController::class, 'restoreViolation']);
+    Route::delete('/violations/{id}/force-delete', [AdminController::class, 'forceDeleteViolation']);
+
+    Route::post('/reports', [AdminController::class, 'generateReport']);
+    Route::post('/notifications', [AdminController::class, 'sendNotification']);
+});
+
     
     // Enforcer routes
     Route::middleware('role:Enforcer')->prefix('enforcer')->group(function () {

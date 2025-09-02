@@ -295,164 +295,113 @@
             </div>
 
             <!-- Transaction Details Modal -->
-            <div
-                v-if="showDetailsModal"
-                class="modal-overlay"
-                @click="closeDetailsModal"
-            >
-                <div class="modal modal-large" @click.stop>
-                    <div class="modal-header">
-                        <h3>Transaction Details</h3>
-                        <button @click="closeDetailsModal" class="modal-close">
-                            ✕
-                        </button>
-                    </div>
-                    <div class="modal-body" v-if="selectedTransaction">
-                        <div class="transaction-details">
-                            <div class="detail-section">
-                                <h4>Transaction Information</h4>
-                                <div class="detail-grid">
-                                    <div class="detail-item">
-                                        <label>Ticket Number:</label>
-                                        <span
-                                            >#{{
-                                                selectedTransaction.ticket_number
-                                            }}</span
-                                        >
-                                    </div>
-                                    <div class="detail-item">
-                                        <label>Status:</label>
-                                        <span
-                                            class="status-badge"
-                                            :class="`status-${selectedTransaction.status?.toLowerCase()}`"
-                                        >
-                                            {{ selectedTransaction.status }}
-                                        </span>
-                                    </div>
-                                    <div class="detail-item">
-                                        <label>Date & Time:</label>
-                                        <span>{{
-                                            formatDateTime(
-                                                selectedTransaction.date_time
-                                            )
-                                        }}</span>
-                                    </div>
-                                    <div class="detail-item">
-                                        <label>Fine Amount:</label>
-                                        <span class="fine-amount"
-                                            >₱{{
-                                                formatCurrency(
-                                                    selectedTransaction.fine_amount
-                                                )
-                                            }}</span
-                                        >
-                                    </div>
-                                </div>
-                            </div>
+            <ModalComponent
+  :show="showDetailsModal"
+  title="Transaction Details"
+  @close="closeDetailsModal"
+>
+  <!-- Everything here is your detailed old modal body -->
+  <div v-if="selectedTransaction" class="transaction-details">
+    <!-- Transaction Information -->
+    <div class="detail-section">
+      <h4>Transaction Information</h4>
+      <div class="detail-grid">
+        <div class="detail-item">
+          <label>Ticket Number:</label>
+          <span>#{{ selectedTransaction.ticket_number }}</span>
+        </div>
+        <div class="detail-item">
+          <label>Status:</label>
+          <span
+            class="status-badge"
+            :class="`status-${selectedTransaction.status?.toLowerCase()}`"
+          >
+            {{ selectedTransaction.status }}
+          </span>
+        </div>
+        <div class="detail-item">
+          <label>Date & Time:</label>
+          <span>{{ formatDateTime(selectedTransaction.date_time) }}</span>
+        </div>
+        <div class="detail-item">
+          <label>Fine Amount:</label>
+          <span class="fine-amount">
+            ₱{{ formatCurrency(selectedTransaction.fine_amount) }}
+          </span>
+        </div>
+      </div>
+    </div>
 
-                            <div class="detail-section">
-                                <h4>Violator Information</h4>
-                                <div class="detail-grid">
-                                    <div class="detail-item">
-                                        <label>Name:</label>
-                                        <span
-                                            >{{
-                                                selectedTransaction.violator
-                                                    ?.first_name
-                                            }}
-                                            {{
-                                                selectedTransaction.violator
-                                                    ?.last_name
-                                            }}</span
-                                        >
-                                    </div>
-                                    <div class="detail-item">
-                                        <label>License Number:</label>
-                                        <span>{{
-                                            selectedTransaction.violator
-                                                ?.license_number
-                                        }}</span>
-                                    </div>
-                                    <div class="detail-item">
-                                        <label>Phone:</label>
-                                        <span>{{
-                                            selectedTransaction.violator
-                                                ?.mobile_number
-                                        }}</span>
-                                    </div>
-                                    <div
-                                        class="detail-item"
-                                        v-if="
-                                            selectedTransaction.violator?.email
-                                        "
-                                    >
-                                        <label>Email:</label>
-                                        <span>{{
-                                            selectedTransaction.violator.email
-                                        }}</span>
-                                    </div>
-                                    <div class="detail-item">
-                                        <label>Repeat Offender:</label>
-                                        <span> {{ formatAttempt(selectedTransaction.violator?.transactions_count) }}  </span>
-                                    </div>
-                                </div><br>
-                                <div class="detail-item full-width">
-                                    <label>Address:</label>
-                                    <span>
-                                        {{
-                                            (selectedTransaction.violator?.barangay || '') + ' ' +
-                                            (selectedTransaction.violator?.city || '') +
-                                            (selectedTransaction.violator?.province ? ', ' + selectedTransaction.violator.province : '')
-                                        }}
-                                    </span>
-                                </div>
-                            </div>
+    <!-- Violator Information -->
+    <div class="detail-section">
+      <h4>Violator Information</h4>
+      <div class="detail-grid">
+        <div class="detail-item">
+          <label>Name:</label>
+          <span>
+            {{ selectedTransaction.violator?.first_name }}
+            {{ selectedTransaction.violator?.last_name }}
+          </span>
+        </div>
+        <div class="detail-item">
+          <label>License Number:</label>
+          <span>{{ selectedTransaction.violator?.license_number }}</span>
+        </div>
+        <div class="detail-item">
+          <label>Phone:</label>
+          <span>{{ selectedTransaction.violator?.mobile_number }}</span>
+        </div>
+        <div class="detail-item" v-if="selectedTransaction.violator?.email">
+          <label>Email:</label>
+          <span>{{ selectedTransaction.violator.email }}</span>
+        </div>
+        <div class="detail-item">
+          <label>Repeat Offender:</label>
+          <span>{{ formatAttempt(selectedTransaction.violator?.transactions_count) }}</span>
+        </div>
+      </div><br>
+      <div class="detail-item full-width">
+        <label>Address:</label>
+        <span>
+          {{
+            (selectedTransaction.violator?.barangay || '') + ' ' +
+            (selectedTransaction.violator?.city || '') +
+            (selectedTransaction.violator?.province ? ', ' + selectedTransaction.violator.province : '')
+          }}
+        </span>
+      </div>
+    </div>
 
-                            <div class="detail-section">
-                                <h4>Violation Details</h4>
-                                <div class="detail-grid">
-                                    <div class="detail-item">
-                                        <label>Violation Type:</label>
-                                        <span>{{
-                                            selectedTransaction.violation?.name
-                                        }}</span>
-                                    </div>
-                                    <div class="detail-item">
-                                        <label>Location:</label>
-                                        <span>{{
-                                            selectedTransaction.location
-                                        }}</span>
-                                    </div>
-                                </div><br>
-                                <div class="detail-item full-width">
-                                    <label>Description:</label>
-                                    <span>{{
-                                        selectedTransaction.violation
-                                            ?.description
-                                    }}</span>
-                                </div>
-                                <div
-                                    v-if="selectedTransaction.remarks"
-                                    class="detail-item full-width"
-                                >
-                                    <label>Remarks:</label>
-                                    <span>{{
-                                        selectedTransaction.remarks
-                                    }}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button
-                            @click="closeDetailsModal"
-                            class="btn btn-secondary"
-                        >
-                            Close
-                        </button>
-                    </div>
-                </div>
-            </div>
+    <!-- Violation Details -->
+    <div class="detail-section">
+      <h4>Violation Details</h4>
+      <div class="detail-grid">
+        <div class="detail-item">
+          <label>Violation Type:</label>
+          <span>{{ selectedTransaction.violation?.name }}</span>
+        </div>
+        <div class="detail-item">
+          <label>Location:</label>
+          <span>{{ selectedTransaction.location }}</span>
+        </div>
+      </div><br>
+      <div class="detail-item full-width">
+        <label>Description:</label>
+        <span>{{ selectedTransaction.violation?.description }}</span>
+      </div>
+      <div v-if="selectedTransaction.remarks" class="detail-item full-width">
+        <label>Remarks:</label>
+        <span>{{ selectedTransaction.remarks }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <template #footer>
+    <button @click="closeDetailsModal" class="btn btn-secondary">Close</button>
+  </template>
+</ModalComponent>
+
         </div>
     </SidebarLayout>
 </template>
@@ -460,12 +409,14 @@
 <script>
 import { ref, onMounted, computed } from "vue";
 import SidebarLayout from "@/components/SidebarLayout.vue";
+import ModalComponent from "@/components/ModalComponent.vue";
 import { enforcerAPI } from "@/services/api";
 
 export default {
     name: "EnforcerTransactions",
     components: {
         SidebarLayout,
+        ModalComponent
     },
     setup() {
         const loading = ref(true);
@@ -1004,77 +955,6 @@ if (filters.value.dateFrom && filters.value.dateTo) {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
-
-/* Modal Styles */
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    padding: 20px;
-}
-
-.modal {
-    background: white;
-    border-radius: 12px;
-    width: 100%;
-    max-width: 600px;
-    max-height: 90vh;
-    overflow-y: auto;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-}
-
-.modal-large {
-    max-width: 800px;
-}
-
-.modal-header {
-    padding: 24px;
-    border-bottom: 1px solid #e5e7eb;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.modal-header h3 {
-    font-size: 18px;
-    font-weight: 600;
-    color: #1f2937;
-    margin: 0;
-}
-
-.modal-close {
-    background: none;
-    border: none;
-    font-size: 20px;
-    cursor: pointer;
-    color: #6b7280;
-    padding: 4px;
-    border-radius: 4px;
-}
-
-.modal-close:hover {
-    background: #f3f4f6;
-}
-
-.modal-body {
-    padding: 24px;
-}
-
-.modal-footer {
-    padding: 24px;
-    border-top: 1px solid #e5e7eb;
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-}
-
 .transaction-details {
     display: flex;
     flex-direction: column;

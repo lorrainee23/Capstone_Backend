@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Violation extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     /**
      * The attributes that are mass assignable.
@@ -34,7 +35,7 @@ class Violation extends Model
      */
     public function transactions()
     {
-        return $this->hasMany(Transaction::class, 'violations_id');
+        return $this->hasMany(Transaction::class, 'violation_id');
     }
 
     /**
@@ -42,7 +43,7 @@ class Violation extends Model
      */
     public function pendingTransactions()
     {
-        return $this->hasMany(Transaction::class, 'violations_id')->where('status', 'Pending');
+        return $this->hasMany(Transaction::class, 'violation_id')->where('status', 'Pending');
     }
 
     /**
@@ -50,7 +51,7 @@ class Violation extends Model
      */
     public function paidTransactions()
     {
-        return $this->hasMany(Transaction::class, 'violations_id')->where('status', 'Paid');
+        return $this->hasMany(Transaction::class, 'violation_id')->where('status', 'Paid');
     }
 
     /**

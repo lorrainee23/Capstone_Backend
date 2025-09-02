@@ -20,6 +20,7 @@ return new class extends Migration
             $table->dateTime('date_time');
             $table->decimal('fine_amount', 10, 2);
             $table->string('receipt', 255)->nullable();
+            $table->softDeletes();
             $table->timestamps();
             $table->foreign('violation_id')->references('id')->on('violations')->onDelete('cascade');
             $table->foreign('apprehending_officer')->references('id')->on('users')->onDelete('cascade');

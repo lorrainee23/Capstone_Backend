@@ -83,25 +83,23 @@
             </svg>
             <span class="nav-text" v-if="!sidebarCollapsed">Notifications</span>
           </router-link>
+          <router-link 
+            to="/admin/archives" 
+            class="nav-item"
+            :class="{ active: $route.path === '/admin/archives' }"
+          >
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 8v13H3V8"/>
+                <rect x="1" y="3" width="22" height="5"/>
+                <line x1="10" y1="12" x2="14" y2="12"/>
+            </svg>
+            <span class="nav-text" v-if="!sidebarCollapsed">Archives</span>
+          </router-link>
         </div>
 
         <!-- Enforcer Navigation -->
         <div v-if="userRole === 'Enforcer'" class="nav-section">
           <h3 class="nav-section-title" v-if="!sidebarCollapsed">Operations</h3>
-          <router-link 
-            to="/enforcer/violations" 
-            class="nav-item"
-            :class="{ active: $route.path === '/enforcer/violations' }"
-          >
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14,2 14,8 20,8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/>
-              <line x1="16" y1="17" x2="8" y2="17"/>
-              <polyline points="10,9 9,9 8,9"/>
-            </svg>
-            <span class="nav-text" v-if="!sidebarCollapsed">Record Violations</span>
-          </router-link>
           <router-link 
             to="/enforcer/transactions" 
             class="nav-item"
@@ -279,13 +277,6 @@
                 </div>
               </div>
               <div class="user-dropdown-menu">
-                <router-link to="/profile" class="dropdown-item" @click="showUserMenu = false">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                    <circle cx="12" cy="7" r="4"/>
-                  </svg>
-                  Profile
-                </router-link>
                 <button @click="handleLogout" class="dropdown-item logout-item">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>

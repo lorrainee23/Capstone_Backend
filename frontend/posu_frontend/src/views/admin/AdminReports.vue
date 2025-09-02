@@ -287,10 +287,10 @@ export default {
         // This would typically come from a dedicated stats endpoint
         // For now, we'll use mock data
         quickStats.value = {
-          total_violations: 1250,
-          total_revenue: 875000,
-          pending_amount: 125000,
-          collection_rate: 85
+          total_violations: 0,
+          total_revenue: 0,
+          pending_amount: 0,
+          collection_rate: 0
         }
       } catch (error) {
         console.error('Failed to load quick stats:', error)

@@ -28,6 +28,7 @@ return new class extends Migration
             $table->string('province', 255);
             $table->boolean('professional');
             $table->string('id_photo', 255)->nullable();
+            $table->softDeletes();
             $table->timestamps();
 
         });

@@ -40,11 +40,6 @@
       <div class="quick-actions">
         <h3>Quick Actions</h3>
         <div class="actions-grid">
-          <router-link to="/enforcer/violations" class="action-card primary">
-            <div class="action-icon">📝</div>
-            <div class="action-title">Record Violation</div>
-            <div class="action-desc">Issue a new traffic violation</div>
-          </router-link>
           
           <router-link to="/enforcer/transactions" class="action-card">
             <div class="action-icon">💳</div>

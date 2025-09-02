@@ -4,22 +4,23 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Vehicle extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'violators_id',
-        'first_name',
-        'middle_name',
-        'last_name',
+        'owner_first_name',
+        'owner_middle_name',
+        'owner_last_name',
         'plate_number',
         'make',
         'model',
-        'barangay',
-        'city',
-        'province',
+        'owner_barangay',
+        'owner_city',
+        'owner_province',
         'vehicle_type',
     ];
 
@@ -44,6 +45,6 @@ class Vehicle extends Model
      */
     public function ownerName(): string
     {
-        return trim("{$this->first_name} {$this->middle_name} {$this->last_name}");
+        return trim("{$this->owner_first_name} {$this->owner_middle_name} {$this->owner_last_name}");
     }
 }

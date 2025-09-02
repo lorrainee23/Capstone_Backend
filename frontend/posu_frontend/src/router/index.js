@@ -6,12 +6,13 @@ import HomePage from '../views/HomePage.vue'
 import LoginPage from '../views/LoginPage.vue'
 import RegisterPage from '../views/RegisterPage.vue'
 import AdminDashboard from '../views/admin/AdminDashboard.vue'
+import AdminProfile from "../views/admin/AdminProfile.vue";
 import AdminUsers from '../views/admin/AdminUsers.vue'
 import AdminViolations from '../views/admin/AdminViolations.vue'
 import AdminReports from '../views/admin/AdminReports.vue'
 import AdminNotifications from '../views/admin/AdminNotifications.vue'
+import Archives from '../views/admin/ArchivesPage.vue'
 import EnforcerDashboard from '../views/enforcer/EnforcerDashboard.vue'
-import EnforcerViolations from '../views/enforcer/EnforcerViolations.vue'
 import EnforcerTransactions from '../views/enforcer/EnforcerTransactions.vue'
 import EnforcerPerformance from '../views/enforcer/EnforcerPerformance.vue'
 import ViolatorDashboard from '../views/violator/ViolatorDashboard.vue'
@@ -51,6 +52,12 @@ const routes = [
         meta: { requiresAuth: true, role: "Admin" },
     },
     {
+        path: "/admin/profile",
+        redirect: "/admin/profile",
+        component: AdminProfile,
+        meta: { requiresAuth: true, role: "Admin" },
+    },
+    {
         path: "/admin/users",
         name: "admin-users",
         component: AdminUsers,
@@ -74,6 +81,12 @@ const routes = [
         component: AdminNotifications,
         meta: { requiresAuth: true, role: "Admin" },
     },
+    {
+        path: "/admin/archives",
+        name: "admin-archives",
+        component: Archives,
+        meta: { requiresAuth: true, role: "Admin" },
+    },
     // Enforcer routes
     {
         path: "/enforcer",
@@ -84,12 +97,6 @@ const routes = [
         path: "/enforcer/dashboard",
         name: "enforcer-dashboard",
         component: EnforcerDashboard,
-        meta: { requiresAuth: true, role: "Enforcer" },
-    },
-    {
-        path: "/enforcer/violations",
-        name: "enforcer-violations",
-        component: EnforcerViolations,
         meta: { requiresAuth: true, role: "Enforcer" },
     },
     {
