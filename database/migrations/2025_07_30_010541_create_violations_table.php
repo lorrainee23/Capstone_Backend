@@ -13,6 +13,7 @@ return new class extends Migration
             $table->string('name', 100);
             $table->text('description');
             $table->decimal('fine_amount', 10, 2);
+            $table->softDeletes();
             $table->timestamps();
         });
     }

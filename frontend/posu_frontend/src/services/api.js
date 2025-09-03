@@ -50,14 +50,31 @@ export const authAPI = {
 ============================ */
 export const adminAPI = {
     dashboard: () => api.get("/admin/dashboard"),
+    changeUserStatus: (data) => api.post("/admin/toggle-status", data),
+    getTransactions: (params = {}) =>
+        api.get("/admin/transactions", { params }),
     getUsers: () => api.get("/admin/users"),
     createUser: (data) => api.post("/admin/users", data),
     updateUser: (id, data) => api.put(`/admin/users/${id}`, data),
-    deleteUser: (id) => api.delete(`/admin/users/${id}`),
+    archiveUser: (id) => api.delete(`/admin/users/${id}`),
+    getArchivedUsers: () => api.get("/admin/users/archived"),
+    restoreUser: (id) => api.post(`/admin/users/${id}/restore`),
+    forceDeleteUser: (id) => api.delete(`/admin/users/${id}/force-delete`),
+    getViolators: (params = {}) => api.get("/admin/violators", { params }),
+    updateViolator: (data) => api.put('/admin/update-violator', data),
+    archiveViolator: (id) => api.delete(`/admin/violators/${id}`),
+    getArchivedViolators: () => api.get("/admin/violators/archived"),
+    restoreViolator: (id) => api.post(`/admin/violators/${id}/restore`),
+    forceDeleteViolator: (id) =>
+        api.delete(`/admin/violators/${id}/force-delete`),
     getViolations: () => api.get("/admin/violations"),
     createViolation: (data) => api.post("/admin/violations", data),
     updateViolation: (id, data) => api.put(`/admin/violations/${id}`, data),
-    deleteViolation: (id) => api.delete(`/admin/violations/${id}`),
+    archiveViolation: (id) => api.delete(`/admin/violations/${id}`),
+    getArchivedViolations: () => api.get("/admin/violations/archived"),
+    restoreViolation: (id) => api.post(`/admin/violations/${id}/restore`),
+    forceDeleteViolation: (id) =>
+        api.delete(`/admin/violations/${id}/force-delete`),
     getRepeatOffenders: () => api.get("/admin/repeat-offenders"),
     generateReport: (data) => api.post("/admin/reports", data),
     sendNotification: (data) => api.post("/admin/notifications", data),
@@ -71,12 +88,14 @@ export const enforcerAPI = {
     getViolators: () => api.get("/enforcer/violators"),
     getViolationTypes: () => api.get("/enforcer/violation-types"),
     recordViolation: (data) => api.post("/enforcer/violations", data),
-    getTransactions: () => api.get("/enforcer/transactions"),
+    getTransactions: (params = {}) =>
+        api.get("/enforcer/transactions", { params }),
     getTransaction: (id) => api.get(`/enforcer/transactions/${id}`),
     updateTransaction: (id, data) =>
         api.put(`/enforcer/transactions/${id}`, data),
     getPerformanceStats: () => api.get("/enforcer/performance"),
     updatePassword: (data) => api.post("/enforcer/change", data),
+    updateProfile: (data) => api.post("/enforcer/update", data),
 };
 
 /* ============================

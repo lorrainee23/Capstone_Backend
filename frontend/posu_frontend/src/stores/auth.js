@@ -29,7 +29,12 @@ export const useAuthStore = () => {
               localStorage.setItem("user_data", JSON.stringify(user));
 
               return { success: true, user };
-          }
+          } else {
+      return {
+        success: false,
+        message: response.data.message || "Login failed",
+      };
+    }
       } catch (error) {
           console.error("Login error:", error);
           return {

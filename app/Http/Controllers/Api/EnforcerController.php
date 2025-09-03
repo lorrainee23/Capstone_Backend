@@ -7,10 +7,12 @@ use App\Models\User;
 use App\Models\Violator;
 use App\Models\Violation;
 use App\Models\Transaction;
+use App\Models\Vehicle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 
 class EnforcerController extends Controller
 {
@@ -85,56 +87,32 @@ class EnforcerController extends Controller
      */
     public function searchViolator(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'search' => 'required|string|min:3',
-        ]);
+        $search = $request->get('search');
 
-        if ($validator->fails()) {
+        if (!$search || strlen($search) < 2) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
+                'message' => 'Search term must be at least 2 characters'
             ], 422);
         }
 
-        $search = $request->search;
+        $violators = Violator::withCount('transactions')
+            ->where('first_name', 'LIKE', "%{$search}%")
+            ->orWhere('last_name', 'LIKE', "%{$search}%")
+            ->orWhere('license_number', 'LIKE', "%{$search}%")
+            ->limit(5)
+            ->get();
 
-        $violator = Violator::where('license_number', $search)
-            ->orWhere('plate_number', $search)
-            ->orWhere('email', $search)
-            ->with(['transactions' => function($query) {
-                $query->latest();
-            }])
-            ->first();
-
-        if (!$violator) {
+        if ($violators->isEmpty()) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Violator not found'
+                'message' => 'No violators found'
             ], 404);
         }
 
         return response()->json([
             'status' => 'success',
-            'data' => [
-                'violator' => [
-                    'id' => $violator->id,
-                    'first_name' => $violator->first_name,
-                    'middle_name' => $violator->middle_name,
-                    'last_name' => $violator->last_name,
-                    'full_name' => $violator->full_name,
-                    'email' => $violator->email,
-                    'mobile_number' => $violator->mobile_number,
-                    'license_number' => $violator->license_number,
-                    'plate_number' => $violator->plate_number,
-                    'model' => $violator->model,
-                    'address' => $violator->address,
-                    'total_fines' => $violator->total_fines,
-                    'unpaid_fines' => $violator->unpaid_fines,
-                    'is_repeat_offender' => $violator->isRepeatOffender(),
-                    'violation_history' => $violator->transactions,
-                ]
-            ]
+            'data' => $violators
         ]);
     }
 
@@ -144,96 +122,93 @@ class EnforcerController extends Controller
     public function recordViolation(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'first_name' => 'required|string|max:100',
-            'middle_name' => 'nullable|string|max:100',
-            'last_name' => 'required|string|max:100',
-            'email' => 'nullable|email',
-            'mobile_number' => 'required|string|size:11',
-            'license_number' => 'required|string|max:20',
-            'plate_number' => 'required|string|max:20',
-            'model' => 'required|string|max:100',
-            'address' => 'required|string|max:255',
-            'gender' => 'required|boolean',
-            'violations_id' => 'required|exists:violations,id',
-            'location' => 'required|string|max:100',
-            'vehicle_type' => 'required|in:Motor,Van,Motorcycle',
-            'id_photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', // id_photo instead of receipt
+            'first_name'      => 'required|string|max:100',
+            'middle_name'     => 'nullable|string|max:100',
+            'last_name'       => 'required|string|max:100',
+            'email'           => 'nullable|email',
+            'mobile_number'   => 'required|string|size:11',
+            'professional'    => 'required|boolean',
+            'gender'          => 'required|boolean',
+            'license_number'  => 'required|string|size:16',
+            'violation_id'    => 'required|exists:violations,id',
+            'location'        => 'required|string|max:100',
+            'vehicle_type'    => 'required|in:Motor,Van,Motorcycle,Truck,Bus',
+            'plate_number'    => 'required|string|max:10',
+            'make'            => 'required|string|max:100',
+            'model'           => 'required|string|max:100',
+            'barangay'        => 'required|string|max:255',
+            'city'            => 'required|string|max:255',
+            'province'        => 'required|string|max:255',
+            'owner_first_name'      => 'required|string|max:100',
+            'owner_middle_name'     => 'nullable|string|max:100',
+            'owner_last_name'       => 'required|string|max:100',
+            'owner_barangay'        => 'required|string|max:255',
+            'owner_city'            => 'required|string|max:255',
+            'owner_province'        => 'required|string|max:255',
+            'id_photo'        => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
-                'status' => 'error',
+                'success' => false,
                 'message' => 'Validation failed',
-                'errors' => $validator->errors()
+                'errors'  => $validator->errors()
             ], 422);
         }
 
         try {
             DB::beginTransaction();
 
-            // Check if violator already exists by email or mobile number
-            $violator = null;
-            if ($request->email) {
-                $violator = Violator::where('email', $request->email)->first();
-            }
-            if (!$violator) {
-                $violator = Violator::where('mobile_number', $request->mobile_number)->first();
-            }
-
-            if (!$violator) {
-                // Create new violator record
-                $violator = Violator::create([
-                    'first_name' => $request->first_name,
+            $violator = Violator::firstOrCreate(
+                ['license_number' => $request->license_number],
+                [
+                    'first_name'  => $request->first_name,
                     'middle_name' => $request->middle_name,
-                    'last_name' => $request->last_name,
-                    'email' => $request->email,
+                    'last_name'   => $request->last_name,
+                    'email'       => $request->email,
+                    'gender'      => $request->gender,
                     'mobile_number' => $request->mobile_number,
-                    'license_number' => $request->license_number,
+                    'id_photo'    => $request->hasFile('id_photo')
+                        ? $request->file('id_photo')->store('id_photos', 'public')
+                        : null,
+                    'barangay'     => $request->barangay,
+                    'city'         => $request->city,
+                    'province'     => $request->province,
+                    'professional' => $request->professional,
+                    'password'    => null,
+                ]
+            );
+
+            $vehicle = Vehicle::firstOrCreate(
+                [
                     'plate_number' => $request->plate_number,
-                    'model' => $request->model,
-                    'address' => $request->address,
-                    'gender' => $request->gender,
-                    'id_photo' => $request->hasFile('id_photo') ? $request->file('id_photo')->store('id_photos', 'public') : null,
-                    'password' => null
-                ]);
-            } else {
-                // Update existing violator information
-                $updateData = [
-                    'first_name' => $request->first_name,
-                    'middle_name' => $request->middle_name,
-                    'last_name' => $request->last_name,
-                    'mobile_number' => $request->mobile_number,
-                    'license_number' => $request->license_number,
-                    'plate_number' => $request->plate_number,
-                    'model' => $request->model,
-                    'address' => $request->address,
-                    'gender' => $request->gender
-                ];
-                if ($request->email) {
-                    $updateData['email'] = $request->email;
-                }
-                $violator->update($updateData);
-            }
+                    'violators_id' => $violator->id
+                ],
+                [
+                    'owner_first_name'   => $request->owner_first_name,
+                    'owner_middle_name'  => $request->owner_middle_name,
+                    'owner_last_name'    => $request->owner_last_name,
+                    'make'         => $request->make,
+                    'model'        => $request->model,
+                    'owner_barangay'     => $request->owner_barangay,
+                    'owner_city'         => $request->owner_city,
+                    'owner_province'     => $request->owner_province,
+                    'vehicle_type' => $request->vehicle_type,
+                ]
+            );
+            
 
-            // Handle id_photo upload (replace receipt logic)
-            if ($request->hasFile('id_photo')) {
-                $idPhotoPath = $request->file('id_photo')->store('id_photos', 'public');
-                $violator->update(['id_photo' => $idPhotoPath]);
-            }
+            $violation = Violation::findOrFail($request->violation_id);
 
-            // Get violation details
-            $violation = Violation::findOrFail($request->violations_id);
-
-            // Create transaction
             $transaction = Transaction::create([
-                'violators_id' => $violator->id,
-                'violations_id' => $request->violations_id,
+                'violator_id'         => $violator->id,
+                'vehicle_id'          => $vehicle->id,
+                'violation_id'        => $violation->id,
                 'apprehending_officer' => auth()->id(),
-                'status' => 'Pending',
-                'location' => $request->location,
-                'date_time' => now(),
-                'fine_amount' => $violation->fine_amount,
-                'vehicle_type' => $request->vehicle_type
+                'status'              => 'Pending',
+                'location'            => $request->location,
+                'date_time'           => now(),
+                'fine_amount'         => $violation->fine_amount,
             ]);
 
             DB::commit();
@@ -242,11 +217,11 @@ class EnforcerController extends Controller
                 'success' => true,
                 'message' => 'Violation recorded successfully',
                 'data' => [
-                    'transaction' => $transaction->load(['violator', 'violation']),
-                    'violator' => $violator
+                    'transaction' => $transaction->load(['violator', 'vehicle', 'violation']),
+                    'violator'    => $violator,
+                    'vehicle'     => $vehicle
                 ]
             ], 201);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -257,33 +232,25 @@ class EnforcerController extends Controller
     }
 
     /**
-     * Get enforcer's transactions
+     * Get enforcer's transactions 
      */
     public function getTransactions(Request $request)
     {
         $user = $request->user();
-        
-        $query = $user->transactions()->with(['violator', 'violation']);
 
-        if ($request->has('status')) {
-            $query->where('status', $request->status);
-        }
+        $perPage = $request->input('per_page', 15);
+        $page = $request->input('page', 1);
 
-        if ($request->has('date')) {
-            $query->whereDate('date_time', $request->date);
-        }
-
-        if ($request->has('search')) {
-            $search = $request->search;
-            $query->whereHas('violator', function($q) use ($search) {
-                $q->where('first_name', 'like', "%{$search}%")
-                  ->orWhere('last_name', 'like', "%{$search}%")
-                  ->orWhere('license_number', 'like', "%{$search}%")
-                  ->orWhere('plate_number', 'like', "%{$search}%");
-            });
-        }
-
-        $transactions = $query->latest()->paginate(15);
+        $transactions = Transaction::with([
+            'violator' => function ($q) {
+                $q->withCount('transactions');
+            },
+            'violation',
+            'vehicle'
+        ])
+            ->where('apprehending_officer', $user->id)
+            ->orderBy('ticket_number', 'asc')
+            ->paginate($perPage, ['*'], 'page', $page);
 
         return response()->json([
             'status' => 'success',

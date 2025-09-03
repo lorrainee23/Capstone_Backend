@@ -6,13 +6,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Violator extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
     protected $fillable = [
-        'violator_user_id',
         'email',
         'password',
         'email_verified',
@@ -22,10 +22,11 @@ class Violator extends Authenticatable
         'mobile_number',
         'gender',
         'license_number',
-        'plate_number',
-        'model',
+        'barangay',
+        'city',
+        'province',
+        'professional',
         'id_photo',
-        'address'
     ];
 
     protected $hidden = [
@@ -36,9 +37,14 @@ class Violator extends Authenticatable
     protected $casts = [
         'email_verified' => 'boolean',
         'gender' => 'boolean',
-        'password' => 'hashed'
+        'password' => 'hashed',
+        'professional' => 'boolean'
     ];
 
+    protected $appends = ['id_photo_url'];
+
+
+    /** 🔹 Accessors */
     public function getFullNameAttribute()
     {
         $name = $this->first_name;
@@ -54,15 +60,19 @@ class Violator extends Authenticatable
         return $this->gender ? 'Male' : 'Female';
     }
 
-    public function user()
+    public function getFullAddressAttribute()
     {
-        return $this->belongsTo(User::class, 'violator_user_id');
+        return "{$this->barangay}, {$this->city}, {$this->province}";
     }
 
-    public function transactions()
+    public function getIdPhotoUrlAttribute()
     {
-        return $this->hasMany(Transaction::class, 'violators_id');
+        return $this->id_photo
+            ? url('storage/id_photos/' . $this->id_photo)
+            : url('storage/id_photos/photo.png');
     }
+
+    /** 🔹 Relationships */
 
     public function pendingTransactions()
     {
@@ -73,7 +83,12 @@ class Violator extends Authenticatable
     {
         return $this->transactions()->where('status', 'Paid');
     }
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class, 'violator_id');
+    }
 
+    /** 🔹 Helpers */
     public function isRepeatOffender()
     {
         return $this->transactions()->count() > 1;
@@ -88,4 +103,4 @@ class Violator extends Authenticatable
     {
         return $this->transactions()->where('status', 'Pending')->sum('fine_amount');
     }
-} 
+}

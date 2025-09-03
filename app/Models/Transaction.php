@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Transaction extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     /**
      * The attributes that are mass assignable.
@@ -15,15 +16,16 @@ class Transaction extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'violators_id',
-        'violations_id',
+        'ticket_number',
+        'violator_id',
+        'violation_id',
         'apprehending_officer',
+        'vehicle_id',
         'status',
         'location',
         'date_time',
         'fine_amount',
         'receipt',
-        'vehicle_type',
     ];
 
     /**
@@ -37,19 +39,11 @@ class Transaction extends Model
     ];
 
     /**
-     * Get the violator for this transaction.
-     */
-    public function violator()
-    {
-        return $this->belongsTo(Violator::class, 'violators_id');
-    }
-
-    /**
      * Get the violation type for this transaction.
      */
     public function violation()
     {
-        return $this->belongsTo(Violation::class, 'violations_id');
+        return $this->belongsTo(Violation::class, 'violation_id');
     }
 
     /**
@@ -58,6 +52,20 @@ class Transaction extends Model
     public function apprehendingOfficer()
     {
         return $this->belongsTo(User::class, 'apprehending_officer');
+    }
+    /**
+     * Get the violator for this transaction.
+     */
+    public function violator()
+    {
+        return $this->belongsTo(Violator::class, 'violator_id');
+    }
+    /**
+     * Get the vehcile for this transaction.
+     */
+    public function vehicle()
+    {
+        return $this->belongsTo(Vehicle::class, 'vehicle_id');
     }
 
     /**
@@ -99,4 +107,16 @@ class Transaction extends Model
     {
         return '₱' . number_format($this->fine_amount, 2);
     }
-} 
+    /**
+     * Get formatted fine amount.
+     */
+    protected static function booted()
+    {
+        static::creating(function ($transaction) {
+            if (empty($transaction->ticket_number)) {
+                $last = Transaction::max('ticket_number') ?? 999;
+                $transaction->ticket_number = $last + 1;
+            }
+        });
+    }
+}

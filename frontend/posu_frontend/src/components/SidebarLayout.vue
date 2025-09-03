@@ -83,25 +83,23 @@
             </svg>
             <span class="nav-text" v-if="!sidebarCollapsed">Notifications</span>
           </router-link>
+          <router-link 
+            to="/admin/archives" 
+            class="nav-item"
+            :class="{ active: $route.path === '/admin/archives' }"
+          >
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 8v13H3V8"/>
+                <rect x="1" y="3" width="22" height="5"/>
+                <line x1="10" y1="12" x2="14" y2="12"/>
+            </svg>
+            <span class="nav-text" v-if="!sidebarCollapsed">Archives</span>
+          </router-link>
         </div>
 
         <!-- Enforcer Navigation -->
         <div v-if="userRole === 'Enforcer'" class="nav-section">
           <h3 class="nav-section-title" v-if="!sidebarCollapsed">Operations</h3>
-          <router-link 
-            to="/enforcer/violations" 
-            class="nav-item"
-            :class="{ active: $route.path === '/enforcer/violations' }"
-          >
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14,2 14,8 20,8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/>
-              <line x1="16" y1="17" x2="8" y2="17"/>
-              <polyline points="10,9 9,9 8,9"/>
-            </svg>
-            <span class="nav-text" v-if="!sidebarCollapsed">Record Violations</span>
-          </router-link>
           <router-link 
             to="/enforcer/transactions" 
             class="nav-item"
@@ -180,7 +178,14 @@
       <div class="sidebar-footer">
         <div class="user-info" v-if="!sidebarCollapsed">
           <div class="user-avatar">
-            {{ userInitials }}
+             <img 
+    v-if="profileImage" 
+    :src="profileImage" 
+    alt="Profile" 
+    class="profile-image"
+  />
+  <span v-else>{{ userInitials }}</span>
+
           </div>
           <div class="user-details">
             <div class="user-name">{{ userName }}</div>
@@ -242,7 +247,13 @@
           <!-- User Menu -->
           <div class="user-menu-container">
             <button @click="toggleUserMenu" class="user-menu-btn">
-              <div class="user-avatar-small">{{ userInitials }}</div>
+              <div class="user-avatar-small">  <img 
+    v-if="profileImage" 
+    :src="profileImage" 
+    alt="Profile" 
+    class="profile-image-small"
+  />
+  <span v-else>{{ userInitials }}</span></div>
               <span class="user-name-small">{{ userName }}</span>
               <svg class="dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="6,9 12,15 18,9"/>
@@ -252,20 +263,20 @@
             <!-- User Dropdown -->
             <div v-if="showUserMenu" class="user-dropdown" ref="userDropdown">
               <div class="user-dropdown-header">
-                <div class="user-avatar-large">{{ userInitials }}</div>
+                <div class="profile-image"><img 
+    v-if="profileImage" 
+    :src="profileImage" 
+    alt="Profile" 
+    class="profile-image"
+  />
+  <span v-else>{{ userInitials }}</span></div>
+
                 <div class="user-info-dropdown">
                   <div class="user-name-dropdown">{{ userName }}</div>
                   <div class="user-role-dropdown">{{ userRole }}</div>
                 </div>
               </div>
               <div class="user-dropdown-menu">
-                <router-link to="/profile" class="dropdown-item" @click="showUserMenu = false">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                    <circle cx="12" cy="7" r="4"/>
-                  </svg>
-                  Profile
-                </router-link>
                 <button @click="handleLogout" class="dropdown-item logout-item">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -311,7 +322,12 @@ export default {
     const showUserMenu = ref(false)
     const notificationsDropdown = ref(null)
     const userDropdown = ref(null)
-    
+
+    const profileImage = computed(() => {
+  if (!state.user?.image) return null
+  return `http://127.0.0.1:8000/storage/${state.user.image}`
+    })
+
     // Sample notifications data
     const notifications = ref([
       {
@@ -442,6 +458,7 @@ export default {
     })
     
     return {
+      profileImage,
       sidebarCollapsed,
       showNotifications,
       showUserMenu,
@@ -968,6 +985,19 @@ export default {
   flex: 1;
   padding: 32px;
   overflow-y: auto;
+}
+.profile-image {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.profile-image-small {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 /* Responsive Design */

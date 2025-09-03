@@ -40,11 +40,6 @@
       <div class="quick-actions">
         <h3>Quick Actions</h3>
         <div class="actions-grid">
-          <router-link to="/enforcer/violations" class="action-card primary">
-            <div class="action-icon">📝</div>
-            <div class="action-title">Record Violation</div>
-            <div class="action-desc">Issue a new traffic violation</div>
-          </router-link>
           
           <router-link to="/enforcer/transactions" class="action-card">
             <div class="action-icon">💳</div>
@@ -108,14 +103,6 @@
                     <button @click="viewTransaction(transaction)" class="btn-icon-sm" title="View Details">
                       👁️
                     </button>
-                    <button 
-                      v-if="transaction.status === 'Pending'"
-                      @click="updateTransactionStatus(transaction)" 
-                      class="btn-icon-sm btn-success" 
-                      title="Mark as Paid"
-                    >
-                      ✅
-                    </button>
                   </div>
                 </td>
               </tr>
@@ -175,7 +162,7 @@
                 <div class="detail-grid">
                   <div class="detail-item">
                     <label>Name:</label>
-                    <span>{{ selectedTransaction.violator?.first_name }} {{ selectedTransaction.violator?.last_name }}</span>
+                    <span>{{ selectedTransaction.violator?.first_name }}  {{ selectedTransaction.violator?.middle_name }} {{ selectedTransaction.violator?.last_name }}</span>
                   </div>
                   <div class="detail-item">
                     <label>License Number:</label>
@@ -183,7 +170,7 @@
                   </div>
                   <div class="detail-item">
                     <label>Contact:</label>
-                    <span>{{ selectedTransaction.violator?.phone }}</span>
+                    <span>{{ selectedTransaction.violator?.mobile_number }}</span>
                   </div>
                 </div>
               </div>
@@ -225,13 +212,6 @@
           </div>
           <div class="modal-footer">
             <button @click="closeTransactionModal" class="btn btn-secondary">Close</button>
-            <button 
-              v-if="selectedTransaction?.status === 'Pending'"
-              @click="markAsPaid" 
-              class="btn btn-success"
-            >
-              Mark as Paid
-            </button>
           </div>
         </div>
       </div>
@@ -289,22 +269,6 @@ export default {
       selectedTransaction.value = null
     }
     
-    const updateTransactionStatus = async (transaction) => {
-      try {
-        await enforcerAPI.updateTransaction(transaction.id, { status: 'Paid' })
-        await loadDashboardData()
-      } catch (error) {
-        console.error('Failed to update transaction:', error)
-      }
-    }
-    
-    const markAsPaid = async () => {
-      if (selectedTransaction.value) {
-        await updateTransactionStatus(selectedTransaction.value)
-        closeTransactionModal()
-      }
-    }
-    
     const formatCurrency = (amount) => {
       return new Intl.NumberFormat('en-PH').format(amount)
     }
@@ -351,8 +315,6 @@ export default {
       selectedTransaction,
       viewTransaction,
       closeTransactionModal,
-      updateTransactionStatus,
-      markAsPaid,
       formatCurrency,
       formatDate,
       formatDateTime,

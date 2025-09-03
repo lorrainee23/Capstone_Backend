@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('image', 255)->nullable();
             $table->enum('role', ['Admin', 'Enforcer']);
             $table->enum('status', ['active', 'inactive', 'deactivate'])->default('active');
+            $table->softDeletes();
             $table->timestamps();
         });
     }

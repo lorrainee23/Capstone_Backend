@@ -77,11 +77,18 @@
                 <td>{{ formatDate(violation.created_at) }}</td>
                 <td>
                   <div class="action-buttons">
-                    <button @click="editViolation(violation)" class="btn-icon-sm" title="Edit">
-                      ✏️
-                    </button>
-                    <button @click="deleteViolation(violation)" class="btn-icon-sm btn-danger" title="Delete">
-                      🗑️
+                    <button @click="editViolation(violation)" class="btn-icon-sm btn-edit" title="Edit Transaction">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                          </svg>
+                        </button>
+                    <button @click="archiveViolation(violation)" class="btn-icon-sm btn-danger" title="Archive">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M21 8v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <rect x="1" y="3" width="22" height="5" rx="2" ry="2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M10 12h4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
                     </button>
                   </div>
                 </td>
@@ -231,29 +238,43 @@ export default {
     }
     
     const saveViolation = async () => {
-      try {
-        saving.value = true
-        error.value = ''
-        
-        let response
-        if (showEditModal.value && editingViolation.value) {
-          response = await adminAPI.updateViolation(editingViolation.value.id, violationForm.value)
-        } else {
-          response = await adminAPI.createViolation(violationForm.value)
-        }
-        
-        if (response.data.success) {
-          await loadViolations()
-          closeModals()
-        } else {
-          error.value = response.data.message || 'Failed to save violation'
-        }
-      } catch (err) {
-        error.value = err.response?.data?.message || 'Failed to save violation'
-      } finally {
-        saving.value = false
-      }
+  try {
+    saving.value = true
+
+    let response
+    if (showEditModal.value && editingViolation.value) {
+      response = await adminAPI.updateViolation(editingViolation.value.id, violationForm.value)
+    } else {
+      response = await adminAPI.createViolation(violationForm.value)
     }
+
+    if (response.data.status === 'success') {
+      closeModals()
+      await Swal.fire({
+        icon: 'success',
+        title: 'Success',
+        text: response.data.message,
+        timer: 1500,
+        showConfirmButton: true
+      })
+      await loadViolations()
+    } else {
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: response.data.message || 'Failed to save violation'
+      })
+    }
+  } catch (err) {
+    await Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: err.response?.data?.message || 'Failed to save violation'
+    })
+  } finally {
+    saving.value = false
+  }
+}
     
     const editViolation = (violation) => {
       editingViolation.value = violation
@@ -265,35 +286,34 @@ export default {
       showEditModal.value = true
     }
     
-    const deleteViolation = async (violation) => {
+    const archiveViolation = async (violation) => {
       const result = await Swal.fire({
-        title: 'Delete violation?',
-        text: violation?.name || 'This violation',
+        title: 'Archive violation?',
+        text: `${violation.name} will be moved to the archives.`,
         icon: 'warning',
         showCancelButton: true,
-        confirmButtonText: 'Yes, delete',
-        cancelButtonText: 'Cancel'
-      })
+        confirmButtonText: 'Yes, archive it!',
+        cancelButtonText: 'Cancel',
+        iconColor: '#dc2626'
+      });
+
       if (result.isConfirmed) {
         try {
-          await adminAPI.deleteViolation(violation.id)
-          await loadViolations()
+          await adminAPI.archiveViolation(violation.id);
+          await loadViolations();
           await Swal.fire({
-            title: 'Deleted',
+            title: 'Archived!',
+            text: 'Violation has been archived.',
             icon: 'success',
             timer: 1500,
-            showConfirmButton: false
-          })
-        } catch (error) {
-          console.error('Failed to delete violation:', error)
-          await Swal.fire({
-            title: 'Delete failed',
-            text: 'Please try again.',
-            icon: 'error'
-          })
+            showConfirmButton: true
+          });
+        } catch (err) {
+          const errorMessage = err.response?.data?.message || 'Failed to archive violation.';
+          await Swal.fire('Error!', errorMessage, 'error');
         }
       }
-    }
+    };
     
     const closeModals = () => {
       showCreateModal.value = false
@@ -342,7 +362,7 @@ export default {
       error,
       saveViolation,
       editViolation,
-      deleteViolation,
+      archiveViolation,
       closeModals,
       formatCurrency,
       formatDate,
