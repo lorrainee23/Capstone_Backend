@@ -8,9 +8,21 @@ use App\Models\Violator;
 use App\Models\Violation;
 use App\Models\Transaction;
 use App\Models\Notification;
+use App\Exports\ArrayExport;
+use App\Models\Report;
+use Maatwebsite\Excel\Facades\Excel;
+use PhpOffice\PhpWord\PhpWord;
+use PhpOffice\PhpWord\IOFactory;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Swagger\Client\Configuration;
+use Swagger\Client\Api\ConvertDocumentApi;
+use GuzzleHttp\Client;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use PhpParser\Node\Expr\Array_;
 
 class AdminController extends Controller
 {
@@ -423,57 +435,7 @@ class AdminController extends Controller
         return response()->json(['status' => 'success', 'data' => $repeatOffenders]);
     }
 
-    public function generateReport(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'type'       => 'required|in:violations,enforcers,revenue,offenders',
-            'start_date' => 'required|date',
-            'end_date'   => 'required|date|after:start_date',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
-        }
-
-        $startDate = $request->start_date;
-        $endDate   = $request->end_date;
-
-        switch ($request->type) {
-            case 'violations':
-                $data = Violation::withCount(['transactions' => function ($query) use ($startDate, $endDate) {
-                    $query->whereBetween('date_time', [$startDate, $endDate]);
-                }])->get();
-                break;
-
-            case 'enforcers':
-                $data = User::where('role', 'Enforcer')
-                    ->withCount(['transactions' => function ($query) use ($startDate, $endDate) {
-                        $query->whereBetween('date_time', [$startDate, $endDate]);
-                    }])
-                    ->get();
-                break;
-
-            case 'revenue':
-                $data = Transaction::whereBetween('date_time', [$startDate, $endDate])
-                    ->selectRaw('DATE(date_time) as date, SUM(fine_amount) as total_revenue, COUNT(*) as count')
-                    ->groupBy('date')
-                    ->orderBy('date')
-                    ->get();
-                break;
-
-            case 'offenders':
-                $data = Violator::withCount(['transactions' => function ($query) use ($startDate, $endDate) {
-                    $query->whereBetween('date_time', [$startDate, $endDate]);
-                }])
-                ->having('transactions_count', '>', 0)
-                ->orderBy('transactions_count', 'desc')
-                ->get();
-                break;
-        }
-
-        return response()->json(['status' => 'success', 'data' => $data]);
-    }
-
+   
     /* ==============================
      * NOTIFICATIONS
      * ============================== */
@@ -502,6 +464,49 @@ class AdminController extends Controller
 
         return response()->json(['status' => 'success', 'message' => 'Notification sent', 'data' => $notification], 201);
     }
+     // Get All notifications
+     public function getNotifications()
+{
+    $notifications = Notification::where('target_role', 'Admin')
+        ->orderBy('created_at', 'desc')
+        ->take(15)
+        ->get(['id', 'title', 'message', 'read_at', 'created_at']);
+
+    return response()->json([
+        'status' => 'success',
+        'data' => $notifications
+    ]);
+}
+
+    // Mark a single notification as read
+    public function markNotificationAsRead($id)
+    {
+        $notification = Notification::findOrFail($id);
+        $notification->read_at = Carbon::now();
+        $notification->save();
+
+        return response()->json(['status' => 'success', 'message' => 'Notification marked as read']);
+    }
+
+    // Mark a single notification as unread
+    public function markNotificationAsUnread($id)
+    {
+        $notification = Notification::findOrFail($id);
+        $notification->read_at = null;
+        $notification->save();
+
+        return response()->json(['status' => 'success', 'message' => 'Notification marked as unread']);
+    }
+
+    // Mark all notifications as read for the logged-in user role
+    public function markAllNotificationsAsRead(Request $request)
+    {
+        Notification::where('target_role', $request->user()->role)
+                    ->whereNull('read_at')
+                    ->update(['read_at' => Carbon::now()]);
+
+        return response()->json(['status' => 'success', 'message' => 'All notifications marked as read']);
+    }
 
     public function toggleUserStatus(Request $request)
 {
@@ -525,5 +530,362 @@ class AdminController extends Controller
         'data' => $user
     ]);
 }
+     /* ==============================
+     * NEW METHODS FOR DASHBOARD STATS & ADVANCED REPORTS
+     * ============================== */
+    
+/**
+ * Generate advanced reports
+ */
+public function generateAdvancedReport(Request $request)
+{
+    // Validator
+    $validator = Validator::make($request->all(), [
+        'period' => 'required|in:today,yesterday,last_7_days,last_30_days,last_3_months,last_6_months,last_year,year_to_date,custom',
+        'start_date' => 'required_if:period,custom|date',
+        'end_date' => 'required_if:period,custom|date|after:start_date',
+        'type' => 'nullable|string',
+        'export_formats' => 'nullable|array',
+    ]);
 
+    if ($validator->fails()) {
+        return response()->json(['status' => 'error', 'errors' => $validator->errors()], 422);
+    }
+
+    $dateRange = $this->calculateDateRange($request->period, $request->start_date, $request->end_date);
+
+    // Helper to safely access array keys
+    $getKey = fn($array, $key, $default = 'N/A') => is_array($array) && array_key_exists($key, $array) ? $array[$key] : $default;
+
+    // Total Paid Penalty
+    $totalPenalty = Transaction::where('status', 'Paid')
+        ->whereBetween('date_time', [$dateRange['start'], $dateRange['end']])
+        ->sum('fine_amount');
+
+    // All Violators
+    $allViolators = Transaction::with(['violator', 'violation', 'vehicle', 'apprehendingOfficer'])
+        ->whereBetween('date_time', [$dateRange['start'], $dateRange['end']])
+        ->get()
+        ->map(function ($tx) {
+            $violator = $tx->violator;
+            $vehicle = $tx->vehicle;
+            $officer = $tx->apprehendingOfficer;
+
+            $violatorName = $violator 
+                ? trim(($violator->first_name ?? '') . ' ' . ($violator->middle_name ?? '') . ' ' . ($violator->last_name ?? '')) 
+                : 'N/A';
+
+            $violatorAddress = $violator 
+                ? trim(($violator->barangay ?? '') . ' ' . ($violator->city ?? '') . ', ' . ($violator->province ?? '')) 
+                : 'N/A';
+
+            $ownerName = $vehicle 
+                ? trim(($vehicle->owner_first_name ?? '') . ' ' . ($vehicle->owner_middle_name ?? '') . ' ' . ($vehicle->owner_last_name ?? '')) 
+                : 'N/A';
+
+            $ownerAddress = $vehicle 
+                ? trim(($vehicle->owner_barangay ?? '') . ' ' . ($vehicle->owner_city ?? '') . ', ' . ($vehicle->owner_province ?? '')) 
+                : 'N/A';
+
+            $officerName = $officer 
+                ? trim(($officer->first_name ?? '') . ' ' . ($officer->middle_name ?? '') . ' ' . ($officer->last_name ?? '')) 
+                : 'N/A';
+
+            return [
+                'violator_name'    => $violatorName,
+                'violator_address' => $violatorAddress,
+                'violation'        => $tx->violation->name ?? 'N/A',
+                'owner_name'       => $ownerName,
+                'owner_address'    => $ownerAddress,
+                'vehicle_type'     => $vehicle->vehicle_type ?? 'N/A',
+                'vehicle_make'     => $vehicle->make ?? 'N/A',
+                'vehicle_model'    => $vehicle->model ?? 'N/A',
+                'plate_no'         => $vehicle->plate_number ?? 'N/A',
+                'ticket_no'        => $tx->ticket_number ?? 'N/A',
+                'ticket_date'      => $tx->date_time ? $tx->date_time->format('F j, Y') : 'N/A',
+                'ticket_time'      => $tx->date_time ? $tx->date_time->format('g:i A') : 'N/A',
+                'officer_name'     => $officerName,
+                'officer_office'   => $officer->office ?? 'N/A',
+                'remarks'          => $tx->remarks ?? '',
+                'penalty_amount'   => (float) ($tx->fine_amount ?? 0),
+            ];
+        })->values();
+
+    // Violations Mapping
+    $violations = Violation::pluck('name', 'id')->toArray();
+
+    // Common Violations
+    $commonViolations = Transaction::select('violation_id')
+        ->whereBetween('date_time', [$dateRange['start'], $dateRange['end']])
+        ->groupBy('violation_id')
+        ->selectRaw('violation_id, COUNT(*) as count')
+        ->orderByDesc('count')
+        ->take(10)
+        ->get()
+        ->map(function ($item) use ($violations) {
+            return [
+                'violation_id'   => $item->violation_id,
+                'violation_name' => $violations[$item->violation_id] ?? 'N/A',
+                'count'          => (int) ($item->count ?? 0),
+            ];
+        })->values();
+
+    // Enforcer Performance
+    $enforcerPerformance = User::where('role', 'Enforcer')
+        ->with(['transactions' => function ($q) use ($dateRange) {
+            $q->whereBetween('date_time', [$dateRange['start'], $dateRange['end']]);
+        }])
+        ->get()
+        ->map(function ($enforcer) {
+            $transactions = $enforcer->transactions;
+            $totalTransactions = $transactions->count();
+            $paidTransactions = $transactions->where('status', 'Paid')->count();
+
+            return [
+                'enforcer_name'     => trim(($enforcer->first_name ?? '') . ' ' . ($enforcer->last_name ?? '')),
+                'violations_issued' => $totalTransactions,
+                'collection_rate'   => $totalTransactions > 0 ? round(($paidTransactions / $totalTransactions) * 100, 1) : 0,
+                'total_fines'       => (float) $transactions->sum('fine_amount'),
+            ];
+        })
+        ->filter(fn($item) => $item['violations_issued'] > 0)
+        ->values();
+
+    $type = $request->input('type');
+    $reportMap = [
+        'total_revenue'        => [['Total Revenue' => (float) $totalPenalty]],
+        'all_violators'        => $allViolators->toArray(),
+        'common_violations'    => $commonViolations->toArray(),
+        'enforcer_performance' => $enforcerPerformance->toArray(),
+    ];
+
+    $selectedData = $type && isset($reportMap[$type]) ? $reportMap[$type] : $reportMap;
+
+    // Prepare Rows for Export safely
+    $rows = [];
+    if ($type === 'all_violators') {
+        $rows = $allViolators->map(fn($item) => [
+            'Violator Name'    => $getKey($item, 'violator_name'),
+            'Violator Address' => $getKey($item, 'violator_address'),
+            'Violation Name'   => $getKey($item, 'violation'),
+            'Owner Name'       => $getKey($item, 'owner_name'),
+            'Owner Address'    => $getKey($item, 'owner_address'),
+            'Vehicle Type'     => $getKey($item, 'vehicle_type'),
+            'Vehicle Make'     => $getKey($item, 'vehicle_make'),
+            'Vehicle Model'    => $getKey($item, 'vehicle_model'),
+            'Plate Number'     => $getKey($item, 'plate_no'),
+            'Ticket Number'    => $getKey($item, 'ticket_no'),
+            'Ticket Date'      => $getKey($item, 'ticket_date'),
+            'Ticket Time'      => $getKey($item, 'ticket_time'),
+            'Officer Name'     => $getKey($item, 'officer_name'),
+            'Officer Office'   => $getKey($item, 'officer_office'),
+            'Remarks'          => $getKey($item, 'remarks', ''),
+            'Penalty Amount'   => $getKey($item, 'penalty_amount', 0),
+        ])->toArray();
+    } elseif ($type === 'common_violations') {
+        $rows = $commonViolations->map(fn($item) => [
+            'ID'             => $getKey($item, 'violation_id'),
+            'Violation Name' => $getKey($item, 'violation_name'),
+            'Count'          => $getKey($item, 'count', 0),
+        ])->toArray();
+    } elseif ($type === 'enforcer_performance') {
+        $rows = $enforcerPerformance->map(fn($item) => [
+            'Enforcer Name'       => $getKey($item, 'enforcer_name'),
+            'Violations Issued'   => $getKey($item, 'violations_issued', 0),
+            'Collection Rate (%)' => $getKey($item, 'collection_rate', 0),
+            'Total Fines'         => $getKey($item, 'total_fines', 0),
+        ])->toArray();
+    } elseif ($type === 'total_revenue') {
+        $rows = [['Total Revenue' => (float) $totalPenalty]];
+    }
+
+    // Export logic (Excel, Word, PDF)
+    $timestamp = now()->format('Ymd_His');
+    $files = [];
+    $formats = (array) $request->input('export_formats', []);
+    foreach ($formats as $format) {
+        if ($format === 'excel') {
+            $export = new ArrayExport($rows);
+            $filename = ($type ?: 'report') . "_{$timestamp}.xlsx";
+            Excel::store($export, "reports/{$filename}", 'public');
+
+            $files[] = [
+                'filename' => $filename,
+                'mimeType' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'url' => route('download.report', ['filename' => $filename]),
+                'path' => "reports/{$filename}",
+            ];
+        } elseif ($format === 'word') {
+            $html = view('reports.simple', [
+                'type' => $type ?: 'combined',
+                'period' => $request->period,
+                'rows' => $rows,
+                'totalPenalty' => $totalPenalty,
+                'dateRange' => $dateRange,
+            ])->render();
+
+            $pdfPath = storage_path("app/report_{$timestamp}.pdf");
+            Pdf::loadHTML($html)->save($pdfPath);
+
+            $docxPath = $this->convertPdfToWordCloudmersive($pdfPath);
+            $binary = file_get_contents($docxPath);
+            $storedPath = 'reports/' . ($type ?: 'report') . '_' . $timestamp . '.docx';
+            Storage::disk('public')->put($storedPath, $binary);
+
+            $files[] = [
+                'filename' => ($type ?: 'report') . '_' . $timestamp . '.docx',
+                'mimeType' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                'url' => route('download.report', ['filename' => ($type ?: 'report') . '_' . $timestamp . '.docx']),
+                'path' => $storedPath,
+            ];
+
+            @unlink($docxPath);
+            @unlink($pdfPath);
+        } elseif ($format === 'pdf') {
+            $html = view('reports.simple', [
+                'type' => $type ?: 'combined',
+                'period' => $request->period,
+                'rows' => $rows,
+                'totalPenalty' => $totalPenalty,
+                'dateRange' => $dateRange,
+            ])->render();
+
+            $binary = Pdf::loadHTML($html)->output();
+            $storedPath = 'reports/' . ($type ?: 'report') . '_' . $timestamp . '.pdf';
+            Storage::disk('public')->put($storedPath, $binary);
+
+            $files[] = [
+                'filename' => ($type ?: 'report') . '_' . $timestamp . '.pdf',
+                'mimeType' => 'application/pdf',
+                'url' => route('download.report', ['filename' => ($type ?: 'report') . '_' . $timestamp . '.pdf']),
+                'path' => $storedPath,
+            ];
+        }
+    }
+
+    // Store report
+    $report = Report::create([
+        'type' => $type ?: 'combined',
+        'period' => $request->period,
+        'report_content' => $selectedData,
+        'summary' => [
+            'total_penalty' => (float) $totalPenalty,
+            'total_violators' => $allViolators->count(),
+            'common_violations' => $commonViolations->toArray(),
+            'enforcer_performance' => $enforcerPerformance->toArray(),
+        ],
+        'files' => $files,
+    ]);
+
+    return response()->json([
+        'status' => 'success',
+        'data' => [
+            'report' => $selectedData,
+            'files' => $files,
+            'report_id' => $report->id,
+        ]
+    ]);
+}
+
+
+public function convertPdfToWordCloudmersive($pdfPath)
+{
+    $config = Configuration::getDefaultConfiguration()->setApiKey(
+        'Apikey',
+        env('CLOUDMERSIVE_API_KEY')
+    );
+
+    $apiInstance = new ConvertDocumentApi(new Client(), $config);
+
+    try {
+        $inputFile = new \SplFileObject($pdfPath);
+        $result = $apiInstance->convertDocumentPdfToDocx($inputFile);
+
+        $filename = storage_path('app/public/report_' . time() . '.docx');
+        file_put_contents($filename, $result);
+        return $filename;
+
+    } catch (\Exception $e) {
+        throw new \Exception('Cloudmersive conversion failed: ' . $e->getMessage());
+    }
+}
+
+public function getReportHistory(Request $request)
+{
+    $includeDeleted = $request->query('include_deleted', false);
+
+    $reports = $includeDeleted
+        ? Report::withTrashed()->latest()->get() 
+        : Report::latest()->get();
+
+    return response()->json([
+        'data' => $reports
+    ]);
+}
+
+public function restoreReport($id)
+{
+    $report = Report::withTrashed()->findOrFail($id);
+
+    if ($report->trashed()) {
+        $report->restore();
+        return response()->json([
+            'message' => 'Report restored successfully.',
+            'data' => $report
+        ]);
+    }
+
+    return response()->json([
+        'message' => 'Report is not deleted.'
+    ], 400);
+}
+
+public function clearReportHistory()
+{
+    $reports = Report::all();
+
+    foreach ($reports as $report) {
+        if ($report->files) {
+            foreach ($report->files as $file) {
+                if (isset($file['path']) && Storage::exists($file['path'])) {
+                    Storage::delete($file['path']);
+                }
+            }
+        }
+    }
+    Report::query()->delete(); 
+
+    return response()->json([
+        'message' => 'Report history cleared successfully (files deleted).'
+    ]);
+}
+
+/**
+ * Calculate start and end datetime for a period.
+ */
+private function calculateDateRange($period, $start = null, $end = null)
+{
+    switch ($period) {
+        case 'today':
+            return ['start' => now()->startOfDay(), 'end' => now()->endOfDay()];
+        case 'yesterday':
+            return ['start' => now()->subDay()->startOfDay(), 'end' => now()->subDay()->endOfDay()];
+        case 'last_7_days':
+            return ['start' => now()->subDays(6)->startOfDay(), 'end' => now()->endOfDay()];
+        case 'last_30_days':
+            return ['start' => now()->subDays(29)->startOfDay(), 'end' => now()->endOfDay()];
+        case 'last_3_months':
+            return ['start' => now()->subMonths(3)->startOfDay(), 'end' => now()->endOfDay()];
+        case 'last_6_months':
+            return ['start' => now()->subMonths(6)->startOfDay(), 'end' => now()->endOfDay()];
+        case 'last_year':
+            return ['start' => now()->subYear()->startOfDay(), 'end' => now()->endOfDay()];
+        case 'year_to_date':
+            return ['start' => now()->startOfYear(), 'end' => now()];
+        case 'custom':
+            return ['start' => Carbon::parse($start)->startOfDay(), 'end' => Carbon::parse($end)->endOfDay()];
+        default:
+            return ['start' => now()->subDays(6)->startOfDay(), 'end' => now()->endOfDay()];
+    }
+}
 }

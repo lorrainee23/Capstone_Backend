@@ -10,6 +10,7 @@ import AdminProfile from "../views/admin/AdminProfile.vue";
 import AdminUsers from '../views/admin/AdminUsers.vue'
 import AdminViolations from '../views/admin/AdminViolations.vue'
 import AdminReports from '../views/admin/AdminReports.vue'
+import AdminTransactions from "@/views/admin/AdminTransactions.vue";
 import AdminNotifications from '../views/admin/AdminNotifications.vue'
 import Archives from '../views/admin/ArchivesPage.vue'
 import EnforcerDashboard from '../views/enforcer/EnforcerDashboard.vue'
@@ -20,6 +21,7 @@ import ViolatorHistory from '../views/violator/ViolatorHistory.vue'
 import ViolatorProfile from '../views/violator/ViolatorProfile.vue'
 import ViolatorNotifications from '../views/violator/ViolatorNotifications.vue'
 import EnforcerProfile from '@/views/enforcer/EnforcerProfile.vue'
+
 
 const routes = [
     {
@@ -67,6 +69,12 @@ const routes = [
         path: "/admin/violations",
         name: "admin-violations",
         component: AdminViolations,
+        meta: { requiresAuth: true, role: "Admin" },
+    },
+    {
+        path: "/admin/transactions",
+        name: "admin-transactions",
+        component: AdminTransactions,
         meta: { requiresAuth: true, role: "Admin" },
     },
     {

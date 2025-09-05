@@ -10,18 +10,20 @@
 
           <ion-card-content>
             <form @submit.prevent="login">
-              <ion-item lines="full">
-                <ion-label position="floating">Email</ion-label>
+              <ion-item fill="outline">
                 <ion-input
+                label="Email" 
+                label-placement="floating"
                   type="text"
                   v-model="identifier"
                   required
                 ></ion-input>
               </ion-item>
 
-              <ion-item lines="full" class="ion-margin-top">
-                <ion-label position="floating">Password</ion-label>
+              <ion-item fill="outline">
                 <ion-input
+                label="Password" 
+                label-placement="floating"
                   type="password"
                   v-model="password"
                   required
@@ -59,7 +61,6 @@ import {
   IonCardHeader,
   IonCardContent,
   IonItem,
-  IonLabel,
   IonInput,
   IonButton,
   IonSpinner,
@@ -75,7 +76,6 @@ export default {
     IonCardHeader,
     IonCardContent,
     IonItem,
-    IonLabel,
     IonInput,
     IonButton,
     IonSpinner,

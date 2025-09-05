@@ -4,7 +4,7 @@ import axios from "axios";
 // Create axios instance
 const api = axios.create({
     baseURL: "http://127.0.0.1:8000/api",
-    timeout: 10000,
+    timeout: 60000,
     headers: {
         Accept: "application/json",
     },
@@ -61,7 +61,7 @@ export const adminAPI = {
     restoreUser: (id) => api.post(`/admin/users/${id}/restore`),
     forceDeleteUser: (id) => api.delete(`/admin/users/${id}/force-delete`),
     getViolators: (params = {}) => api.get("/admin/violators", { params }),
-    updateViolator: (data) => api.put('/admin/update-violator', data),
+    updateViolator: (data) => api.put("/admin/update-violator", data),
     archiveViolator: (id) => api.delete(`/admin/violators/${id}`),
     getArchivedViolators: () => api.get("/admin/violators/archived"),
     restoreViolator: (id) => api.post(`/admin/violators/${id}/restore`),
@@ -76,8 +76,22 @@ export const adminAPI = {
     forceDeleteViolation: (id) =>
         api.delete(`/admin/violations/${id}/force-delete`),
     getRepeatOffenders: () => api.get("/admin/repeat-offenders"),
-    generateReport: (data) => api.post("/admin/reports", data),
-    sendNotification: (data) => api.post("/admin/notifications", data),
+    getQuickStats: () => api.get("/admin/quick-stats"),
+    getNotifications: () => api.get("/admin/notifications"),
+    markNotificationAsRead: (id) => api.post(`/admin/notifications/${id}/read`),
+    markNotificationAsUnread: (id) =>
+        api.post(`/admin/notifications/${id}/unread`),
+    markAllNotificationsAsRead: () =>
+        api.post("/admin/notifications/mark-all-read"),
+    sendNotification: (data) => api.post("/admin/send-notifications", data),
+    generateReport: (data) => api.post("/admin/generate-report", data),
+    getReportHistory: () => api.get("/admin/history"),
+    clearReportHistory: () => api.delete("/admin/history/clear"),
+    restoreReport: (id) => api.post(`/admin/history/restore/${id}`),
+    downloadReportFile: (filename) =>
+        api.get(`/admin/download-report/${filename}`, {
+            responseType: "blob",
+        }),
 };
 
 /* ============================
@@ -109,6 +123,12 @@ export const violatorAPI = {
     changePassword: (data) => api.post("/violator/change-password", data),
     uploadReceipt: (data) => api.post("/violator/upload-receipt", data),
     getNotifications: () => api.get("/violator/notifications"),
+    markNotificationAsRead: (id) =>
+        api.post(`/violator/notifications/${id}/read`),
+    markNotificationAsUnread: (id) =>
+        api.post(`/violator/notifications/${id}/unread`),
+    markAllNotificationsAsRead: () =>
+        api.post(`/violator/notifications/mark-all-read`),
     getStatistics: () => api.get("/violator/statistics"),
     getProfile: () => api.get("/violator/profile"),
 };

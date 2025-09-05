@@ -18,6 +18,8 @@ class Notification extends Model
         'sender_id',
         'sender_role',
         'target_role',
+        'transaction_id',
+        'violator_id', 
         'title',
         'message',
         'type',
@@ -86,4 +88,20 @@ class Notification extends Model
     {
         return $this->type === 'info';
     }
+    /**
+ * Link to the violator who received this notification.
+ */
+public function violator()
+{
+    return $this->belongsTo(Violator::class, 'violator_id');
+}
+
+/**
+ * Link to the transaction (ticket/fine) related to this notification.
+ */
+public function transaction()
+{
+    return $this->belongsTo(Transaction::class, 'transaction_id');
+}
+
 } 

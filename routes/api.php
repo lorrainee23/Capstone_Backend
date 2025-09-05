@@ -23,9 +23,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/profile', [AuthController::class, 'profile']);
     
     // Admin routes
-Route::middleware('role:Admin')->prefix('admin')->group(function () {
+    Route::middleware('role:Admin')->prefix('admin')->group(function () {
+
     Route::get('/dashboard', [AdminController::class, 'dashboard']);
     Route::post('toggle-status', [AdminController::class, 'toggleUserStatus']);
+
     // Transactions
     Route::get('/transactions', [AdminController::class, 'getTransactions']);
     Route::delete('/transactions/{id}', [AdminController::class, 'archiveTransaction']);
@@ -58,8 +60,30 @@ Route::middleware('role:Admin')->prefix('admin')->group(function () {
     Route::post('/violations/{id}/restore', [AdminController::class, 'restoreViolation']);
     Route::delete('/violations/{id}/force-delete', [AdminController::class, 'forceDeleteViolation']);
 
-    Route::post('/reports', [AdminController::class, 'generateReport']);
-    Route::post('/notifications', [AdminController::class, 'sendNotification']);
+    // Reports
+    Route::get('/quick-stats', [AdminController::class, 'getStats']);
+    Route::post('/generate-report', [AdminController::class, 'generateAdvancedReport']);
+    Route::get('/history', [AdminController::class, 'getReportHistory']);
+    Route::delete('/history/clear', [AdminController::class, 'clearReportHistory']);
+    Route::post('/history/restore/{id}', [AdminController::class, 'restoreReport']);
+    // Download 
+    Route::get('/download-report/{filename}', function ($filename) {
+    $filePath = storage_path('app/public/reports/' . $filename);
+
+    if (!file_exists($filePath)) {
+        abort(404);
+    }
+
+    return response()->download($filePath);
+})->name('download.report');
+
+
+    // Notifications
+     Route::get('/notifications', [AdminController::class, 'getNotifications']);
+    Route::post('/notifications/{id}/read', [AdminController::class, 'markNotificationAsRead']);
+    Route::post('/notifications/{id}/unread', [AdminController::class, 'markNotificationAsUnread']);
+    Route::post('/notifications/mark-all-read', [AdminController::class, 'markAllNotificationsAsRead']);
+    Route::post('/send-notifications', [AdminController::class, 'sendNotification']);
 });
 
     
@@ -75,7 +99,7 @@ Route::middleware('role:Admin')->prefix('admin')->group(function () {
         Route::get('/performance', [EnforcerController::class, 'getPerformanceStats']);
         Route::post('/change', [EnforcerController::class, 'changePassword']);
         Route::post('/update', [EnforcerController::class, 'updateProfile']);
-        Route::get('/search-violator', [EnforcerController::class, 'searchViolator']);
+        Route::post('/search-violator', [EnforcerController::class, 'searchViolator']);
     });
     
     // Violator routes (no role middleware needed, handled by auth:sanctum)
@@ -87,6 +111,9 @@ Route::middleware('role:Admin')->prefix('admin')->group(function () {
         Route::post('/change-password', [ViolatorController::class, 'changePassword']);
         Route::post('/upload-receipt', [ViolatorController::class, 'uploadReceipt']);
         Route::get('/notifications', [ViolatorController::class, 'getNotifications']);
+        Route::post('/notifications/{id}/read', [ViolatorController::class, 'markAsRead']);
+        Route::post('/notifications/{id}/unread', [ViolatorController::class, 'markAsUnread']);
+        Route::post('/notifications/mark-all-read', [ViolatorController::class, 'markAllAsRead']);
         Route::get('/statistics', [ViolatorController::class, 'getStatistics']);
         Route::get('/profile', [ViolatorController::class, 'getProfile']);
         Route::post('/logout', [AuthController::class, 'logout']);

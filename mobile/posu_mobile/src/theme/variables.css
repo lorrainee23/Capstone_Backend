@@ -1,2 +1,15 @@
 /* For information on how to create your own theme, please see:
 http://ionicframework.com/docs/theming/ */
+ion-input {
+  --background: #fff;
+  --color: #000;
+  --placeholder-color: #6b7280; /* Tailwind gray-500 */
+  --highlight-color-focused: #3b82f6; /* Blue-500 for focus */
+}
+
+ion-item {
+  --background: #fff;
+  --color: #000;
+  border-radius: 12px;
+  margin-bottom: 12px;
+}

@@ -27,6 +27,7 @@ class Violator extends Authenticatable
         'province',
         'professional',
         'id_photo',
+        'license_suspended_at',
     ];
 
     protected $hidden = [
@@ -38,7 +39,8 @@ class Violator extends Authenticatable
         'email_verified' => 'boolean',
         'gender' => 'boolean',
         'password' => 'hashed',
-        'professional' => 'boolean'
+        'professional' => 'boolean',
+        'license_suspended_at' => 'datetime',
     ];
 
     protected $appends = ['id_photo_url'];
@@ -87,6 +89,10 @@ class Violator extends Authenticatable
     {
         return $this->hasMany(Transaction::class, 'violator_id');
     }
+    public function vehicles()
+{
+    return $this->hasMany(Vehicle::class, 'violators_id');
+}
 
     /** 🔹 Helpers */
     public function isRepeatOffender()

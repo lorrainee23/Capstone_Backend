@@ -27,14 +27,6 @@
               placeholder="Search violations..."
             />
           </div>
-          <div class="filter-group">
-            <label class="form-label">Sort by Fine Amount</label>
-            <select v-model="sortOrder" class="form-select">
-              <option value="">Default Order</option>
-              <option value="asc">Lowest to Highest</option>
-              <option value="desc">Highest to Lowest</option>
-            </select>
-          </div>
         </div>
       </div>
 

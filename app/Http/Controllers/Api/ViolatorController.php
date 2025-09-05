@@ -221,7 +221,10 @@ class ViolatorController extends Controller
      */
     public function getNotifications(Request $request)
     {
+        $user = $request->user();
+
         $notifications = Notification::where('target_role', 'Violator')
+            ->where('violator_id', $user->id)
             ->latest()
             ->paginate(15);
 
@@ -231,6 +234,36 @@ class ViolatorController extends Controller
         ]);
     }
 
+    public function markAsRead($id)
+    {
+        $notification = Notification::findOrFail($id);
+        $notification->read_at = now();
+        $notification->save();
+
+        return response()->json(['status' => 'success']);
+    }
+
+    public function markAsUnread($id)
+    {
+        $notification = Notification::findOrFail($id);
+        $notification->read_at = null;
+        $notification->save();
+
+        return response()->json(['status' => 'success']);
+    }
+
+    public function markAllAsRead(Request $request)
+    {
+        $user = $request->user();
+
+        Notification::where('target_role', 'Violator')
+            ->where('violator_id', $user->id)
+            ->update(['read_at' => now()]);
+
+        return response()->json(['status' => 'success']);
+    
+    }
+    
     /**
      * Get violator's statistics
      */

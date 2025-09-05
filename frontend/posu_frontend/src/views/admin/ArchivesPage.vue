@@ -76,7 +76,7 @@
                   <td>
                     <div class="action-buttons">
                        <button @click="restoreItem(user.id, 'user')" class="btn-restore" :disabled="isProcessing(user.id, 'user')">Restore</button>
-                       <button @click="forceDeleteItem(user.id, 'user')" class="btn-delete" :disabled="isProcessing(user.id, 'user')">Delete</button>
+                      
                     </div>
                   </td>
                 </tr>
@@ -105,7 +105,7 @@
                    <td>
                       <div class="action-buttons">
                         <button @click="restoreItem(violation.id, 'violation')" class="btn-restore" :disabled="isProcessing(violation.id, 'violation')">Restore</button>
-                        <button @click="forceDeleteItem(violation.id, 'violation')" class="btn-delete" :disabled="isProcessing(violation.id, 'violation')">Delete</button>
+                        
                       </div>
                    </td>
                 </tr>
@@ -134,7 +134,7 @@
                    <td>
                       <div class="action-buttons">
                         <button @click="restoreItem(violator.id, 'violator')" class="btn-restore" :disabled="isProcessing(violator.id, 'violator')">Restore</button>
-                        <button @click="forceDeleteItem(violator.id, 'violator')" class="btn-delete" :disabled="isProcessing(violator.id, 'violator')">Delete</button>
+                      
                       </div>
                    </td>
                 </tr>

@@ -213,22 +213,52 @@
               <span v-if="notificationCount > 0" class="notification-badge">{{ notificationCount }}</span>
             </button>
             
-            <!-- Notifications Dropdown -->
+            <!-- Enhanced Notifications Dropdown -->
             <div v-if="showNotifications" class="notifications-dropdown" ref="notificationsDropdown">
               <div class="notifications-header">
-                <h3>Notifications</h3>
-                <button @click="markAllAsRead" class="mark-all-read">Mark all as read</button>
+                <div class="notifications-header-left">
+                  <svg class="notifications-header-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                  </svg>
+                  <h3>Notifications</h3>
+                </div>
+                <div class="notifications-header-actions">
+                  <button @click="markAllAsRead" class="mark-all-read">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M20 6L9 17l-5-5"/>
+                    </svg>
+                    Mark all as read
+                  </button>
+                </div>
               </div>
+
               <div class="notifications-list">
                 <div v-if="notifications.length === 0" class="no-notifications">
-                  No notifications
+                  <svg class="no-notifications-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+                    <line x1="9" y1="9" x2="9.01" y2="9"/>
+                    <line x1="15" y1="9" x2="15.01" y2="9"/>
+                  </svg>
+                  <p>No notifications yet</p>
+                  <span>You're all caught up!</span>
                 </div>
+                
                 <div 
-                  v-for="notification in notifications" 
+                  v-for="notification in notifications.slice(0, 5)" 
                   :key="notification.id"
                   class="notification-item"
                   :class="{ 'unread': !notification.read }"
                 >
+                  <div class="notification-icon-wrapper">
+                    <svg class="notification-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <line x1="12" y1="16" x2="12" y2="12"/>
+                      <line x1="12" y1="8" x2="12.01" y2="8"/>
+                    </svg>
+                    <div v-if="!notification.read" class="unread-dot"></div>
+                  </div>
                   <div class="notification-content">
                     <h4>{{ notification.title }}</h4>
                     <p>{{ notification.message }}</p>
@@ -240,6 +270,20 @@
                     </svg>
                   </button>
                 </div>
+              </div>
+
+              <!-- View All Notifications Link -->
+              <div class="notifications-footer">
+                <router-link 
+                  :to="getNotificationsRoute()" 
+                  class="view-all-link"
+                  @click="showNotifications = false"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 18l6-6-6-6"/>
+                  </svg>
+                  View all notifications
+                </router-link>
               </div>
             </div>
           </div>
@@ -303,7 +347,9 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { adminAPI, violatorAPI } from "@/services/api"
 import Swal from 'sweetalert2'
+
 
 export default {
   name: 'SidebarLayout',
@@ -328,16 +374,7 @@ export default {
   return `http://127.0.0.1:8000/storage/${state.user.image}`
     })
 
-    // Sample notifications data
-    const notifications = ref([
-      {
-        id: 1,
-        title: 'New Notification',
-        message: 'New',
-        created_at: new Date(Date.now() - 60000),
-        read: false
-      },
-    ])
+    const notifications = ref([])
     
     const userRole = computed(() => state.user?.role || '')
     const userName = computed(() => {
@@ -361,6 +398,40 @@ export default {
       return roleRoutes[userRole.value] || '/'
     })
 
+    const getNotificationsRoute = () => {
+      const roleRoutes = {
+        'Admin': '/admin/notifications',
+        'Violator': '/violator/notifications'
+      }
+      return roleRoutes[userRole.value] || '/notifications'
+    }
+
+    const fetchNotifications = async () => {
+  if (!state.user) return;
+
+  try {
+    let res;
+    if (state.user.role === "Admin") {
+      res = await adminAPI.getNotifications();
+    } else if (state.user.role === "Violator") {
+      res = await violatorAPI.getNotifications();
+    }
+
+    const notificationsData = res.data.data?.data || res.data.data || [];
+
+    notifications.value = notificationsData.map(n => ({
+      id: n.id,
+      title: n.title,
+      message: n.message,
+      read_at: n.read_at,         
+      created_at: n.created_at,
+      read: !!n.read_at          
+    }));
+  } catch (error) {
+    console.error("Failed to fetch notifications:", error);
+  }
+};
+
     const notificationCount = computed(() => {
       return notifications.value.filter(n => !n.read).length
     })
@@ -383,32 +454,57 @@ export default {
       showNotifications.value = false
     }
 
-    const markAsRead = (notificationId) => {
-      const notification = notifications.value.find(n => n.id === notificationId)
-      if (notification) {
-        notification.read = true
-      }
+    const markAsRead = async (id) => {
+  try {
+    let response;
+    if (state.user.role === "Admin") {
+      response = await adminAPI.markNotificationAsRead(id);
+    } else if (state.user.role === "Violator") {
+      response = await violatorAPI.markNotificationAsRead(id);
     }
-
-    const markAllAsRead = () => {
-      notifications.value.forEach(n => n.read = true)
+    const notif = notifications.value.find(n => n.id === id);
+    if (notif && response.data) {
+      notif.read = true;
+      notif.read_at = response.data.read_at || new Date().toISOString();
     }
+  } catch (error) {
+    console.error(error);
+  }
+}
 
-    const formatTime = (date) => {
-      const now = new Date()
-      const diff = now - date
-      const minutes = Math.floor(diff / 60000)
-      const hours = Math.floor(diff / 3600000)
-      const days = Math.floor(diff / 86400000)
-
-      if (minutes < 60) {
-        return `${minutes}m ago`
-      } else if (hours < 24) {
-        return `${hours}h ago`
-      } else {
-        return `${days}d ago`
-      }
+const markAllAsRead = async () => { 
+  try {
+    if (state.user.role === "Admin") {
+      await adminAPI.markAllNotificationsAsRead();
+    } else if (state.user.role === "Violator") {
+      await violatorAPI.markAllNotificationsAsRead();
     }
+    notifications.value.forEach(n => {
+      n.read = true;
+      n.read_at = new Date().toISOString();
+    });
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+    const formatTime = (dateString) => {
+  const now = new Date()
+  const date = new Date(dateString)
+  const diff = now - date
+  const minutes = Math.floor(diff / 60000)
+  const hours = Math.floor(diff / 3600000)
+  const days = Math.floor(diff / 86400000)
+
+  if (minutes < 60) {
+    return `${minutes}m ago`
+  } else if (hours < 24) {
+    return `${hours}h ago`
+  } else {
+    return `${days}d ago`
+  }
+}
+
     
     const handleLogout = async () => {
       const result = await Swal.fire({
@@ -450,6 +546,9 @@ export default {
     }
 
     onMounted(() => {
+      fetchNotifications()
+    })
+    onMounted(() => {
       document.addEventListener('click', handleClickOutside)
     })
 
@@ -471,6 +570,7 @@ export default {
       userName,
       userInitials,
       dashboardRoute,
+      getNotificationsRoute,
       toggleSidebar,
       toggleNotifications,
       toggleUserMenu,
@@ -649,7 +749,7 @@ export default {
 .main-expanded {
   margin-left: 80px;
 }
-
+/* Continuing from the main-content styles */
 .top-header {
   background: white;
   border-bottom: 1px solid #e5e7eb;
@@ -663,6 +763,10 @@ export default {
   z-index: 100;
 }
 
+.header-left {
+  flex: 1;
+}
+
 .page-title {
   font-size: 24px;
   font-weight: 700;
@@ -673,10 +777,10 @@ export default {
 .header-right {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
 }
 
-/* Notifications Styles */
+/* Notification Styles */
 .notification-container {
   position: relative;
 }
@@ -685,9 +789,9 @@ export default {
   background: none;
   border: none;
   cursor: pointer;
-  padding: 8px;
+  padding: 12px;
   border-radius: 8px;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
   position: relative;
   color: #6b7280;
 }
@@ -708,49 +812,58 @@ export default {
 
 .notification-badge {
   position: absolute;
-  top: 2px;
-  right: 2px;
+  top: 8px;
+  right: 8px;
   background: #ef4444;
   color: white;
   font-size: 10px;
   font-weight: 600;
   padding: 2px 6px;
   border-radius: 10px;
-  min-width: 18px;
-  height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  min-width: 16px;
+  text-align: center;
 }
 
+/* Notifications Dropdown */
 .notifications-dropdown {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 8px);
   right: 0;
+  width: 380px;
+  max-height: 480px;
   background: white;
   border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-  width: 320px;
-  max-height: 400px;
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  z-index: 1000;
   overflow: hidden;
-  z-index: 1001;
-  margin-top: 8px;
 }
 
 .notifications-header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #e5e7eb;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid #e5e7eb;
+}
+
+.notifications-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.notifications-header-icon {
+  width: 20px;
+  height: 20px;
+  color: #3b82f6;
 }
 
 .notifications-header h3 {
-  margin: 0;
   font-size: 16px;
   font-weight: 600;
   color: #1f2937;
+  margin: 0;
 }
 
 .mark-all-read {
@@ -758,12 +871,23 @@ export default {
   border: none;
   color: #3b82f6;
   font-size: 12px;
-  cursor: pointer;
   font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
 }
 
 .mark-all-read:hover {
-  color: #1e40af;
+  background: #eff6ff;
+}
+
+.mark-all-read svg {
+  width: 12px;
+  height: 12px;
 }
 
 .notifications-list {
@@ -772,17 +896,34 @@ export default {
 }
 
 .no-notifications {
-  padding: 40px 20px;
+  padding: 40px 24px;
   text-align: center;
-  color: #9ca3af;
+  color: #6b7280;
+}
+
+.no-notifications-icon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 16px;
+  color: #d1d5db;
+}
+
+.no-notifications p {
+  font-weight: 500;
+  margin: 0 0 4px;
+  color: #374151;
+}
+
+.no-notifications span {
   font-size: 14px;
 }
 
 .notification-item {
+  padding: 16px 24px;
+  border-bottom: 1px solid #f3f4f6;
   display: flex;
   align-items: flex-start;
-  padding: 16px 20px;
-  border-bottom: 1px solid #f3f4f6;
+  gap: 12px;
   transition: background-color 0.2s ease;
 }
 
@@ -794,21 +935,51 @@ export default {
   background: #eff6ff;
 }
 
+.notification-item:last-child {
+  border-bottom: none;
+}
+
+.notification-icon-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.notification-icon {
+  width: 16px;
+  height: 16px;
+  color: #6b7280;
+  padding: 8px;
+  background: #f3f4f6;
+  border-radius: 50%;
+}
+
+.unread-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  background: #3b82f6;
+  border-radius: 50%;
+  border: 2px solid white;
+}
+
 .notification-content {
   flex: 1;
 }
 
 .notification-content h4 {
-  margin: 0 0 4px 0;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   color: #1f2937;
+  margin: 0 0 4px;
+  line-height: 1.4;
 }
 
 .notification-content p {
-  margin: 0 0 8px 0;
-  font-size: 12px;
+  font-size: 13px;
   color: #6b7280;
+  margin: 0 0 8px;
   line-height: 1.4;
 }
 
@@ -823,17 +994,49 @@ export default {
   cursor: pointer;
   padding: 4px;
   border-radius: 4px;
-  color: #3b82f6;
-  margin-left: 8px;
+  color: #6b7280;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
 .mark-read-btn:hover {
-  background: #eff6ff;
+  background: #e5e7eb;
+  color: #374151;
 }
 
 .mark-read-btn svg {
   width: 14px;
   height: 14px;
+}
+
+.notifications-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.view-all-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #3b82f6;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.view-all-link:hover {
+  background: #eff6ff;
+  color: #1e40af;
+}
+
+.view-all-link svg {
+  width: 16px;
+  height: 16px;
 }
 
 /* User Menu Styles */
@@ -842,15 +1045,16 @@ export default {
 }
 
 .user-menu-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   background: none;
   border: none;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 8px 12px;
   border-radius: 8px;
   transition: background-color 0.2s ease;
+  color: #1f2937;
 }
 
 .user-menu-btn:hover {
@@ -872,7 +1076,6 @@ export default {
 
 .user-name-small {
   font-weight: 500;
-  color: #1f2937;
   font-size: 14px;
 }
 
@@ -884,34 +1087,35 @@ export default {
 }
 
 .user-menu-btn:hover .dropdown-icon {
-  color: #1f2937;
+  transform: translateY(1px);
 }
 
+/* User Dropdown */
 .user-dropdown {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 8px);
   right: 0;
+  width: 240px;
   background: white;
   border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-  width: 240px;
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  z-index: 1000;
   overflow: hidden;
-  z-index: 1001;
-  margin-top: 8px;
 }
 
 .user-dropdown-header {
+  padding: 20px;
+  border-bottom: 1px solid #e5e7eb;
   display: flex;
   align-items: center;
-  padding: 16px 20px;
-  border-bottom: 1px solid #e5e7eb;
+  gap: 12px;
   background: #f9fafb;
 }
 
-.user-avatar-large {
-  width: 40px;
-  height: 40px;
+.user-dropdown-header .profile-image {
+  width: 48px;
+  height: 48px;
   background: linear-gradient(135deg, #1e3a8a, #3b82f6);
   color: white;
   border-radius: 50%;
@@ -919,8 +1123,7 @@ export default {
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  font-size: 14px;
-  margin-right: 12px;
+  font-size: 16px;
 }
 
 .user-info-dropdown {
@@ -937,111 +1140,103 @@ export default {
 .user-role-dropdown {
   font-size: 12px;
   color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .user-dropdown-menu {
-  padding: 8px 0;
+  padding: 8px;
 }
 
 .dropdown-item {
+  width: 100%;
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 12px 16px;
+  border-radius: 6px;
+  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 12px;
-  width: 100%;
-  padding: 12px 20px;
-  background: none;
-  border: none;
-  text-decoration: none;
-  color: #374151;
   font-size: 14px;
   font-weight: 500;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
+  color: #374151;
 }
 
 .dropdown-item:hover {
   background: #f3f4f6;
 }
 
-.dropdown-item svg {
-  width: 18px;
-  height: 18px;
-  color: #6b7280;
-}
-
 .logout-item {
-  color: #ef4444;
+  color: #dc2626;
 }
 
 .logout-item:hover {
   background: #fef2f2;
 }
 
-.logout-item svg {
-  color: #ef4444;
+.dropdown-item svg {
+  width: 16px;
+  height: 16px;
 }
 
+/* Profile Image Styles */
+.profile-image, .profile-image-small {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+/* Page Content */
 .page-content {
   flex: 1;
   padding: 32px;
-  overflow-y: auto;
-}
-.profile-image {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-.profile-image-small {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  object-fit: cover;
+  overflow: auto;
 }
 
 /* Responsive Design */
 @media (max-width: 1024px) {
   .sidebar {
     transform: translateX(-100%);
+    transition: transform 0.3s ease;
   }
-  
+
   .sidebar.sidebar-open {
     transform: translateX(0);
   }
-  
+
   .main-content {
     margin-left: 0;
   }
-  
+
   .main-expanded {
     margin-left: 0;
   }
 
   .notifications-dropdown {
-    width: 280px;
+    width: 320px;
+    right: -40px;
   }
 
   .user-dropdown {
-    width: 220px;
+    right: -20px;
   }
 }
 
 @media (max-width: 768px) {
-  .page-content {
-    padding: 20px;
-  }
-  
   .top-header {
-    padding: 0 20px;
-  }
-  
-  .page-title {
-    font-size: 20px;
+    padding: 0 16px;
   }
 
-  .header-right {
-    gap: 12px;
+  .page-content {
+    padding: 16px;
+  }
+
+  .page-title {
+    font-size: 20px;
   }
 
   .user-name-small {
@@ -1049,25 +1244,131 @@ export default {
   }
 
   .notifications-dropdown {
-    width: 260px;
-    right: -20px;
+    width: 280px;
+    right: -60px;
   }
 
   .user-dropdown {
-    width: 200px;
-    right: -20px;
+    right: -40px;
   }
 }
 
 @media (max-width: 480px) {
   .notifications-dropdown {
-    width: 240px;
-    right: -40px;
+    width: 260px;
+    right: -80px;
   }
 
   .user-dropdown {
-    width: 180px;
-    right: -40px;
+    right: -60px;
+  }
+
+  .notification-item {
+    padding: 12px 16px;
+  }
+
+  .notifications-header {
+    padding: 16px 20px 12px;
+  }
+
+  .notifications-footer {
+    padding: 12px 20px;
+  }
+}
+
+/* Scrollbar Styles */
+.notifications-list::-webkit-scrollbar,
+.sidebar-nav::-webkit-scrollbar {
+  width: 4px;
+}
+
+.notifications-list::-webkit-scrollbar-track,
+.sidebar-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.notifications-list::-webkit-scrollbar-thumb,
+.sidebar-nav::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 2px;
+}
+
+.notifications-list::-webkit-scrollbar-thumb:hover,
+.sidebar-nav::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Animation for notifications */
+.notification-item {
+  animation: slideInFromRight 0.3s ease-out;
+}
+
+@keyframes slideInFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Focus states for accessibility */
+.sidebar-toggle:focus,
+.notification-btn:focus,
+.user-menu-btn:focus,
+.mark-all-read:focus,
+.mark-read-btn:focus,
+.dropdown-item:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Dark mode support (optional) */
+@media (prefers-color-scheme: dark) {
+  .sidebar-layout {
+    background: #111827;
+  }
+
+  .sidebar {
+    background: #1f2937;
+    border-right-color: #374151;
+  }
+
+  .top-header {
+    background: #1f2937;
+    border-bottom-color: #374151;
+  }
+
+  .notifications-dropdown,
+  .user-dropdown {
+    background: #1f2937;
+    border-color: #374151;
+  }
+
+  .page-title,
+  .user-name,
+  .user-name-dropdown,
+  .notification-content h4 {
+    color: #f9fafb;
+  }
+
+  .nav-item,
+  .notification-content p,
+  .user-role,
+  .user-role-dropdown {
+    color: #d1d5db;
+  }
+
+  .nav-item:hover {
+    background: #374151;
+    color: #f9fafb;
+  }
+
+  .nav-item.active {
+    background: #1e40af;
+    color: #f9fafb;
   }
 }
 </style>

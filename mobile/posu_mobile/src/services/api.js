@@ -52,6 +52,7 @@ export const enforcerAPI = {
     getViolators: () => api.get("/enforcer/violators"),
     getViolationTypes: () => api.get("/enforcer/violation-types"),
     recordViolation: (data) => api.post("/enforcer/violations", data),
+    searchViolator: (data) => api.post("/enforcer/search-violator", data),
     getTransactions: (params = {}) =>
         api.get("/enforcer/transactions", { params }),
 };

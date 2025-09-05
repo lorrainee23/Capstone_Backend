@@ -120,7 +120,7 @@
                       </span>
                       </div>
                       <div>
-                        <div class="user-name">{{ user.first_name }} {{ user.last_name }}</div>
+                        <div class="user-name">{{ user.first_name }} {{ user.middle_name }} {{ user.last_name }}</div>
                         <div class="user-email">{{ user.email }}</div>
                       </div>
                     </div>
@@ -189,55 +189,62 @@
         <div class="violators-content">
           <!-- Violator Filters -->
           <div class="filters-card">
-            <div class="filters-row">
-              <div class="filter-group">
-                <label class="form-label">Payment Status</label>
-                <select v-model="violatorFilters.payment_status" class="form-select">
-                  <option value="">All Status</option>
-                  <option value="paid">Paid</option>
-                  <option value="pending">Pending</option>
-                  <option value="overdue">Overdue</option>
-                </select>
-              </div>
-              <div class="filter-group">
-                <label class="form-label">Vehicle Type</label>
-                <select v-model="violatorFilters.vehicle_type" class="form-select">
-                  <option value="">All Vehicles</option>
-                  <option value="Motor">Motor</option>
-                  <option value="Van">Van</option>
-                  <option value="Motorcycle">Motorcycle</option>
-                  <option value="Truck">Truck</option>
-                  <option value="Bus">Bus</option>
-                </select>
-              </div>
-              <div class="filter-group">
-                <label class="form-label">Repeat Offenders</label>
-                <select v-model="violatorFilters.repeat_offender" class="form-select">
-                  <option value="">All</option>
-                  <option :value="true">Yes</option>
-                  <option :value="false">No</option>
-                </select>
-              </div>
-              <div class="filter-group">
-                <label class="form-label">Search Name</label>
-                <input 
-                  v-model="violatorFilters.search" 
-                  type="text" 
-                  class="form-input" 
-                  placeholder="Search by name, license plate..."
-                />
-              </div>
-              <div class="filter-group">
-                <label class="form-label">Search Address</label>
-                <input 
-                  v-model="violatorFilters.address" 
-                  type="text" 
-                  class="form-input"
-                  placeholder="Filter by Address"
-                />
-              </div>
-            </div>
-          </div>
+  <div class="filters-row">
+    <div class="filter-group">
+      <label class="form-label">Search Name</label>
+      <input 
+        v-model="violatorFilters.name" 
+        type="text" 
+        class="form-input" 
+        placeholder="Search by First or Last Name"
+      />
+    </div>
+    <div class="filter-group">
+      <label class="form-label">Search Address</label>
+      <input 
+        v-model="violatorFilters.address" 
+        type="text" 
+        class="form-input"
+        placeholder="Filter by Address"
+      />
+    </div>
+    <div class="filter-group">
+      <label class="form-label">Search Mobile Number</label>
+      <input 
+        v-model="violatorFilters.mobile_number" 
+        type="text" 
+        class="form-input"
+        placeholder="Search by Mobile Number"
+      />
+    </div>
+    <div class="filter-group">
+      <label class="form-label">Sex</label>
+      <select v-model="violatorFilters.gender" class="form-select">
+        <option value="">All</option>
+        <option :value="true">Male</option>
+        <option :value="false">Female</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label class="form-label">License Type</label>
+      <select v-model="violatorFilters.professional" class="form-select">
+        <option value="">All</option>
+        <option :value="true">Professional</option>
+        <option :value="false">Non-Professional</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label class="form-label">License Number</label>
+      <input 
+        v-model="violatorFilters.license_number" 
+        type="text" 
+        class="form-input"
+        placeholder="Search by License Number"
+      />
+    </div>
+  </div>
+</div>
+
 
           <!-- Violators Table -->
           <div class="table-card">
@@ -250,12 +257,13 @@
                 <thead>
                   <tr>
                     <th class="violator">Number</th>
-                    <th class="violator">Violator</th>
-                    <th class="violator">Vehicle Type</th>
-                    <th class="violator">Repeat Offender</th>
+                    <th class="violator">Violator Name</th>
+                    <th class="violator">License Number</th>
+                    <th class="violator">Email</th>
+                    <th class="violator">Mobile Number</th>
                     <th class="violator">Address</th>
-                    <th class="violator">Payment Status</th>
-                    <th class="violator">Total Amount</th>
+                    <th class="violator">Sex</th>
+                    <th class="violator">License Type</th>
                     <th class="violator">Actions</th>
                   </tr>
                 </thead>
@@ -272,33 +280,39 @@
       </div>
       <div>
         <div class="violator-name">{{ violator.first_name }} {{ violator.last_name }}</div>
-        <div class="violator-license">{{ violator.license_number || 'No license' }}</div>
       </div>
     </div>
   </td>
   <td class="violator">
     <div class="vehicle-type">
-      {{ violator.transactions?.[0]?.vehicle?.vehicle_type || "N/A" }}
+      {{ violator.license_number || "N/A" }}
     </div>
   </td>
   <td class="violator">
-    <div class="repeat-offender" :class="getAttemptClass(violator.transactions_count)">
-      {{ formatAttempt(violator.transactions_count) }}
+    <div class="violator-name">
+      {{ violator.email || "N/A"}}
     </div>
   </td>
   <td class="violator">
-    <div class="address-info">
+    <div class="violator-name">
+      {{ violator.mobile_number }}
+    </div>
+  </td>
+   <td class="violator">
+     <div class="address-info">
       {{ violator.barangay }} {{ violator.city }}, {{ violator.province }}
     </div>
   </td>
-  <td class="violator">
-    <span class="payment-badge" :class="`payment-${violator.transactions?.[0]?.status?.toLowerCase()}`">
-      {{ violator.transactions?.[0]?.status || 'Pending' }}
-    </span>
-  </td>
-  <td class="violator">
-    <span class="total-amount">₱{{ formatCurrency(violator.total_amount) }}</span>
-  </td>
+<td class="violator">
+  <div class="violator-name">
+    {{ violator.gender ? 'Male' : 'Female' }}
+  </div>
+</td>
+<td class="violator">
+  <div class="violator-name">
+    {{ violator.professional ? 'Professional' : 'Non-Professional' }}
+  </div>
+</td>
 
                     <td class="violator">
                       <div class="action-buttons">
@@ -444,7 +458,7 @@
       </div>
 
       <!-- Edit Violator Modal -->
-<div v-if="showCreateModal || showEditViolatorModal" class="modal-overlay" @click="closeEditViolatorModal">
+<div v-if="showEditViolatorModal" class="modal-overlay" @click="closeEditViolatorModal">
   <div class="modal" @click.stop>
     <div class="modal-header">
       <h3>{{ showEditViolatorModal}} Edit Violator </h3>
@@ -500,19 +514,6 @@
     <option :value="0">Female</option>
   </select>
 </div>
-
-      <!-- Violator Payment Status Section -->
-      <h4 class="section-label">Violator Payment Status</h4>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Status</label>
-          <select v-model="violatorForm.status" class="form-select">
-            <option value="">Select Status</option>
-            <option value="Pending">Pending</option>
-            <option value="Paid">Paid</option>
-          </select>
-        </div>
-      </div>
 
       <!-- Violator Address Section -->
       <h4 class="section-label">Violator Address</h4>
@@ -579,7 +580,6 @@ const violatorForm = ref({
   last_name: '',
   license_number: '',
   mobile_number: '',
-  status: '',
   barangay: '',
   city: '',
   province: '',
@@ -596,11 +596,12 @@ const savingViolator = ref(false);
     })
     
     const violatorFilters = ref({
-  payment_status: '',
-  vehicle_type: '',
-  repeat_offender: '',
-  search: '',
+  name: '',
   address: '',
+  mobile_number: '',
+  gender: '',
+  professional: '',
+  license_number: ''
 })
     
     const violatorPaginationData = ref({
@@ -689,7 +690,6 @@ const savingViolator = ref(false);
     barangay: violator.barangay,
     city: violator.city,
     province: violator.province,
-     status: violator.transactions.length ? violator.transactions[0].status : ""
   };
 
   showEditViolatorModal.value = true;
@@ -784,47 +784,45 @@ const filteredViolators = computed(() => {
   let base = Array.isArray(violators.value) ? violators.value : []
   let filtered = base.filter(v => !!v)
 
-  if (violatorFilters.value.payment_status) {
-    filtered = filtered.filter(v => 
-      v.status?.toLowerCase() === violatorFilters.value.payment_status.toLowerCase()
-    )
-  }
-
-  if (violatorFilters.value.vehicle_type) {
-    filtered = filtered.filter(v => 
-      v.vehicle?.vehicle_type === violatorFilters.value.vehicle_type
-    )
-  }
-
-  if (violatorFilters.value.repeat_offender !== '') {
-    const repeat = violatorFilters.value.repeat_offender === true || violatorFilters.value.repeat_offender === 'true'
+  if (violatorFilters.value.name) {
+    const search = violatorFilters.value.name.toLowerCase()
     filtered = filtered.filter(v => {
-      const count = v.violator?.transactions_count || 0
-      return repeat ? count > 1 : count <= 1
-    })
-  }
-
-  if (violatorFilters.value.search) {
-    const search = violatorFilters.value.search.toLowerCase()
-    filtered = filtered.filter(v => {
-      const fn = v.violator?.first_name?.toLowerCase?.() || ''
-      const ln = v.violator?.last_name?.toLowerCase?.() || ''
-      const license = v.violator?.license_number?.toLowerCase?.() || ''
-      return fn.includes(search) || ln.includes(search) || license.includes(search)
+      const fn = v.first_name?.toLowerCase() || ''
+      const ln = v.last_name?.toLowerCase() || ''
+      return fn.includes(search) || ln.includes(search)
     })
   }
 
   if (violatorFilters.value.address) {
     const addr = violatorFilters.value.address.toLowerCase()
     filtered = filtered.filter(v => {
-      const fullAddr = `${v.violator?.barangay || ''} ${v.violator?.city || ''} ${v.violator?.province || ''}`.toLowerCase()
+      const fullAddr = `${v.barangay || ''} ${v.city || ''} ${v.province || ''}`.toLowerCase()
       return fullAddr.includes(addr)
     })
   }
 
+  if (violatorFilters.value.mobile_number) {
+    const mobile = violatorFilters.value.mobile_number.toLowerCase()
+    filtered = filtered.filter(v => 
+      v.mobile_number?.toLowerCase().includes(mobile)
+    )
+  }
+
+  if (violatorFilters.value.gender !== '') {
+    filtered = filtered.filter(v => String(v.gender) === String(violatorFilters.value.gender))
+  }
+
+  if (violatorFilters.value.professional !== '') {
+    filtered = filtered.filter(v => String(v.professional) === String(violatorFilters.value.professional))
+  }
+
+  if (violatorFilters.value.license_number) {
+    const lic = violatorFilters.value.license_number.toLowerCase()
+    filtered = filtered.filter(v => v.license_number?.toLowerCase().includes(lic))
+  }
+
   return filtered
 })
-
 
 const paginatedViolators = computed(() => {
   return filteredViolators.value; 
@@ -971,7 +969,7 @@ const paginatedViolators = computed(() => {
     showCancelButton: true,
     confirmButtonText: 'Yes, archive',
     cancelButtonText: 'Cancel',
-    confirmButtonColor: '#f59e0b',
+    confirmButtonColor: '#dc2626',
     iconColor:'#dc2626'
   });
 
@@ -1061,25 +1059,6 @@ const formatDateTime = (dateString) => {
       return `${count}th Attempt`
     }
      
-    const sendReminder = async (violator) => {
-      try {
-        await adminAPI.sendPaymentReminder(violator.id)
-        Swal.fire({
-          icon: 'success',
-          title: 'Reminder Sent',
-          text: 'Payment reminder sent successfully',
-          timer: 1500,
-          showConfirmButton: false
-        })
-      } catch (error) {
-        console.error('Failed to send reminder:', error)
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: 'Failed to send reminder'
-        })
-      }
-    }
     
     const closeModals = () => {
       showCreateModal.value = false
@@ -1124,7 +1103,7 @@ const formatDateTime = (dateString) => {
       loadViolators()
     })
     
-    return {loading,loadingViolators,saving,activeTab,users,violators,paginatedViolators,filteredUsers,userFilters,violatorFilters,violatorPaginationData,violatorPerPage,visibleViolatorPages,showCreateModal,showEditModal,saveViolator,userForm,error,saveUser,editUser,toggleUserStatus,deleteUser,viewViolatorDetails,closeViolatorDetailsModal,showViolatorDetailsModal,selectedViolator,archiveViolator,sendReminder,goToViolatorPage,changeViolatorPerPage,getAttemptClass,formatAttempt,closeModals,formatDate,formatDateTime,formatCurrency,getInitials,editViolator,showEditViolatorModal,violatorForm,closeEditViolatorModal,savingViolator
+    return {loading,loadingViolators,saving,activeTab,users,violators,paginatedViolators,filteredUsers,userFilters,violatorFilters,violatorPaginationData,violatorPerPage,visibleViolatorPages,showCreateModal,showEditModal,saveViolator,userForm,error,saveUser,editUser,toggleUserStatus,deleteUser,viewViolatorDetails,closeViolatorDetailsModal,showViolatorDetailsModal,selectedViolator,archiveViolator,goToViolatorPage,changeViolatorPerPage,getAttemptClass,formatAttempt,closeModals,formatDate,formatDateTime,formatCurrency,getInitials,editViolator,showEditViolatorModal,violatorForm,closeEditViolatorModal,savingViolator
     }
   }
 }

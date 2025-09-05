@@ -15,13 +15,19 @@ return new class extends Migration
             $table->unsignedTinyInteger('violation_id');
             $table->unsignedTinyInteger('apprehending_officer');
             $table->unsignedInteger('vehicle_id');
-            $table->enum('status', ['Pending', 'Paid'])->default('Pending');
+            
+            $table->enum('status', ['Pending', 'Paid', 'For Court'])->default('Pending');
+            
+            $table->timestamp('warning_sent_at')->nullable();
+            $table->timestamp('court_filed_at')->nullable();
+
             $table->string('location', 100);
             $table->dateTime('date_time');
             $table->decimal('fine_amount', 10, 2);
             $table->string('receipt', 255)->nullable();
             $table->softDeletes();
             $table->timestamps();
+
             $table->foreign('violation_id')->references('id')->on('violations')->onDelete('cascade');
             $table->foreign('apprehending_officer')->references('id')->on('users')->onDelete('cascade');
             $table->foreign('violator_id')->references('id')->on('violators')->onDelete('cascade');
@@ -29,9 +35,6 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('transactions');
