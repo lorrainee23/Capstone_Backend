@@ -4,104 +4,44 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Notification extends Model
 {
-    use HasFactory;
+    use SoftDeletes,HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         'sender_id',
         'sender_role',
-        'target_role',
+        'target_id',
+        'target_type',
+        'violator_id',
         'transaction_id',
-        'violator_id', 
         'title',
         'message',
         'type',
+        'read_at',
     ];
 
-    /**
-     * Get the sender of this notification.
-     */
+    protected $dates = ['read_at','deleted_at'];
+
     public function sender()
     {
-        return $this->belongsTo(User::class, 'sender_id');
+        return $this->morphTo(null, 'sender_role', 'sender_id');
     }
 
-    /**
-     * Scope to filter by target role.
-     */
-    public function scopeForRole($query, $role)
+    public function target()
     {
-        return $query->where('target_role', $role);
+        return $this->morphTo(null, 'target_type', 'target_id');
     }
 
-    /**
-     * Scope to filter by type.
-     */
-    public function scopeOfType($query, $type)
+    public function violator()
     {
-        return $query->where('type', $type);
+        return $this->belongsTo(Violator::class, 'violator_id');
     }
 
-    /**
-     * Get formatted created date.
-     */
-    public function getFormattedCreatedAtAttribute()
+    public function transaction()
     {
-        return $this->created_at->format('M d, Y h:i A');
+        return $this->belongsTo(Transaction::class, 'transaction_id');
     }
-
-    /**
-     * Check if notification is an alert.
-     */
-    public function isAlert()
-    {
-        return $this->type === 'alert';
-    }
-
-    /**
-     * Check if notification is a warning.
-     */
-    public function isWarning()
-    {
-        return $this->type === 'warning';
-    }
-
-    /**
-     * Check if notification is a reminder.
-     */
-    public function isReminder()
-    {
-        return $this->type === 'reminder';
-    }
-
-    /**
-     * Check if notification is info.
-     */
-    public function isInfo()
-    {
-        return $this->type === 'info';
-    }
-    /**
- * Link to the violator who received this notification.
- */
-public function violator()
-{
-    return $this->belongsTo(Violator::class, 'violator_id');
 }
-
-/**
- * Link to the transaction (ticket/fine) related to this notification.
- */
-public function transaction()
-{
-    return $this->belongsTo(Transaction::class, 'transaction_id');
-}
-
-} 

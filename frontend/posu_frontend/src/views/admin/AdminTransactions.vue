@@ -2,12 +2,28 @@
     <SidebarLayout page-title="Transaction Management">
         <div class="enforcer-transactions">
             <!-- Header -->
-            <div class="page-header">
-                <div class="header-left">
-                    <h2>My Transactions</h2>
-                    <p>Manage violation transactions and payments</p>
-                </div>
-            </div>
+            <header class="dashboard-header">
+        <div class="header-content">
+          <h1>Violators Transaction</h1>
+          <p>Manage Violators Transactions and Payments Status</p>
+        </div>
+        <button class="refresh-btn" @click="loadDashboardData" aria-label="Refresh Dashboard">
+          <svg 
+            width="20" 
+            height="20" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            stroke-width="2" 
+            stroke-linecap="round" 
+            stroke-linejoin="round"
+          >
+            <path d="M21 12a9 9 0 1 1-3-6.7" />
+            <polyline points="21 3 21 9 15 9" />
+          </svg>
+          Refresh
+        </button>
+      </header>
 
             <!-- Filters -->
             <div class="filters-card">
@@ -116,8 +132,8 @@
                                 <th>Repeat Offender</th>
                                 <th>Address</th>
                                 <th>Date</th>
-											<th>Payment Status</th>
-                                <th>Fine Amount</th>
+											<th>Fine Amount</th>
+                                <th>Remarks</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -199,32 +215,36 @@
                                 <td>
                                        {{ transaction.violator?.barangay }} {{ transaction.violator?.city }}{{ transaction.violator?.province ? ', ' + transaction.violator.province : '' }}
                                 </td>
-                                <td>
-                                    {{ formatDateTime(transaction.date_time) }}
+                                <td class="date-time">
+                                  <div class="date">{{ formatDateTime(transaction.date_time).date }}</div>
+                                  <div class="time">{{ formatDateTime(transaction.date_time).time }}</div>
                                 </td>
                                 <td>
                                     <div class="fine-amount">
                                         <span class="total-amount">₱{{ formatCurrency(transaction.fine_amount) }}</span>
                                     </div>
                                 </td>
-										<td >
-    <span class="payment-badge" :class="`payment-${transaction.status?.toLowerCase() || 'pending'}`">
-      {{ transaction.status || 'Pending' }}
-    </span>
-  </td>
-                                <td>
-                                    <div class="action-buttons">
-                        <button @click="editViolator(violator)" class="btn-icon-sm btn-edit" title="Edit Transaction">
+                                <td >
+                              <span class="payment-badge" :class="`payment-${transaction.status?.toLowerCase() || 'pending'}`">
+                                {{ transaction.status || 'Pending' }}
+                              </span>
+                            </td>
+                            <td>
+                        <div class="action-buttons">
+                        <button @click="viewTransaction(transaction)" class="btn-icon-sm btn-edit" title="View Transaction Details">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                           </svg>
                         </button>
-                        <button @click="archiveViolator(violator)" class="btn-icon-sm btn-danger" title="Archive Transaction">
+                        <button @click="markAsPaid(transaction)" class="btn-icon-sm btn-success"
+                        :disabled="transaction.status?.toLowerCase() === 'paid' && userRole === 'Admin'"
+                        :title="transaction.status?.toLowerCase() === 'paid' && userRole === 'Admin' ? 'Already Paid (Admin cannot re-Mark)' : 'Mark as Paid'"
+                        >
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M21 8v13H3V8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M23 3H1v5h22V3z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M10 12h4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <line x1="8" y1="21" x2="16" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <line x1="12" y1="17" x2="12" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                           </svg>
                         </button>
                       </div>
@@ -331,7 +351,36 @@
                     </div>
                 </div>
             </div>
-
+            <!-- Edit Transaction Modal -->
+            <div v-if="showEditModal" class="modal-overlay" @click="closeEditModal">
+              <div class="modal modal-large" @click.stop>
+                <div class="modal-header">
+                  <h3>Edit Transaction</h3>
+                  <button @click="closeEditModal" class="modal-close">✕</button>
+                </div>
+                <div class="modal-body" v-if="selectedTransaction">
+                  <div class="form-group">
+                    <label>Fine Amount</label>
+                    <input type="number" v-model="selectedTransaction.fine_amount" class="form-input" />
+                  </div>
+                  <div class="form-group">
+                    <label>Status</label>
+                    <select v-model="selectedTransaction.status" class="form-select">
+                      <option value="Pending">Pending</option>
+                      <option value="Paid">Paid</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label>Remarks</label>
+                    <textarea v-model="selectedTransaction.remarks" class="form-input"></textarea>
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button @click="updateTransaction" class="btn btn-primary">Save Changes</button>
+                  <button @click="closeEditModal" class="btn btn-secondary">Cancel</button>
+                </div>
+              </div>
+            </div>
             <!-- Transaction Details Modal -->
             <div
                 v-if="showDetailsModal"
@@ -394,8 +443,8 @@
                                     <div class="detail-item">
                                         <label>Officer Name:</label>
                                         <span>
-                                            {{ selectedTransaction.enforcer?.first_name || 'N/A' }}
-                                            {{ selectedTransaction.enforcer?.last_name || '' }}
+                                            {{ selectedTransaction.apprehending_officer?.first_name || 'N/A' }} {{ selectedTransaction.apprehending_officer?.middle_name || '' }} 
+                                            {{ selectedTransaction.apprehending_officer?.last_name || '' }}
                                         </span>
                                     </div>
                                 </div>
@@ -504,113 +553,14 @@
                     </div>
                 </div>
             </div>
-				<!-- Edit Violator Modal -->
-<div v-if="showCreateModal" class="modal-overlay" @click="closeEditViolatorModal">
-  <div class="modal" @click.stop>
-    <div class="modal-header">
-      <h3>{{ showEditViolatorModal}} Edit Violator </h3>
-      <button @click="closeEditViolatorModal" class="modal-close">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
-    </div>
-
-    <form @submit.prevent="saveViolator" class="modal-body">
-
-      <!-- Violator Info Section -->
-      <h4 class="section-label">Violator Info</h4>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">First Name *</label>
-          <input v-model="violatorForm.first_name" type="text" class="form-input" required />
-        </div>
-        <div class="form-group">
-          <label class="form-label">Last Name *</label>
-          <input v-model="violatorForm.last_name" type="text" class="form-input" required />
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Middle Name</label>
-        <input v-model="violatorForm.middle_name" type="text" class="form-input" />
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">License Number</label>
-        <input v-model="violatorForm.license_number" type="text" class="form-input" />
-      </div>
-      <div class="form-group">
-  <label class="form-label">License Type</label>
-  <select v-model="violatorForm.professional" class="form-select" required>
-    <option value="">Select Type</option>
-    <option :value="1">Professional</option>
-    <option :value="0">Non Professional</option>
-  </select>
-</div>
-      <div class="form-group">
-        <label class="form-label">Mobile Number</label>
-        <input v-model="violatorForm.mobile_number" type="text" class="form-input" />
-      </div>
-      <div class="form-group">
-  <label class="form-label">Sex</label>
-  <select v-model="violatorForm.gender" class="form-select" required>
-    <option value="">Select Sex</option>
-    <option :value="1">Male</option>
-    <option :value="0">Female</option>
-  </select>
-</div>
-
-      <!-- Violator Payment Status Section -->
-      <h4 class="section-label">Violator Payment Status</h4>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Status</label>
-          <select v-model="violatorForm.status" class="form-select">
-            <option value="">Select Status</option>
-            <option value="Pending">Pending</option>
-            <option value="Paid">Paid</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Violator Address Section -->
-      <h4 class="section-label">Violator Address</h4>
-      <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Barangay</label>
-          <input v-model="violatorForm.barangay" type="text" class="form-input" />
-        </div>
-        <div class="form-group">
-          <label class="form-label">City</label>
-          <input v-model="violatorForm.city" type="text" class="form-input" />
-        </div>
-        <div class="form-group">
-          <label class="form-label">Province</label>
-          <input v-model="violatorForm.province" type="text" class="form-input" />
-        </div>
-      </div>
-
-      <div class="modal-footer">
-        <button @click="closeEditViolatorModal" type="button" class="btn btn-secondary">Cancel</button>
-        <button type="submit" class="btn btn-primary" :disabled="savingViolator">
-          <span v-if="savingViolator" class="spinner-small"></span>
-          {{ savingViolator ? (showEditViolatorModal ? 'Updating...' : 'Saving...') : (showEditViolatorModal ? 'Update Violator' : 'Create Violator') }}
-        </button>
-      </div>
-
-    </form>
-  </div>
-</div>
         </div>
     </SidebarLayout>
 </template>
-
 <script>
 import { ref, onMounted, computed } from "vue";
 import SidebarLayout from "@/components/SidebarLayout.vue";
 import { adminAPI } from "@/services/api";
+import { useAuthStore } from "@/stores/auth";
 import Swal from "sweetalert2";
 
 export default {
@@ -619,31 +569,17 @@ export default {
         SidebarLayout,
     },
     setup() {
+        const authStore = useAuthStore();
+        const userRole = computed(() => authStore.state.user?.role);
         const loading = ref(true);
         const allTransactions = ref([]);
         const showDetailsModal = ref(false);
         const selectedTransaction = ref(null);
         const violationTypes = ref([]);
-		const perPage = ref(15);
-		const showViolatorDetailsModal = ref(false)
-    const selectedViolator = ref(null)
-    const showEditViolatorModal = ref(false);
-    const editingViolator = ref(null);
-		const violatorForm = ref({
-  id:'',
-  first_name: '',
-  middle_name: '',
-  last_name: '',
-  license_number: '',
-  mobile_number: '',
-  status: '',
-  barangay: '',
-  city: '',
-  province: '',
-});
+        const perPage = ref(15);
+        const error = ref('');
 
-		const savingViolator = ref(false);
-		const error = ref('')
+        // BACKEND pagination data - comes from Laravel
         const paginationData = ref({
             current_page: 1,
             last_page: 1,
@@ -661,16 +597,10 @@ export default {
             violation_id: "",
             vehicle_type: "",
             repeat_offender: "",
-		});
-		
-		const violatorPaginationData = ref({
-      current_page: 1,
-      last_page: 1,
-      per_page: 15,
-      total: 0,
-      from: 0,
-      to: 0
-    })
+            address: ""
+        });
+
+        // FRONTEND filtering - applied to current page data only
         const displayedTransactions = computed(() => {
             let filtered = Array.isArray(allTransactions.value) 
                 ? [...allTransactions.value] 
@@ -691,7 +621,7 @@ export default {
             // Violation Type filter
             if (filters.value.violation_id) {
                 filtered = filtered.filter(
-                    (t) => t.violation?.id === filters.value.violation_id
+                    (t) => t.violation?.id === parseInt(filters.value.violation_id)
                 );
             }
 
@@ -725,6 +655,19 @@ export default {
                 });
             }
 
+            // Custom Date Range filter
+            if (filters.value.dateFrom && filters.value.dateTo) {
+                filtered = filtered.filter(t => {
+                    if (!t.date_time) return false;
+
+                    const txDate = new Date(t.date_time).setHours(0, 0, 0, 0);
+                    const from   = new Date(filters.value.dateFrom).setHours(0, 0, 0, 0);
+                    const to     = new Date(filters.value.dateTo).setHours(23, 59, 59, 999);
+
+                    return txDate >= from && txDate <= to;
+                });
+            }
+
             // Repeat Offender filter
             if (filters.value.repeat_offender === true) {
                 filtered = filtered.filter(t => (t.violator?.transactions_count || 0) >= 2);
@@ -732,30 +675,19 @@ export default {
                 filtered = filtered.filter(t => (t.violator?.transactions_count || 0) <= 1);
             }
 
-            // Filter by address (barangay, city, province)
-    if (filters.value.address) {
-        const search = filters.value.address.toLowerCase();
-        filtered = filtered.filter(tx => {
-            const fullAddress = `${tx.violator?.barangay || ''} ${tx.violator?.city || ''} ${tx.violator?.province || ''}`.toLowerCase();
-            return fullAddress.includes(search);
-        });
-    }
-    //Date Range filter
-if (filters.value.dateFrom && filters.value.dateTo) {
-    filtered = filtered.filter(t => {
-        if (!t.date_time) return false;
+            // Address filter
+            if (filters.value.address) {
+                const search = filters.value.address.toLowerCase();
+                filtered = filtered.filter(tx => {
+                    const fullAddress = `${tx.violator?.barangay || ''} ${tx.violator?.city || ''} ${tx.violator?.province || ''}`.toLowerCase();
+                    return fullAddress.includes(search);
+                });
+            }
 
-        const txDate = new Date(t.date_time).setHours(0, 0, 0, 0);
-        const from   = new Date(filters.value.dateFrom).setHours(0, 0, 0, 0);
-        const to     = new Date(filters.value.dateTo).setHours(23, 59, 59, 999);
-
-        return txDate >= from && txDate <= to;
-    });
-}
             return filtered;
         });
 
-        // Calculate visible page numbers for pagination
+        // Calculate visible page numbers for pagination (uses BACKEND pagination data)
         const visiblePages = computed(() => {
             const current = paginationData.value.current_page;
             const last = paginationData.value.last_page;
@@ -776,43 +708,44 @@ if (filters.value.dateFrom && filters.value.dateTo) {
             }
 
             return pages;
-		});
-		
-		const archiveViolator = async (violator) => {
-  const result = await Swal.fire({
-    title: 'Archive Violator?',
-    html: `Are you sure you want to archive <strong>${violator.first_name} ${violator.last_name}</strong>?<br><br>
-           Archived violators can be restored later from the Archives page.`,
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonText: 'Yes, archive',
-    cancelButtonText: 'Cancel',
-    confirmButtonColor: '#f59e0b',
-    iconColor:'#dc2626'
-  });
+        });
 
-  if (result.isConfirmed) {
-    try {
-      await adminAPI.archiveViolator(violator.id);
-      await loadTransactions(violatorPaginationData.value.current_page);
+        const markAsPaid = async (transaction) => {
+            const newStatus = transaction.status?.toLowerCase() === 'paid' ? 'Pending' : 'Paid';
 
-      Swal.fire({
-        title: 'Archived',
-        text: 'Violator has been archived successfully.',
-        icon: 'success',
-        timer: 1500,
-        showConfirmButton: true
-      });
-    } catch (error) {
-      console.error('Failed to archive violator:', error);
-      Swal.fire({
-        title: 'Archive failed',
-        text: 'Could not archive violator. Please try again.',
-        icon: 'error'
-      });
-    }
-  }
-};
+            const result = await Swal.fire({
+                title: `Mark as ${newStatus}?`,
+                html: `Mark Ticket Number <strong>#${transaction.ticket_number}</strong> as <strong>${newStatus}</strong>? <br><br> This action cannot be undone`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: `Yes, Mark as ${newStatus}`,
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: newStatus === 'Paid' ? '#059669' : '#f59e0b',
+            });
+
+            if (result.isConfirmed) {
+                try {
+                    await adminAPI.updateTransaction(transaction.id, { status: newStatus });
+                    // Reload current page to see updated data
+                    await loadTransactions(paginationData.value.current_page);
+
+                    Swal.fire({
+                        title: 'Updated',
+                        text: `Ticket Number has been marked as ${newStatus}.`,
+                        icon: 'success',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                } catch (error) {
+                    console.error('Failed to update transaction:', error);
+                    Swal.fire({
+                        title: 'Update failed',
+                        text: 'Could not update transaction. Please try again.',
+                        icon: 'error'
+                    });
+                }
+            }
+        };
 
         const loadViolationTypes = async () => {
             try {
@@ -826,120 +759,42 @@ if (filters.value.dateFrom && filters.value.dateTo) {
         };
 
         const loadTransactions = async (page = 1) => {
-    try {
-        loading.value = true;
-        const response = await adminAPI.getViolators({
-            page: page,
-            per_page: perPage.value
-        });
+            try {
+                loading.value = true;
+                const response = await adminAPI.getTransactions({
+                    page: page,
+                    per_page: perPage.value
+                });
 
-        if (response.data.status === "success") {
-            const data = response.data.data;
+                if (response.data.status === "success") {
+                    const data = response.data.data;
+                    allTransactions.value = data.data || [];
 
-            allTransactions.value = (data.data || []).flatMap(violator =>
-                (violator.transactions || []).map(tx => ({
-                    ...tx,
-                    violator: {
-                        id: violator.id,
-                        first_name: violator.first_name,
-                        last_name: violator.last_name,
-                        license_number: violator.license_number,
-                        barangay: violator.barangay,
-                        city: violator.city,
-                        province: violator.province,
-                        transactions_count: violator.transactions_count
-                    }
-                }))
-            );
+                    paginationData.value = {
+                        current_page: data.current_page,
+                        last_page: data.last_page,
+                        per_page: data.per_page,
+                        total: data.total,
+                        from: data.from,
+                        to: data.to
+                    };
+                }
+            } catch (error) {
+                console.error("Failed to load transactions:", error);
+            } finally {
+                loading.value = false;
+            }
+        };
 
-            paginationData.value = {
-                current_page: data.current_page,
-                last_page: data.last_page,
-                per_page: data.per_page,
-                total: data.total,
-                from: data.from,
-                to: data.to
-            };
-        }
-    } catch (error) {
-        console.error("Failed to load transactions:", error);
-    } finally {
-        loading.value = false;
-    }
-};
- const editViolator = (violator) => {
-  editingViolator.value = violator;
-
-  violatorForm.value = {
-    id: violator.id,
-    first_name: violator.first_name,
-    middle_name: violator.middle_name,
-    last_name: violator.last_name,
-    email: violator.email,
-    mobile_number: violator.mobile_number,
-    gender: violator.gender ? 1 : 0,
-    license_number: violator.license_number,
-    professional: violator.professional ? 1 : 0,
-    barangay: violator.barangay,
-    city: violator.city,
-    province: violator.province,
-     status: violator.transactions.length ? violator.transactions[0].status : ""
-  };
-
-  showEditViolatorModal.value = true;
-};
-
-const closeEditViolatorModal = () => {
-  showEditViolatorModal.value = false;
-  editingViolator.value = null;
-  violatorForm.value = {
-    id:'',
-    first_name: '',
-    middle_name: '',
-    last_name: '',
-    license_number: '',
-    mobile_number: '',
-    status: '',
-    barangay: '',
-    city: '',
-    province: ''
-  };
-};
-
-const saveViolator = async () => {
-  savingViolator.value = true;
-  try {
-    const payload = { ...violatorForm.value };
-    const response = await adminAPI.updateViolator(payload);
-
-    if (response.data.status === 'success') {
-      await loadTransactions(violatorPaginationData.value.current_page);
-      closeEditViolatorModal();
-      Swal.fire({
-        icon: 'success',
-        title: 'Updated',
-        text: 'Violator updated successfully',
-        timer: 1500,
-        showConfirmButton: true
-      });
-    }
-  } catch (err) {
-    console.error(err);
-    Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to update violator' });
-  } finally {
-    savingViolator.value = false;
-  }
-};
-
+        // BACKEND pagination navigation
         const goToPage = (page) => {
             if (page >= 1 && page <= paginationData.value.last_page) {
-                loadTransactions(page);
+                loadTransactions(page); // Load new page from backend
             }
         };
 
         const changePerPage = () => {
-            paginationData.value.current_page = 1;
-            loadTransactions(1);
+            loadTransactions(1); // Load first page with new per_page
         };
 
         const viewTransaction = (transaction) => {
@@ -973,57 +828,104 @@ const saveViolator = async () => {
 
         const formatDateTime = (dateString) => {
             if (!dateString) return "";
-            return new Date(dateString).toLocaleString("en-PH", {
+            const dateObj = new Date(dateString);
+            const date = dateObj.toLocaleDateString("en-PH", {
                 year: "numeric",
                 month: "short",
                 day: "numeric",
+            });
+            const time = dateObj.toLocaleTimeString("en-PH", {
                 hour: "2-digit",
                 minute: "2-digit",
             });
-		};
-		
-		const getInitials = (firstName, lastName) => {
-      return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase()
-    }
+            return { date, time };
+        };
+
+        const getInitials = (firstName, lastName) => {
+            return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase()
+        }
+        
         onMounted(() => {
             loadTransactions();
             loadViolationTypes();
         });
 
         return {
-			loading,
-				error,
+            loading,
+            error,
             allTransactions,
-            displayedTransactions,
+            displayedTransactions, // Use this in template - it has frontend filtering applied
             filters,
             showDetailsModal,
             selectedTransaction,
             violationTypes,
-            paginationData,
+            paginationData, // Backend pagination data
             visiblePages,
             perPage,
             loadViolationTypes,
-				viewTransaction,
-				archiveViolator,
+            viewTransaction,
+            markAsPaid,
             closeDetailsModal,
             getAttemptClass,
             formatAttempt,
             formatCurrency,
             formatDateTime,
             goToPage,
-				changePerPage,
-				getInitials,
-				saveViolator,
-			editViolator,
-			showEditViolatorModal,
-			showViolatorDetailsModal,
-				selectedViolator
+            changePerPage,
+            getInitials,
+            userRole,
         };
     },
 };
 </script>
-
 <style scoped>
+.admin-dashboard {
+  background-color: #f9fafb;
+  padding: 32px;
+  min-height: 100vh;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+  padding: 40px;
+  border-radius: 24px;
+  color: white;
+  box-shadow: 0 20px 40px rgba(102, 126, 234, 0.3);
+}
+
+.header-content h1 {
+  color: white;
+  margin-bottom: 4px;
+  letter-spacing: -0.025em;
+}
+
+.header-content p {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.refresh-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+}
+
+.refresh-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
 .transaction-details {
   padding: 8px;
 }
@@ -1197,8 +1099,8 @@ const saveViolator = async () => {
 }
 
 .user-avatar, .violator-avatar, .officer-avatar{
-  width: 45px;
-  height: 45px;
+  width: 35px;
+  height: 35px;
   border-radius: 50%;
   overflow: hidden;
   display: flex;
@@ -1219,7 +1121,7 @@ const saveViolator = async () => {
 
 .transaction-id {
   font-family: "Courier New", monospace;
-  font-weight: 600;
+  font-weight: 400;
   color: #1e293b;
   font-size: 13px;
 }
@@ -1231,12 +1133,12 @@ const saveViolator = async () => {
 }
 
 .violator-license {
-  font-size: 0.8rem;
+  font-size: 0.5rem;
   color: #6c757d;
 }
 
 .officer-name {
-  font-weight: 600;
+  font-weight: 500;
   color: #1e293b;
   font-size: 14px;
 }
@@ -1247,14 +1149,27 @@ const saveViolator = async () => {
   font-family: "Courier New", monospace;
   margin-top: 2px;
 }
+td.date-time {
+  text-align: left; /* or center if you want */
+}
 
+td.date-time .date {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+td.date-time .time {
+  font-size: 12px;
+  color: #64748b; /* lighter color for time */
+}
 .repeat-offender {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: center;
   padding: 6px 12px;
   border-radius: 16px;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -1275,9 +1190,9 @@ const saveViolator = async () => {
 }
 
 .address-info {
-  font-size: 13px;
+  font-size: 6px;
   color: #475569;
-  max-width: 150px;
+  max-width: 110px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1367,14 +1282,14 @@ const saveViolator = async () => {
 
 .pagination-number:hover {
   background: #f1f5f9;
-  border-color: #cbd5e1;
+  border-color: black;
   transform: translateY(-1px);
 }
 
 .pagination-number.active {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: white;
   border-color: #667eea;
-  color: white;
+  color: black;
   box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);
 }
 
@@ -1535,6 +1450,25 @@ const saveViolator = async () => {
   transition: all 0.2s ease;
   background: #f8fafc;
   color: #475569;
+}
+
+button .tooltip {
+  visibility: hidden;
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #333;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  font-size: 12px;
+  z-index: 10;
+}
+
+button:hover .tooltip {
+  visibility: visible;
 }
 
 .btn-icon-sm:hover {
@@ -1733,6 +1667,33 @@ const saveViolator = async () => {
   background: #cbd5e1;
 }
 
+.btn-primary {
+  background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+  transform: translateY(-1px);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-icon-sm:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-icon-sm:disabled:hover {
+  background: #f8fafc;
+  transform: none;
+}
+
 .spinner-small {
   width: 16px;
   height: 16px;
@@ -1790,4 +1751,5 @@ const saveViolator = async () => {
     flex-direction: column;
     gap: 4px;
   }
-}</style>
+}
+</style>

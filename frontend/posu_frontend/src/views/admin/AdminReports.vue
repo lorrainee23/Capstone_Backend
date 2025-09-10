@@ -2,21 +2,28 @@
   <SidebarLayout page-title="Reports & Analytics">
     <div class="admin-reports">
       <!-- Header -->
-      <div class="page-header">
-        <div class="header-left">
-          <h2>System Reports & Analytics</h2>
+      <header class="dashboard-header">
+        <div class="header-content">
+          <h1>System Reports & Analytics</h1>
           <p>Generate comprehensive reports with multiple export formats</p>
         </div>
-        <div class="header-actions">
-  <button @click="refreshStats" class="btn btn-secondary" :disabled="refreshing">
-    <svg class="icon" :class="{ 'animate-spin': refreshing }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M21 12a9 9 0 1 1-3-6.7"></path>
-      <polyline points="21 3 21 9 15 9"></polyline>
-    </svg>
-    Refresh Data
-  </button>
-</div>
-      </div>
+        <button class="refresh-btn" @click="loadDashboardData" aria-label="Refresh Dashboard">
+          <svg 
+            width="20" 
+            height="20" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            stroke-width="2" 
+            stroke-linecap="round" 
+            stroke-linejoin="round"
+          >
+            <path d="M21 12a9 9 0 1 1-3-6.7" />
+            <polyline points="21 3 21 9 15 9" />
+          </svg>
+          Refresh
+        </button>
+      </header>
 
       <!-- Report Generation Card -->
       <div class="report-card">
@@ -145,7 +152,7 @@
 
       <!-- Quick Stats Dashboard -->
       <div class="stats-dashboard">
-        <div class="dashboard-header">
+        <div class="dashboard-statistics-header">
           <h3>Dashboard Overview</h3>
           <div class="last-updated">Last updated: {{ lastUpdated }}</div>
         </div>
@@ -955,38 +962,53 @@ console.log('API response:', data);
 </script>
 
 <style scoped>
+/* Header Styles */
 .admin-reports {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 0 20px;
+  background-color: #f9fafb;
+  padding: 32px;
+  min-height: 100vh;
 }
 
-/* Header Styles */
-.page-header {
+.dashboard-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 32px;
-  padding-bottom: 16px;
-  border-bottom: 2px solid #e5e7eb;
+  background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+  padding: 40px;
+  border-radius: 24px;
+  color: white;
+  box-shadow: 0 20px 40px rgba(102, 126, 234, 0.3);
 }
 
-.page-header h2 {
-  font-size: 28px;
-  font-weight: 700;
-  color: #1f2937;
-  margin: 0 0 4px 0;
+.header-content h1 {
+  color: white;
+  margin-bottom: 4px;
+  letter-spacing: -0.025em;
 }
 
-.page-header p {
-  color: #6b7280;
-  margin: 0;
-  font-size: 16px;
+.header-content p {
+  color: rgba(255, 255, 255, 0.9);
 }
 
-.header-actions {
+.refresh-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 12px;
   display: flex;
-  gap: 12px;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+}
+
+.refresh-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
 }
 
 /* Card Styles */
@@ -1352,7 +1374,7 @@ console.log('API response:', data);
 }
 
 /* Stats Dashboard */
-.dashboard-header {
+.dashboard-statistics-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1361,7 +1383,7 @@ console.log('API response:', data);
   background: #ffffff;
 }
 
-.dashboard-header h3 {
+.dashboard-statistics-header h3 {
   font-size: 20px;
   font-weight: 700;
   color: #111827;
@@ -1940,7 +1962,7 @@ console.log('API response:', data);
     padding: 16px;
   }
   
-  .dashboard-header {
+  .dashboard-statistics-header {
     padding: 16px;
     flex-direction: column;
     align-items: flex-start;

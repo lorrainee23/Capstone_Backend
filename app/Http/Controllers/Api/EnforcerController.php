@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Notification;
-use App\Models\User;
+use App\Models\Enforcer;
 use App\Models\Violator;
 use App\Models\Violation;
 use App\Models\Transaction;
@@ -14,9 +14,11 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use App\Traits\UserPermissionsTrait;
 
 class EnforcerController extends Controller
 {
+    use UserPermissionsTrait;
     /**
      * Get enforcer dashboard
      */
@@ -53,20 +55,6 @@ class EnforcerController extends Controller
                 'recent_transactions' => $recentTransactions,
                 'weekly_performance' => $weeklyPerformance,
             ]
-        ]);
-    }
-
-    /**
-     * Get all violators apprehended by this enforcer
-     */
-    public function getViolators(Request $request)
-    {
-        $user = $request->user();
-        $violatorIds = $user->transactions()->pluck('violators_id')->unique();
-        $violators = \App\Models\Violator::whereIn('id', $violatorIds)->get();
-        return response()->json([
-            'status' => 'success',
-            'data' => $violators
         ]);
     }
 
@@ -122,7 +110,6 @@ class EnforcerController extends Controller
     ]);
 }
 
-
     /**
      * Record a new violation
      */
@@ -139,10 +126,11 @@ class EnforcerController extends Controller
         'license_number'  => 'required|string|size:16',
         'violation_id'    => 'required|exists:violations,id',
         'location'        => 'required|string|max:100',
-        'vehicle_type'    => 'required|in:Motor,Van,Motorcycle,Truck,Bus',
+        'vehicle_type'    => 'required|in:Motor,Motorcycle,Van,Car,SUV,Truck,Bus',
         'plate_number'    => 'required|string|max:10',
         'make'            => 'required|string|max:100',
         'model'           => 'required|string|max:100',
+        'color'           => 'required|string|max:100', 
         'barangay'        => 'required|string|max:255',
         'city'            => 'required|string|max:255',
         'province'        => 'required|string|max:255',
@@ -151,7 +139,6 @@ class EnforcerController extends Controller
         'owner_last_name'       => 'required|string|max:100',
         'owner_barangay'        => 'required|string|max:255',
         'owner_city'            => 'required|string|max:255',
-        'owner_province'        => 'required|string|max:255',
         'id_photo'        => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
     ]);
 
@@ -199,6 +186,7 @@ class EnforcerController extends Controller
                 'owner_last_name'    => $request->owner_last_name,
                 'make'         => $request->make,
                 'model'        => $request->model,
+                'color'        =>$request->color,
                 'owner_barangay'     => $request->owner_barangay,
                 'owner_city'         => $request->owner_city,
                 'owner_province'     => $request->owner_province,
@@ -220,22 +208,23 @@ class EnforcerController extends Controller
             'fine_amount'          => $violation->fine_amount,
         ]);
 
-        // Safe sender role
-        $allowedRoles = ['System','Violator','Admin','Enforcer'];
-        $senderRole = in_array(auth()->user()->role, $allowedRoles) ? auth()->user()->role : 'System';
-
-        // Notify violator about the new violation
+        $allowedRoles = ['System','Management','Head','Deputy','Admin','Enforcer','Violator'];
+        $userType = class_basename(auth()->user());
+        $senderRole = in_array($userType, $allowedRoles) ? $userType : 'System';
+        $senderRole = ucfirst(strtolower($senderRole));
+        
+        // Create Notificaiton for Violator
         Notification::create([
-    'sender_id'    => auth()->id(),
-    'sender_role'  => $senderRole,
-    'target_role'  => 'Violator',
-    'violator_id'  => $violator->id,
-    'transaction_id'=> $transaction->id,
-    'title'        => 'New Violation Recorded',
-    'message'      => "You have been cited for {$violation->name}. Fine: ₱{$violation->fine_amount}. Please pay within 7 days to avoid penalties.",
-    'type'         => 'info',
-]);
-
+            'sender_id'     => auth()->id(),
+            'sender_role'   => $senderRole,
+            'target_type'   => 'Violator',
+            'target_id'     => $violator->id,
+            'violator_id'   => $violator->id,
+            'transaction_id'=> $transaction->id,
+            'title'         => 'New Violation Recorded',
+            'message'       => "You have been cited for {$violation->name}. Fine: ₱{$violation->fine_amount}. Please pay within 7 days to avoid penalties.",
+            'type'          => 'info',
+        ]);
 
         // Check offense count (for license suspension)
         $violationCount = $violator->transactions()->count();
@@ -243,24 +232,47 @@ class EnforcerController extends Controller
             $violator->license_suspended_at = now();
             $violator->save();
 
+            // Notify Violator
             Notification::create([
                 'sender_id'   => auth()->id(),
                 'sender_role' => $senderRole,
-                'target_role' => 'Violator',
+                'target_type' => 'Violator',
                 'violator_id' => $violator->id,
+                'target_id'   => $violator->id,
                 'title'       => 'License Suspension',
                 'message'     => "You now have {$violationCount} recorded violations. Your license is now subject to suspension.",
                 'type'        => 'alert',
             ]);
+
+            // Notify Management (Head, Deputy, Admin)
+            Notification::create([
+                'sender_id'   => auth()->id(),
+                'sender_role' => $senderRole,
+                'target_type' => 'Management',
+                'title'       => 'License Suspension Issued',
+                'message'     => "{$violator->first_name} {$violator->last_name} now has {$violationCount} recorded violations. Their license has been suspended.",
+                'type'        => 'alert',
+            ]);
         }
 
-        // Notify admins
+         // Create Notificaiton for Head,Deputy,Admin
+            Notification::create([
+                'sender_id'   => auth()->id(),
+                'sender_role' => $senderRole,
+                'target_type' => 'Management',
+                'title'       => 'Violation Recorded',
+                'message'     => "A new violation ({$violation->name}) was recorded for {$violator->first_name} {$violator->last_name}.",
+                'type'        => 'info',
+            ]);
+
+        // Create Notificaiton for Enforcer
         Notification::create([
             'sender_id'   => auth()->id(),
             'sender_role' => $senderRole,
-            'target_role' => 'Admin',
-            'title'       => 'Violation Recorded',
-            'message'     => "A new violation ({$violation->name}) was recorded for {$violator->first_name} {$violator->last_name}.",
+            'target_type' => 'Enforcer',
+            'target_id'   => auth()->id(),
+            'title'       => 'Violation Successfully Recorded',
+            'message'     => "You have successfully recorded a violation for {$violator->first_name} {$violator->last_name} ({$violation->name}).",
             'type'        => 'info',
         ]);
 
@@ -285,7 +297,6 @@ class EnforcerController extends Controller
     }
 }
 
-
     /**
      * Get enforcer's transactions 
      */
@@ -303,7 +314,6 @@ class EnforcerController extends Controller
             'violation',
             'vehicle'
         ])
-            ->where('apprehending_officer', $user->id)
             ->orderBy('ticket_number', 'asc')
             ->paginate($perPage, ['*'], 'page', $page);
 
@@ -313,65 +323,8 @@ class EnforcerController extends Controller
         ]);
     }
 
-    /**
-     * Get specific transaction details
-     */
-    public function getTransaction($id)
-    {
-        $transaction = Transaction::with(['violator', 'violation', 'apprehendingOfficer'])
-            ->findOrFail($id);
 
-        // Check if the enforcer owns this transaction
-        if ($transaction->apprehending_officer !== auth()->id()) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Unauthorized access'
-            ], 403);
-        }
-
-        return response()->json([
-            'status' => 'success',
-            'data' => $transaction
-        ]);
-    }
-
-    /**
-     * Update transaction (mark as paid)
-     */
-    public function updateTransaction(Request $request, $id)
-    {
-        $transaction = Transaction::findOrFail($id);
-
-        // Check if the enforcer owns this transaction
-        if ($transaction->apprehending_officer !== auth()->id()) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Unauthorized access'
-            ], 403);
-        }
-
-        $validator = Validator::make($request->all(), [
-            'status' => 'required|in:Pending,Paid',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        $transaction->status = $request->status;
-        $transaction->save();
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Transaction updated successfully',
-            'data' => $transaction->load(['violator', 'violation'])
-        ]);
-    }
-
+   
     /**
      * Get enforcer's performance statistics
      */
@@ -406,6 +359,30 @@ class EnforcerController extends Controller
             ]
         ]);
     }
+    /**
+ * Get enforcer's profile
+ */
+public function getProfile(Request $request)
+{
+    $user = $request->user();
+
+    return response()->json([
+        'status' => 'success',
+        'data' => [
+            'id'          => $user->id,
+            'first_name'  => $user->first_name,
+            'middle_name' => $user->middle_name,
+            'last_name'   => $user->last_name,
+            'full_name'   => $user->full_name, // from accessor
+            'username'    => $user->username,
+            'email'       => $user->email,
+            'image'       => $user->image_url, // from accessor
+            'status'      => $user->status,
+            'created_at'  => $user->created_at,
+            'updated_at'  => $user->updated_at,
+        ]
+    ]);
+}
    /**
  * Update enforcer's profile (name + image)
  */
@@ -435,7 +412,7 @@ public function updateProfile(Request $request)
     if ($request->hasFile('image')) {
         $imagePath = $request->file('image')->store('profile_images', 'public');
 
-        $user->image = $imagePath;
+        $user->image = '/storage/' . $imagePath;
     }
 
     $user->save();
@@ -481,6 +458,176 @@ public function changePassword(Request $request)
     return response()->json([
         'status' => 'success',
         'message' => 'Password updated successfully'
+    ]);
+}
+/**
+ * Get enforcer's notifications
+ */
+public function getNotifications(Request $request)
+    {
+        $user = $request->user();
+        $perPage = $request->input('per_page', 15);
+        $page = $request->input('page', 1);
+        $includeDeleted = $request->input('include_deleted', false);
+
+        $notificationsQuery = Notification::where(function ($query) use ($user) {
+            $query->where(function ($q) use ($user) {
+                $q->where('target_type', 'Enforcer')
+                  ->where('target_id', $user->id);
+            })
+            ->orWhere(function ($q) {
+                $q->where('target_type', 'Enforcer')
+                  ->whereNull('target_id');
+            })
+            ->orWhere('target_type', 'All');
+        })
+        ->orderBy('created_at', 'desc');
+
+        if ($includeDeleted) {
+            $notificationsQuery->withTrashed();
+        }
+
+        $notifications = $notificationsQuery->paginate($perPage, ['*'], 'page', $page);
+
+        $unreadCount = Notification::where(function ($query) use ($user) {
+            $query->where(function ($q) use ($user) {
+                $q->where('target_type', 'Enforcer')
+                  ->where('target_id', $user->id);
+            })
+            ->orWhere(function ($q) {
+                $q->where('target_type', 'Enforcer')
+                  ->whereNull('target_id');
+            })
+            ->orWhere('target_type', 'All');
+        })
+        ->whereNull('read_at')
+        ->count();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'notifications' => $notifications,
+                'unread_count' => $unreadCount
+            ]
+        ]);
+    }
+
+public function markNotificationAsRead(Request $request, $notificationId)
+{
+    $user = $request->user();
+    
+    $notification = Notification::where('id', $notificationId)
+        ->where(function ($query) use ($user) {
+            $query->where(function ($q) use ($user) {
+                $q->where('target_type', 'Enforcer')
+                  ->where('target_id', $user->id);
+            })->orWhere(function ($q) {
+                $q->where('target_type', 'Enforcer')
+                  ->whereNull('target_id');
+            })->orWhere('target_type', 'All');
+        })
+        ->first();
+
+    if (!$notification) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Notification not found'
+        ], 404);
+    }
+
+    $notification->read_at = now();
+    $notification->save();
+
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Notification marked as read'
+    ]);
+}
+
+public function markAllNotificationsAsRead(Request $request)
+{
+    $user = $request->user();
+    
+    Notification::where(function ($query) use ($user) {
+        $query->where(function ($q) use ($user) {
+            $q->where('target_type', 'Enforcer')
+              ->where('target_id', $user->id);
+        })->orWhere(function ($q) {
+            $q->where('target_type', 'Enforcer')
+              ->whereNull('target_id');
+        })->orWhere('target_type', 'All');
+    })
+    ->whereNull('read_at')
+    ->update(['read_at' => now()]);
+
+    return response()->json([
+        'status' => 'success',
+        'message' => 'All notifications marked as read'
+    ]);
+}
+
+public function deleteNotification(Request $request, $notificationId)
+{
+    $user = $request->user();
+    
+    $notification = Notification::where('id', $notificationId)
+        ->where(function ($query) use ($user) {
+            $query->where(function ($q) use ($user) {
+                $q->where('target_type', 'Enforcer')
+                  ->where('target_id', $user->id);
+            })->orWhere(function ($q) {
+                $q->where('target_type', 'Enforcer')
+                  ->whereNull('target_id');
+            })->orWhere('target_type', 'All');
+        })
+        ->first();
+
+    if (!$notification) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Notification not found'
+        ], 404);
+    }
+
+    $notification->delete();
+
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Notification deleted successfully'
+    ]);
+}
+public function restoreNotification(Request $request, $notificationId)
+{
+    $user = $request->user();
+
+    // Include trashed to find soft-deleted notifications
+    $notification = Notification::withTrashed()
+        ->where('id', $notificationId)
+        ->where(function ($query) use ($user) {
+            $query->where(function ($q) use ($user) {
+                $q->where('target_type', 'Enforcer')
+                  ->where('target_id', $user->id);
+            })
+            ->orWhere(function ($q) {
+                $q->where('target_type', 'Enforcer')
+                  ->whereNull('target_id');
+            })
+            ->orWhere('target_type', 'All');
+        })
+        ->first();
+
+    if (!$notification) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Notification not found'
+        ], 404);
+    }
+
+    $notification->restore();
+
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Notification restored'
     ]);
 }
 } 

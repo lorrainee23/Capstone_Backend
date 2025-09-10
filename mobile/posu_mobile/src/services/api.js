@@ -3,14 +3,13 @@ import axios from "axios";
 
 // Create axios instance
 const api = axios.create({
-    baseURL: "http://127.0.0.1:8000/api",
+    baseURL: "http://192.168.0.101:8000/api",
     timeout: 10000,
     headers: {
         Accept: "application/json",
     },
 });
 
-// Request interceptor → attach token
 api.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem("auth_token");
@@ -43,18 +42,34 @@ export const authAPI = {
     logout: () => api.post("/logout"),
 };
 
-
-
+/* ============================
+   ENFORCER API
+============================ */
 /* ============================
    ENFORCER API
 ============================ */
 export const enforcerAPI = {
-    getViolators: () => api.get("/enforcer/violators"),
-    getViolationTypes: () => api.get("/enforcer/violation-types"),
-    recordViolation: (data) => api.post("/enforcer/violations", data),
-    searchViolator: (data) => api.post("/enforcer/search-violator", data),
-    getTransactions: (params = {}) =>
-        api.get("/enforcer/transactions", { params }),
+  getViolators: (params) => api.get("/enforcer/violators", { params }),
+  getViolationTypes: () => api.get("/enforcer/violation-types"),
+  recordViolation: (data) => api.post("/enforcer/violations", data),
+  searchViolator: (data) => api.post("/enforcer/search-violator", data),
+  getTransactions: (params = {}) => api.get("/enforcer/transactions", { params }),
+
+  // Profile
+  getProfile: () => api.get("/enforcer/profile"),
+  updateProfile: (data) => api.post("/enforcer/update", data),
+  changePassword: (data) => api.post("/enforcer/change", data),
+
+  // Notifications
+  getNotifications: (params) => api.get("/enforcer/notifications", { params }),
+  markNotificationAsRead: (notificationId) =>
+    api.put(`/enforcer/notifications/${notificationId}/read`),
+  markAllNotificationsAsRead: () =>
+    api.put(`/enforcer/notifications/read-all`), 
+  hideNotification: (notificationId) =>
+    api.delete(`/enforcer/notifications/${notificationId}`),
+  restoreNotification: (notificationId) =>
+    api.put(`/enforcer/notifications/${notificationId}/restore`), 
 };
 
 export default api;

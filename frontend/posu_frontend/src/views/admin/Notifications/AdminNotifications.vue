@@ -384,7 +384,7 @@ export default {
     const fetchNotifications = async () => {
       try {
         loading.value = true
-        const response = await adminAPI.getAllNotifications()
+        const response = await adminAPI.getNotifications()
         notifications.value = response.data.data || []
         updateStats()
       } catch (error) {
@@ -510,7 +510,7 @@ export default {
 
 /* Page Header */
 .page-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #1e3a8a, #3b82f6);
   border-radius: 16px;
   padding: 32px;
   margin-bottom: 32px;

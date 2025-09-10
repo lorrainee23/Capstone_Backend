@@ -151,8 +151,8 @@ body {
 
 .table th,
 .table td {
-     
-    padding: 16px;
+    font-size: 13px;
+    padding: 12px;
     text-align: left;
     border-bottom: 1px solid #e5e7eb;
 }
@@ -161,6 +161,7 @@ body {
     background: #f9fafb;
     font-weight: 600;
     color: #374151;
+    font-size: 13px;
 }
 
 .table tbody tr:hover {

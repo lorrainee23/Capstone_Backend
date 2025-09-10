@@ -20,10 +20,11 @@ return new class extends Migration
             $table->string('plate_number', 10)->unique();
             $table->string('make', 100);
             $table->string('model', 100);
+            $table->string('color', 100);
             $table->string('owner_barangay', 255);
             $table->string('owner_city', 255);
             $table->string('owner_province', 255);
-            $table->enum('vehicle_type', ['Motor', 'Van', 'Motorcycle', 'Truck', 'Bus']);
+            $table->enum('vehicle_type', ['Motor', 'Motorcycle','Van','Car','SUV', 'Truck', 'Bus']);
             $table->softDeletes();
             $table->timestamps();
 

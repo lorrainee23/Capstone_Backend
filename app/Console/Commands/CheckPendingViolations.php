@@ -5,9 +5,7 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use App\Models\Transaction;
 use App\Models\Notification;
-use App\Models\Violator;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 
 class CheckPendingViolations extends Command
 {
@@ -15,8 +13,7 @@ class CheckPendingViolations extends Command
     protected $description = 'Check pending violations and send reminders, warnings, court filings, or license suspensions';
 
     public function handle()
-    
-    {   
+    {
         $now = Carbon::now();
         $transactions = Transaction::where('status', 'Pending')
             ->where('date_time', '<=', $now)
@@ -38,14 +35,26 @@ class CheckPendingViolations extends Command
                     ->where('type', 'reminder')
                     ->exists()
                 ) {
+                    // Notify Violator
                     Notification::create([
                         'sender_id'      => null,
                         'sender_role'    => 'System',
-                        'target_role'    => 'Violator',
+                        'target_type'    => 'Violator',
                         'violator_id'    => $violator->id,
                         'transaction_id' => $transaction->id,
                         'title'          => 'Payment Reminder',
                         'message'        => "Your violation (Ticket #{$transaction->ticket_number}) is unpaid for {$daysPending} days. Please settle to avoid legal action.",
+                        'type'           => 'reminder',
+                    ]);
+
+                    // Notify Management
+                    Notification::create([
+                        'sender_id'      => null,
+                        'sender_role'    => 'System',
+                        'target_type'    => 'Management',
+                        'transaction_id' => $transaction->id,
+                        'title'          => 'Violation Reminder Sent',
+                        'message'        => "{$violator->first_name} {$violator->last_name} has an unpaid violation (Ticket #{$transaction->ticket_number}) for {$daysPending} days. Reminder sent.",
                         'type'           => 'reminder',
                     ]);
                 }
@@ -57,14 +66,26 @@ class CheckPendingViolations extends Command
                     ->where('type', 'warning')
                     ->exists()
                 ) {
+                    // Notify Violator
                     Notification::create([
                         'sender_id'      => null,
                         'sender_role'    => 'System',
-                        'target_role'    => 'Violator',
+                        'target_type'    => 'Violator',
                         'violator_id'    => $violator->id,
                         'transaction_id' => $transaction->id,
                         'title'          => 'Payment Warning',
                         'message'        => "Your violation (Ticket #{$transaction->ticket_number}) is unpaid for {$daysPending} days. Immediate action required!",
+                        'type'           => 'warning',
+                    ]);
+
+                    // ✅ Notify Management
+                    Notification::create([
+                        'sender_id'      => null,
+                        'sender_role'    => 'System',
+                        'target_type'    => 'Management',
+                        'transaction_id' => $transaction->id,
+                        'title'          => 'Payment Warning Issued',
+                        'message'        => "{$violator->first_name} {$violator->last_name} has not paid Ticket #{$transaction->ticket_number} for {$daysPending} days. Warning issued.",
                         'type'           => 'warning',
                     ]);
                 }
@@ -75,18 +96,31 @@ class CheckPendingViolations extends Command
                 $transaction->court_filed_at = $now;
                 $transaction->save();
 
+                // Notify Violator
                 Notification::create([
                     'sender_id'      => null,
                     'sender_role'    => 'System',
-                    'target_role'    => 'Violator',
+                    'target_type'    => 'Violator',
                     'violator_id'    => $violator->id,
                     'transaction_id' => $transaction->id,
                     'title'          => 'Court Case Filed',
                     'message'        => "Your violation (Ticket #{$transaction->ticket_number}) has been escalated to court due to non-payment.",
                     'type'           => 'alert',
                 ]);
+
+                // Notify Management
+                Notification::create([
+                    'sender_id'      => null,
+                    'sender_role'    => 'System',
+                    'target_type'    => 'Management',
+                    'transaction_id' => $transaction->id,
+                    'title'          => 'Court Case Filed',
+                    'message'        => "{$violator->first_name} {$violator->last_name}'s violation (Ticket #{$transaction->ticket_number}) has been escalated to court after {$daysPending} days of non-payment.",
+                    'type'           => 'alert',
+                ]);
             }
         }
-$this->info('Pending violations checked successfully.');
+
+        $this->info('Pending violations checked successfully.');
     }
 }

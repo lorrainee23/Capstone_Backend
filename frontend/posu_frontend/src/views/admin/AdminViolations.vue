@@ -2,16 +2,31 @@
   <SidebarLayout page-title="Violation Management">
     <div class="admin-violations">
       <!-- Header Actions -->
-      <div class="page-header">
-        <div class="header-left">
-          <h2>Violation Types</h2>
+       <header class="dashboard-header">
+        <div class="header-content">
+          <h1>Violation Types</h1>
           <p>Manage violation categories and fine amounts</p>
         </div>
-        <div class="header-right">
-          <button @click="showCreateModal = true" class="btn btn-primary">
-            <span class="btn-icon">➕</span>
-            Add New Violation
-          </button>
+        <button class="refresh-btn" @click="loadViolations" aria-label="Refresh Dashboard">
+          <svg 
+            width="20" 
+            height="20" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            stroke-width="2" 
+            stroke-linecap="round" 
+            stroke-linejoin="round"
+          >
+            <path d="M21 12a9 9 0 1 1-3-6.7" />
+            <polyline points="21 3 21 9 15 9" />
+          </svg>
+          Refresh
+        </button>
+      </header>
+      <div class="page-header">
+        <div class="header-left">
+          
         </div>
       </div>
 
@@ -27,6 +42,10 @@
               placeholder="Search violations..."
             />
           </div>
+          <button @click="showCreateModal = true" class="btn-add btn-primary">
+            <span class="btn-icon">➕</span>
+            Add New Violation
+          </button>
         </div>
       </div>
 
@@ -40,16 +59,19 @@
           <table class="table">
             <thead>
               <tr>
+                <th>No.</th>
                 <th>Violation Name</th>
                 <th>Description</th>
                 <th>Fine Amount</th>
-                <th>Total Cases</th>
                 <th>Created</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="violation in filteredViolations" :key="violation.id">
+                <td>
+                  <div class="violation-name">{{ violation.id }}</div>
+                </td>
                 <td>
                   <div class="violation-name">{{ violation.name }}</div>
                 </td>
@@ -61,25 +83,19 @@
                 <td>
                   <div class="fine-amount">₱{{ formatCurrency(violation.fine_amount) }}</div>
                 </td>
-                <td>
-                  <div class="case-count">
-                    {{ violation.transactions_count || 0 }} cases
-                  </div>
-                </td>
                 <td>{{ formatDate(violation.created_at) }}</td>
                 <td>
                   <div class="action-buttons">
                     <button @click="editViolation(violation)" class="btn-icon-sm btn-edit" title="Edit Transaction">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                          </svg>
-                        </button>
-                    <button @click="archiveViolation(violation)" class="btn-icon-sm btn-danger" title="Archive">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M21 8v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <rect x="1" y="3" width="22" height="5" rx="2" ry="2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M10 12h4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                    </button>
+                    <button @click="viewViolationDetails(violation)" class="btn-icon-sm btn-success" title="View Details">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                       </svg>
                     </button>
                   </div>
@@ -156,19 +172,66 @@
         </div>
       </div>
     </div>
+    <ModalComponent 
+      :show="showDetailsModal"
+      title="Violation Details"
+      @close="closeDetails"
+    >
+  <div v-if="selectedViolation" class="violation-details">
+    <div class="detail-section">
+      <h4>Violation Information</h4>
+      <div class="detail-grid">
+        <div class="detail-item">
+          <label>Name:</label>
+          <span>{{ selectedViolation.name }}</span>
+        </div>
+        <div class="detail-item">
+          <label>Fine Amount:</label>
+          <span class="fine-amount">
+            ₱{{ formatCurrency(selectedViolation.fine_amount) }}
+          </span>
+        </div>
+        <div class="detail-item full-width">
+          <label>Description:</label>
+          <span>{{ selectedViolation.description }}</span>
+        </div>
+      </div><br>
+      <div class="detail-item">
+        <label>Total Cases:</label>
+        <span>{{ selectedViolation.transactions_count }}</span>
+      </div>
+    </div>
+    <div v-if="selectedViolation.transactions?.length" class="detail-section">
+      <h4>Related Transactions</h4>
+      <ul>
+        <li v-for="(txn, index) in selectedViolation.transactions" :key="index">
+          {{ formatDate(txn.date_time) }} - 
+          ₱{{ formatCurrency(txn.fine_amount) }} - 
+          {{ txn.status }}
+        </li>
+      </ul>
+    </div>
+  </div>
+  <template #footer>
+    <button @click="closeDetails" class="btn btn-secondary">Close</button>
+  </template>
+</ModalComponent>
+
   </SidebarLayout>
 </template>
 
 <script>
 import { ref, onMounted, computed } from 'vue'
 import SidebarLayout from '@/components/SidebarLayout.vue'
+import ModalComponent from '@/components/ModalComponent.vue'
 import { adminAPI } from '@/services/api'
 import Swal from 'sweetalert2'
 
 export default {
   name: 'AdminViolations',
   components: {
-    SidebarLayout
+    SidebarLayout,
+    ModalComponent,
   },
   setup() {
     const loading = ref(true)
@@ -179,6 +242,13 @@ export default {
     const error = ref('')
     const searchQuery = ref('')
     const sortOrder = ref('')
+    const showDetailsModal = ref(false)
+    const selectedViolation = ref(null)
+
+    const closeDetails = () => {
+      showDetailsModal.value = false
+      selectedViolation.value = null
+    }
     
     const violationForm = ref({
       name: '',
@@ -278,34 +348,20 @@ export default {
       showEditModal.value = true
     }
     
-    const archiveViolation = async (violation) => {
-      const result = await Swal.fire({
-        title: 'Archive violation?',
-        text: `${violation.name} will be moved to the archives.`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Yes, archive it!',
-        cancelButtonText: 'Cancel',
-        iconColor: '#dc2626'
-      });
-
-      if (result.isConfirmed) {
-        try {
-          await adminAPI.archiveViolation(violation.id);
-          await loadViolations();
-          await Swal.fire({
-            title: 'Archived!',
-            text: 'Violation has been archived.',
-            icon: 'success',
-            timer: 1500,
-            showConfirmButton: true
-          });
-        } catch (err) {
-          const errorMessage = err.response?.data?.message || 'Failed to archive violation.';
-          await Swal.fire('Error!', errorMessage, 'error');
+    const viewViolationDetails = async (violation) => {
+      try {
+        const response = await adminAPI.getViolation(violation.id)
+        if (response.data.status === 'success') {
+          selectedViolation.value = response.data.data
+          showDetailsModal.value = true
+        } else {
+          await Swal.fire('Error', response.data.message || 'Failed to load details.', 'error')
         }
+      } catch (err) {
+        const errorMessage = err.response?.data?.message || 'Failed to load violation details.'
+        await Swal.fire('Error', errorMessage, 'error')
       }
-    };
+    }
     
     const closeModals = () => {
       showCreateModal.value = false
@@ -354,7 +410,10 @@ export default {
       error,
       saveViolation,
       editViolation,
-      archiveViolation,
+      viewViolationDetails,
+      closeDetails,
+      showDetailsModal,
+      selectedViolation,
       closeModals,
       formatCurrency,
       formatDate,
@@ -365,6 +424,54 @@ export default {
 </script>
 
 <style scoped>
+.admin-dashboard {
+  background-color: #f9fafb;
+  padding: 32px;
+  min-height: 100vh;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+  padding: 40px;
+  border-radius: 24px;
+  color: white;
+  box-shadow: 0 20px 40px rgba(102, 126, 234, 0.3);
+}
+
+.header-content h1 {
+  color: white;
+  margin-bottom: 4px;
+  letter-spacing: -0.025em;
+}
+
+.header-content p {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.refresh-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+}
+
+.refresh-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
 .admin-violations {
   max-width: 1400px;
   margin: 0 auto;
@@ -388,7 +495,20 @@ export default {
   color: #6b7280;
   margin: 0;
 }
-
+.btn-add {
+  position: relative;
+  bottom: -30px;
+    height: 45px;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 300;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+}
 .btn-icon {
   margin-right: 8px;
 }
@@ -437,26 +557,28 @@ export default {
 
 .action-buttons {
   display: flex;
+  align-items: center;
+  justify-content: flex-start;
   gap: 8px;
 }
 
 .btn-icon-sm {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
   transition: all 0.2s ease;
-  background: #f3f4f6;
-  color: #374151;
+  background: #f8fafc;
+  color: #475569;
 }
 
 .btn-icon-sm:hover {
-  background: #e5e7eb;
+  background: #e2e8f0;
+  transform: scale(1.05);
 }
 
 .btn-icon-sm.btn-danger {
@@ -466,6 +588,39 @@ export default {
 
 .btn-icon-sm.btn-danger:hover {
   background: #fecaca;
+}
+.btn-icon-sm.btn-warning {
+  background: #fff3cd; 
+  color: #ae8406;         
+}
+.btn-icon-sm.btn-success {
+  background: #d1fae5; 
+  color: #047857;      
+}
+.btn-icon-sm.btn-success:hover {
+  background: #a7f3d0;  
+}
+.btn-icon-sm.btn-warning:hover {
+  background: #ffe58f;      
+}
+.btn-icon-sm.btn-view {
+  color: #6366f1; 
+}
+
+.btn-icon-sm.btn-view:hover {
+  background-color: #e0e7ff;
+}
+
+.btn-icon-sm.btn-edit {
+  color: #3b82f6;
+}
+
+.btn-icon-sm.btn-edit:hover {
+  background-color: #dbeafe; 
+}
+
+.btn-icon-sm.btn-success:hover {
+  background: #bbf7d0;
 }
 
 .no-data {
@@ -570,6 +725,47 @@ export default {
   border-radius: 50%;
   animation: spin 1s linear infinite;
   margin-right: 8px;
+}
+
+.violation-details {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.detail-section h4 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 12px;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail-item.full-width {
+  grid-column: 1 / -1;
+}
+
+.detail-item label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.detail-item span {
+  color: #1f2937;
 }
 
 @media (max-width: 768px) {

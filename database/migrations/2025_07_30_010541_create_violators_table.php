@@ -22,6 +22,7 @@ return new class extends Migration
             $table->string('last_name', 255);
             $table->char('mobile_number', 11);
             $table->boolean('gender');
+            $table->timestamp('license_suspended_at')->nullable();
             $table->char('license_number', 16)->unique();
             $table->string('barangay', 255);
             $table->string('city', 255);

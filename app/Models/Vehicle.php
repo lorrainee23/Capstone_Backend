@@ -18,6 +18,7 @@ class Vehicle extends Model
         'plate_number',
         'make',
         'model',
+        'color',
         'owner_barangay',
         'owner_city',
         'owner_province',

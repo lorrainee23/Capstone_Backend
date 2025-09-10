@@ -8,76 +8,102 @@
           <p>Monitor your system performance and key metrics</p>
         </div>
         <button class="refresh-btn" @click="loadDashboardData" aria-label="Refresh Dashboard">
-  <svg 
-    width="20" 
-    height="20" 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="currentColor" 
-    stroke-width="2" 
-    stroke-linecap="round" 
-    stroke-linejoin="round"
-  >
-    <path d="M21 12a9 9 0 1 1-3-6.7" />
-    <polyline points="21 3 21 9 15 9" />
-  </svg>
-  Refresh
-</button>
-
+          <svg 
+            width="20" 
+            height="20" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            stroke-width="2" 
+            stroke-linecap="round" 
+            stroke-linejoin="round"
+          >
+            <path d="M21 12a9 9 0 1 1-3-6.7" />
+            <polyline points="21 3 21 9 15 9" />
+          </svg>
+          Refresh
+        </button>
       </header>
 
-      <!-- Stats Grid -->
-<section class="stats-grid">
-  <article 
-    class="stat-card" 
-    v-for="(stat, index) in statsConfig" 
-    :key="index" 
-    :aria-label="stat.label"
-    :class="stat.colorClass"
-  >
-    <div class="stat-border"></div>
-    <div class="stat-icon" v-html="stat.iconSvg" aria-hidden="true"></div>
-    
-    <div class="stat-content">
-      <p class="stat-title">{{ stat.label }}</p>
-      <p class="stat-value">{{ stat.value }}</p>
-      <p class="stat-trend" :class="stat.trend?.type">
-        <svg v-if="stat.trend?.type === 'up'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="7 17 17 7"></polyline>
-          <line x1="7" y1="7" x2="17" y2="7"></line>
-          <line x1="17" y1="7" x2="17" y2="17"></line>
-        </svg>
-        <svg v-else-if="stat.trend?.type === 'down'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="17 7 7 17"></polyline>
-          <line x1="7" y1="17" x2="17" y2="17"></line>
-          <line x1="7" y1="7" x2="7" y2="17"></line>
-        </svg>
-        <span>{{ stat.trend?.value }}</span>
-      </p>
-    </div>
+      <!-- Stats Filter Section -->
+      <section class="stats-filter">
+        <div class="filter-controls">
+          <h3>Statistics Overview</h3>
+          <div class="filter-buttons">
+            <button 
+              v-for="period in filterPeriods" 
+              :key="period.value"
+              @click="selectedPeriod = period.value"
+              :class="['filter-btn', { active: selectedPeriod === period.value }]"
+            >
+              {{ period.label }}
+            </button>
+          </div>
+        </div>
+      </section>
 
-    <div class="stat-arrow" aria-hidden="true">
-      <svg width="20" height="20" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="5" y1="12" x2="19" y2="12"></line>
-        <polyline points="12 5 19 12 12 19"></polyline>
-      </svg>
-    </div>
-  </article>
-</section>
+      <!-- Stats Grid -->
+      <section class="stats-grid">
+        <article 
+          class="stat-card" 
+          v-for="(stat, index) in statsConfig" 
+          :key="index" 
+          :aria-label="stat.label"
+          :class="stat.colorClass"
+        >
+          <div class="stat-border"></div>
+          <div class="stat-icon" v-html="stat.iconSvg" aria-hidden="true"></div>
+          
+          <div class="stat-content">
+            <p class="stat-title">{{ stat.label }}</p>
+            <p class="stat-value">{{ stat.value }}</p>
+            <p class="stat-trend" :class="stat.trend?.type">
+              <svg v-if="stat.trend?.type === 'up'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="7 17 17 7"></polyline>
+                <line x1="7" y1="7" x2="17" y2="7"></line>
+                <line x1="17" y1="7" x2="17" y2="17"></line>
+              </svg>
+              <svg v-else-if="stat.trend?.type === 'down'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="17 7 7 17"></polyline>
+                <line x1="7" y1="17" x2="17" y2="17"></line>
+                <line x1="7" y1="7" x2="7" y2="17"></line>
+              </svg>
+              <span>{{ stat.trend?.value }}</span>
+            </p>
+          </div>
+
+          <div class="stat-arrow" aria-hidden="true">
+            <svg width="20" height="20" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </div>
+        </article>
+      </section>
 
       <!-- Main Content Grid -->
       <section class="content-grid">
-        <!-- Weekly Trends Chart -->
-        <section class="chart-card" aria-label="Weekly Violation Trends">
+        <!-- Trends Chart -->
+        <section class="chart-card" aria-label="Violation Trends">
           <header class="card-header">
-            <h3>Weekly Violation Trends</h3>
+            <h3>Violation Trends</h3>
+            <div class="chart-controls">
+              <button 
+                v-for="period in chartPeriods" 
+                :key="period.value"
+                @click="selectedChartPeriod = period.value"
+                :class="['control-btn', { active: selectedChartPeriod === period.value }]"
+              >
+                {{ period.label }}
+              </button>
+            </div>
           </header>
           <div class="chart-container">
-            <div v-if="weeklyData.length" class="chart-wrapper">
+            <div v-if="chartData.length" class="chart-wrapper">
               <!-- Chart Content -->
               <div class="chart-bars">
                 <div 
-                  v-for="(data, index) in weeklyData" 
+                  v-for="(data, index) in chartData" 
                   :key="index"
                   class="chart-bar"
                   @mouseenter="showTooltip($event, data)"
@@ -86,7 +112,7 @@
                   <div 
                     class="bar-fill"
                     :style="{ 
-                      height: `${(data.count / maxWeeklyCount) * 100}%`,
+                      height: `${(data.count / maxChartCount) * 100}%`,
                       minHeight: data.count > 0 ? '4px' : '0px'
                     }"
                   ></div>
@@ -172,15 +198,28 @@
             <h3>Enforcer Performance</h3>
             <p class="subtitle">Track team productivity and activity</p>
           </div>
-          <router-link to="/admin/users" class="primary-btn" aria-label="Manage Team">
-            <svg width="20" height="20" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" overflow="visible" aria-hidden="true">
-              <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-              <circle cx="8.5" cy="7" r="4"></circle>
-              <line x1="20" y1="8" x2="20" y2="14"></line>
-              <line x1="23" y1="11" x2="17" y2="11"></line>
-            </svg>
-            Manage Team
-          </router-link>
+          <div class="performance-controls">
+            <button 
+              @click="showEditTargetModal = true"
+              class="edit-target-btn"
+              aria-label="Edit Target"
+            >
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 20h9"></path>
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+              </svg>
+              Target: {{ performanceTarget }}
+            </button>
+            <router-link to="/admin/users" class="primary-btn" aria-label="Manage Enforcers">
+              <svg width="20" height="20" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" overflow="visible" aria-hidden="true">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="8.5" cy="7" r="4"></circle>
+                <line x1="20" y1="8" x2="20" y2="14"></line>
+                <line x1="23" y1="11" x2="17" y2="11"></line>
+              </svg>
+              Manage Enforcers
+            </router-link>
+          </div>
         </header>
         <div class="table-wrapper">
           <table class="modern-table" role="table">
@@ -188,7 +227,7 @@
               <tr>
                 <th scope="col">Enforcer</th>
                 <th scope="col">Total Cases</th>
-                <th scope="col">This Month</th>
+                <th scope="col">This {{ selectedChartPeriod === 'monthly'}}</th>
                 <th scope="col">Status</th>
                 <th scope="col">Last Active</th>
                 <th scope="col">Performance</th>
@@ -214,15 +253,15 @@
                     </div>
                   </div>
                 </td>
-                <td><span class="metric-number">{{ enforcer.transactions_count || 0 }}</span></td>
+                <td><span class="metric-number">{{ enforcer.transactions.length || 0 }}</span></td>
                 <td>
-                  <div class="metric-bar" aria-label="Monthly apprehensions progress">
+                  <div class="metric-bar" aria-label="Apprehensions progress">
                     <div 
                       class="metric-fill"
-                      :style="{ width: `${Math.min((enforcer.monthly_apprehensions || 0) / 50 * 100, 100)}%` }"
+                      :style="{ width: `${Math.min((getPeriodApprehensions(enforcer.transactions) / performanceTarget) * 100, 100)}%` }"
                     ></div>
                   </div>
-                  <span class="metric-number">{{ enforcer.monthly_apprehensions || 0 }}</span>
+                  <span class="metric-number">{{ getPeriodApprehensions(enforcer.transactions) || 0 }}</span>
                 </td>
                 <td>
                   <span class="status-pill" :class="`status-${enforcer.status?.toLowerCase()}`" :aria-label="enforcer.status">
@@ -232,8 +271,8 @@
                 </td>
                 <td><time :datetime="enforcer.updated_at">{{ formatDate(enforcer.updated_at) }}</time></td>
                 <td>
-                  <div class="performance-score" :class="getPerformanceClass(enforcer.transactions_count)">
-                    {{ getPerformanceScore(enforcer.transactions_count) }}%
+                  <div class="performance-score" :class="getPerformanceClass(enforcer.transactions.length)">
+                    {{ getPerformanceScore(enforcer.transactions.length) }}%
                   </div>
                 </td>
               </tr>
@@ -294,16 +333,37 @@
             </div>
           </router-link>
 
-          <router-link to="/admin/reports" class="action-card" aria-label="Analytics">
+          <router-link to="/admin/reports" class="action-card" aria-label="Reports">
             <div class="action-icon reports" aria-hidden="true">
               <svg width="24" height="24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                <polyline points="19 9 12 16 9 13 5 17"></polyline>
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
               </svg>
             </div>
             <div class="action-content">
-              <p class="action-title">Analytics</p>
+              <p class="action-title">Reports</p>
               <p class="action-desc">Generate detailed system reports</p>
+            </div>
+            <div class="action-arrow" aria-hidden="true">
+              <svg width="20" height="20" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+              </svg>
+            </div>
+          </router-link>
+
+          <router-link to="/admin/transactions" class="action-card" aria-label="Transactions">
+            <div class="action-icon transactions" aria-hidden="true">
+              <svg width="24" height="24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="12 2 15 9 22 9 16 14 18 21 12 17 6 21 8 14 2 9 9 9" />
+            </svg>
+            </div>
+            <div class="action-content">
+              <p class="action-title">Transactions</p>
+              <p class="action-desc">View and manage all transactions</p>
             </div>
             <div class="action-arrow" aria-hidden="true">
               <svg width="20" height="20" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -331,14 +391,64 @@
               </svg>
             </div>
           </router-link>
+
+          <router-link to="/admin/archives" class="action-card" aria-label="Archives">
+            <div class="action-icon archives" aria-hidden="true">
+              <svg width="24" height="24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="21 8 21 21 3 21 3 8"></polyline>
+                <rect x="1" y="3" width="22" height="5"></rect>
+                <line x1="10" y1="12" x2="14" y2="12"></line>
+              </svg>
+            </div>
+            <div class="action-content">
+              <p class="action-title">Archives</p>
+              <p class="action-desc">View archived records and data</p>
+            </div>
+            <div class="action-arrow" aria-hidden="true">
+              <svg width="20" height="20" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <polyline points="12 5 19 12 12 19"></polyline>
+              </svg>
+            </div>
+          </router-link>
         </div>
       </section>
+
+      <!-- Edit Target Modal -->
+      <div v-if="showEditTargetModal" class="modal-overlay" @click="closeModal">
+        <div class="modal-content" @click.stop>
+          <div class="modal-header">
+            <h3>Edit Performance Target</h3>
+            <button @click="closeModal" class="close-btn">
+              <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body">
+            <label for="target-input">Target Cases per {{ selectedChartPeriod === 'monthly'}}</label>
+            <input 
+              id="target-input"
+              type="number" 
+              v-model="newTarget" 
+              min="1" 
+              max="1000"
+              class="target-input"
+            >
+          </div>
+          <div class="modal-footer">
+            <button @click="closeModal" class="cancel-btn">Cancel</button>
+            <button @click="updateTarget" class="save-btn">Save Changes</button>
+          </div>
+        </div>
+      </div>
     </div>
   </SidebarLayout>
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import SidebarLayout from '@/components/SidebarLayout.vue'
 import { adminAPI } from '@/services/api'
 
@@ -352,8 +462,30 @@ export default {
     const stats = ref({})
     const commonViolations = ref([])
     const enforcerPerformance = ref([])
-    
     const weeklyData = ref([])
+    const monthlyData = ref([])
+    const yearlyData = ref([])
+    
+    // Filter states
+    const selectedPeriod = ref('all')
+    const selectedChartPeriod = ref('Month')
+    const performanceTarget = ref(5)
+    const newTarget = ref(5)
+    const showEditTargetModal = ref(false)
+    
+    // Filter options
+    const filterPeriods = [
+      { label: 'All Time', value: 'all' },
+      { label: 'This Year', value: 'year' },
+      { label: 'This Month', value: 'month' },
+      { label: 'This Week', value: 'week' }
+    ]
+    
+    const chartPeriods = [
+      { label: 'Weekly', value: 'weekly' },
+      { label: 'Monthly', value: 'monthly' },
+      { label: 'Yearly', value: 'yearly' }
+    ]
     
     const statsConfig = computed(() => [
       {
@@ -428,8 +560,19 @@ export default {
       }
     ])
     
-    const maxWeeklyCount = computed(() => {
-      return Math.max(...weeklyData.value.map(d => d.count), 1)
+    const chartData = computed(() => {
+      switch (selectedChartPeriod.value) {
+        case 'monthly':
+          return monthlyData.value
+        case 'yearly':
+          return yearlyData.value
+        default:
+          return weeklyData.value
+      }
+    })
+    
+    const maxChartCount = computed(() => {
+      return Math.max(...chartData.value.map(d => d.count), 1)
     })
     
     const maxViolationCount = computed(() => {
@@ -437,21 +580,26 @@ export default {
     })
     
     const yAxisTicks = computed(() => {
-      const max = maxWeeklyCount.value
+      const max = maxChartCount.value
       return [max, Math.floor(max * 0.75), Math.floor(max * 0.5), Math.floor(max * 0.25), 0]
     })
     
     const loadDashboardData = async () => {
       try {
         loading.value = true
-        const response = await adminAPI.dashboard()
-        console.log('Button Click')
+        const response = await adminAPI.dashboard({
+          period: selectedPeriod.value,
+          chart_period: selectedChartPeriod.value
+        })
+        
         if (response.data.status === 'success') {
           const data = response.data.data
           stats.value = data.stats || {}
           commonViolations.value = data.common_violations || []
           enforcerPerformance.value = data.enforcer_performance || []
           weeklyData.value = data.weekly_trends || []
+          monthlyData.value = data.monthly_trends || []
+          yearlyData.value = data.yearly_trends || []
         }
       } catch (error) {
         console.error('Failed to load dashboard data:', error)
@@ -459,7 +607,26 @@ export default {
         loading.value = false
       }
     }
-    
+
+    const getPeriodApprehensions = (transactions) => {
+      if (!transactions) return 0
+      const now = new Date()
+      
+      return transactions.filter(t => {
+        const date = new Date(t.date_time)
+        
+        if (selectedChartPeriod.value === 'monthly') {
+          return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear()
+        } else if (selectedChartPeriod.value === 'yearly') {
+          return date.getFullYear() === now.getFullYear()
+        } else {
+          // Weekly - last 7 days
+          const weekAgo = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000))
+          return date >= weekAgo && date <= now
+        }
+      }).length
+    }
+
     const formatCurrency = (amount) => {
       return new Intl.NumberFormat('en-PH').format(amount)
     }
@@ -475,10 +642,21 @@ export default {
     
     const formatChartDate = (dateString) => {
       if (!dateString) return ''
-      return new Date(dateString).toLocaleDateString('en-PH', {
-        month: 'short',
-        day: 'numeric'
-      })
+      const date = new Date(dateString)
+      
+      if (selectedChartPeriod.value === 'yearly') {
+        return date.getFullYear().toString()
+      } else if (selectedChartPeriod.value === 'monthly') {
+        return date.toLocaleDateString('en-PH', {
+          month: 'short',
+          year: 'numeric'
+        })
+      } else {
+        return date.toLocaleDateString('en-PH', {
+          month: 'short',
+          day: 'numeric'
+        })
+      }
     }
     
     const getInitials = (firstName, lastName) => {
@@ -487,7 +665,7 @@ export default {
     
     const getPerformanceScore = (count) => {
       if (!count) return 0
-      return Math.min(Math.round((count / 50) * 100), 100)
+      return Math.min(Math.round((count / performanceTarget.value) * 100), 100)
     }
     
     const getPerformanceClass = (count) => {
@@ -506,22 +684,34 @@ export default {
     })
 
     const showTooltip = (event, data) => {
-  const barRect = event.currentTarget.getBoundingClientRect()
-  const containerRect = event.currentTarget.parentElement.getBoundingClientRect()
+      const barRect = event.currentTarget.getBoundingClientRect()
+      const containerRect = event.currentTarget.parentElement.getBoundingClientRect()
 
-  tooltip.value = {
-    visible: true,
-    x: barRect.left - containerRect.left + barRect.width / 2,
-    y: barRect.top - containerRect.top, 
-    content: `${formatChartDate(data.date)}: ${data.count} violations`
-  }
-}
-
-
+      tooltip.value = {
+        visible: true,
+        x: barRect.left - containerRect.left + barRect.width / 2,
+        y: barRect.top - containerRect.top, 
+        content: `${formatChartDate(data.date)}: ${data.count} violations`
+      }
+    }
 
     const hideTooltip = () => {
       tooltip.value.visible = false
     }
+    
+    const updateTarget = () => {
+      performanceTarget.value = newTarget.value
+      showEditTargetModal.value = false
+    }
+    
+    const closeModal = () => {
+      showEditTargetModal.value = false
+      newTarget.value = performanceTarget.value
+    }
+    
+    watch([selectedPeriod, selectedChartPeriod], () => {
+      loadDashboardData()
+    })
     
     onMounted(() => {
       loadDashboardData()
@@ -533,10 +723,17 @@ export default {
       commonViolations,
       enforcerPerformance,
       statsConfig,
-      weeklyData,
-      maxWeeklyCount,
+      chartData,
+      maxChartCount,
       maxViolationCount,
       yAxisTicks,
+      selectedPeriod,
+      selectedChartPeriod,
+      filterPeriods,
+      chartPeriods,
+      performanceTarget,
+      newTarget,
+      showEditTargetModal,
       loadDashboardData,
       formatCurrency,
       formatDate,
@@ -546,7 +743,10 @@ export default {
       getPerformanceClass,
       tooltip,
       showTooltip,
-      hideTooltip
+      hideTooltip,
+      getPeriodApprehensions,
+      updateTarget,
+      closeModal
     }
   }
 }
@@ -564,7 +764,7 @@ export default {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 32px;
-background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+  background: linear-gradient(135deg, #1e3a8a, #3b82f6);
   padding: 40px;
   border-radius: 24px;
   color: white;
@@ -599,6 +799,56 @@ background: linear-gradient(135deg, #1e3a8a, #3b82f6);
 .refresh-btn:hover {
   background: rgba(255, 255, 255, 0.2);
   transform: translateY(-2px);
+}
+
+/* Stats Filter Section */
+.stats-filter {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  padding: 24px 32px;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.filter-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.filter-controls h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0;
+}
+
+.filter-buttons {
+  display: flex;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 4px;
+  border-radius: 12px;
+}
+
+.filter-btn {
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filter-btn.active, .filter-btn:hover {
+  background: white;
+  color: #1e40af;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .stats-grid {
@@ -821,6 +1071,31 @@ background: linear-gradient(135deg, #1e3a8a, #3b82f6);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+.performance-controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.edit-target-btn {
+  background: rgba(59, 130, 246, 0.1);
+  color: #1e40af;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.edit-target-btn:hover {
+  background: rgba(59, 130, 246, 0.2);
+}
+
 .view-all-btn {
   display: inline-flex;
   align-items: center;
@@ -835,7 +1110,6 @@ background: linear-gradient(135deg, #1e3a8a, #3b82f6);
   text-decoration: none;
   transition: all 0.3s ease;
   line-height: 1;
-  transition: all 0.3s ease;
 }
 
 .view-all-btn:hover {
@@ -897,8 +1171,8 @@ background: linear-gradient(135deg, #1e3a8a, #3b82f6);
 .chart-bars {
   flex: 1;
   display: flex;
-  align-items: end;
-  justify-content: space-between;
+  align-items: flex-end;
+  justify-content: center;
   height: 240px;
   margin-right: 60px;
   gap: 12px;
@@ -1352,6 +1626,127 @@ background: linear-gradient(135deg, #1e3a8a, #3b82f6);
   transform: translateX(4px);
 }
 
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 400px;
+  margin: 20px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  animation: slideUp 0.3s ease;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 24px 0 24px;
+}
+
+.modal-header h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #0f172a;
+  margin: 0;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #374151;
+}
+
+.modal-body {
+  padding: 24px;
+}
+
+.modal-body label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+.target-input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  background: white;
+}
+
+.target-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.modal-footer {
+  display: flex;
+  gap: 12px;
+  padding: 0 24px 24px 24px;
+}
+
+.cancel-btn, .save-btn {
+  flex: 1;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.cancel-btn {
+  background: #f8fafc;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+}
+
+.cancel-btn:hover {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.save-btn {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: white;
+}
+
+.save-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -1373,6 +1768,67 @@ background: linear-gradient(135deg, #1e3a8a, #3b82f6);
   pointer-events: none;
 }
 
+/* Animation Keyframes */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stat-card {
+  animation: fadeInUp 0.6s ease forwards;
+}
+
+.stat-card:nth-child(1) { animation-delay: 0.1s; }
+.stat-card:nth-child(2) { animation-delay: 0.2s; }
+.stat-card:nth-child(3) { animation-delay: 0.3s; }
+.stat-card:nth-child(4) { animation-delay: 0.4s; }
+.stat-card:nth-child(5) { animation-delay: 0.5s; }
+.stat-card:nth-child(6) { animation-delay: 0.6s; }
+
+.chart-card, .violations-card {
+  animation: fadeInUp 0.6s ease 0.3s forwards;
+  opacity: 0;
+}
+
+.performance-card {
+  animation: fadeInUp 0.6s ease 0.4s forwards;
+  opacity: 0;
+}
+
+.action-card {
+  animation: fadeInUp 0.6s ease forwards;
+  opacity: 0;
+}
+
+.action-card:nth-child(1) { animation-delay: 0.5s; }
+.action-card:nth-child(2) { animation-delay: 0.6s; }
+.action-card:nth-child(3) { animation-delay: 0.7s; }
+.action-card:nth-child(4) { animation-delay: 0.8s; }
+.action-card:nth-child(5) { animation-delay: 0.9s; }
+.action-card:nth-child(6) { animation-delay: 1.0s; }
+
 /* Responsive Design */
 @media (max-width: 1200px) {
   .content-grid {
@@ -1389,10 +1845,21 @@ background: linear-gradient(135deg, #1e3a8a, #3b82f6);
     flex-direction: column;
     gap: 20px;
     text-align: center;
+    padding: 24px;
   }
   
   .header-content h1 {
     font-size: 1.875rem;
+  }
+  
+  .filter-controls {
+    flex-direction: column;
+    gap: 16px;
+    align-items: stretch;
+  }
+  
+  .filter-buttons {
+    justify-content: center;
   }
   
   .stat-value {
@@ -1404,6 +1871,12 @@ background: linear-gradient(135deg, #1e3a8a, #3b82f6);
     flex-direction: column;
     gap: 16px;
     align-items: flex-start;
+  }
+  
+  .performance-controls {
+    flex-direction: column;
+    width: 100%;
+    gap: 8px;
   }
   
   .chart-container {
@@ -1457,6 +1930,10 @@ background: linear-gradient(135deg, #1e3a8a, #3b82f6);
   .action-card:hover .action-arrow {
     transform: rotate(90deg) translateY(-4px);
   }
+  
+  .modal-content {
+    margin: 10px;
+  }
 }
 
 /* Scroll Styles */
@@ -1481,47 +1958,4 @@ background: linear-gradient(135deg, #1e3a8a, #3b82f6);
 .table-wrapper::-webkit-scrollbar-thumb:hover {
   background: rgba(59, 130, 246, 0.5);
 }
-
-/* Animation Keyframes */
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.stat-card {
-  animation: fadeInUp 0.6s ease forwards;
-}
-
-.stat-card:nth-child(1) { animation-delay: 0.1s; }
-.stat-card:nth-child(2) { animation-delay: 0.2s; }
-.stat-card:nth-child(3) { animation-delay: 0.3s; }
-.stat-card:nth-child(4) { animation-delay: 0.4s; }
-.stat-card:nth-child(5) { animation-delay: 0.5s; }
-.stat-card:nth-child(6) { animation-delay: 0.6s; }
-
-.chart-card, .violations-card {
-  animation: fadeInUp 0.6s ease 0.3s forwards;
-  opacity: 0;
-}
-
-.performance-card {
-  animation: fadeInUp 0.6s ease 0.4s forwards;
-  opacity: 0;
-}
-
-.action-card {
-  animation: fadeInUp 0.6s ease forwards;
-  opacity: 0;
-}
-
-.action-card:nth-child(1) { animation-delay: 0.5s; }
-.action-card:nth-child(2) { animation-delay: 0.6s; }
-.action-card:nth-child(3) { animation-delay: 0.7s; }
-.action-card:nth-child(4) { animation-delay: 0.8s; }
 </style>

@@ -82,20 +82,25 @@ export default {
         const result = await login(form.value)
 
         if (result.success) {
-          const roleRoutes = {
-            'Admin': '/admin/dashboard',
-            'Enforcer': '/enforcer/dashboard',
-            'Violator': '/violator/dashboard'
-          }
+        const user = result.user;
 
-          const role =
-            result.user?.role ||
-            result.violator?.role ||
-            result.user_type
+        if (!user.role && user.user_type) {
+          user.role = user.user_type;
+        }
 
-          const redirectTo = roleRoutes[role] || '/'
-          router.push(redirectTo)
-        } else {
+        result.user.role = user.role;
+
+        const roleRoutes = {
+          Head: "/admin/dashboard",
+          Deputy: "/admin/dashboard",
+          Admin: "/admin/dashboard",
+          Enforcer: "/enforcer/dashboard",
+          Violator: "/violator/dashboard"
+        }
+
+        const redirectTo = roleRoutes[user.role] || "/";
+        router.push(redirectTo);
+      } else {
           error.value = result.message
         }
       } catch (err) {

@@ -1,33 +1,42 @@
-import { createRouter, createWebHistory } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+import { createRouter, createWebHistory } from "vue-router";
+import { useAuthStore } from "@/stores/auth";
 
 // Import views
-import HomePage from '../views/HomePage.vue'
-import LoginPage from '../views/LoginPage.vue'
-import RegisterPage from '../views/RegisterPage.vue'
-import AdminDashboard from '../views/admin/AdminDashboard.vue'
-import AdminProfile from "../views/admin/AdminProfile.vue";
-import AdminUsers from '../views/admin/AdminUsers.vue'
-import AdminViolations from '../views/admin/AdminViolations.vue'
-import AdminReports from '../views/admin/AdminReports.vue'
-import AdminTransactions from "@/views/admin/AdminTransactions.vue";
-import AdminNotifications from '../views/admin/AdminNotifications.vue'
-import Archives from '../views/admin/ArchivesPage.vue'
-import EnforcerDashboard from '../views/enforcer/EnforcerDashboard.vue'
-import EnforcerTransactions from '../views/enforcer/EnforcerTransactions.vue'
-import EnforcerPerformance from '../views/enforcer/EnforcerPerformance.vue'
-import ViolatorDashboard from '../views/violator/ViolatorDashboard.vue'
-import ViolatorHistory from '../views/violator/ViolatorHistory.vue'
-import ViolatorProfile from '../views/violator/ViolatorProfile.vue'
-import ViolatorNotifications from '../views/violator/ViolatorNotifications.vue'
-import EnforcerProfile from '@/views/enforcer/EnforcerProfile.vue'
+import HomePage from "../views/HomePage.vue";
+import LoginPage from "../views/LoginPage.vue";
+import RegisterPage from "../views/RegisterPage.vue";
 
+// Admin
+import AdminDashboard from "../views/admin/AdminDashboard.vue";
+import AdminProfile from "../views/admin/AdminProfile.vue";
+import OfficialsPage from "@/views/admin/ManageUsers/OfficialsPage.vue";
+import ViolatorsPage from "@/views/admin/ManageUsers/ViolatorsPage.vue";
+import AdminViolations from "../views/admin/AdminViolations.vue";
+import AdminReports from "../views/admin/AdminReports.vue";
+import AdminTransactions from "@/views/admin/AdminTransactions.vue";
+import AdminNotifications from "../views/admin/Notifications/AdminNotifications.vue";
+import AdminSendNotifications from "../views/admin/Notifications/AdminSendNotifications.vue"
+import Archives from "../views/admin/ArchivesPage.vue";
+
+// Enforcer
+import EnforcerDashboard from "../views/enforcer/EnforcerDashboard.vue";
+import EnforcerTransactions from "../views/enforcer/EnforcerTransactions.vue";
+import EnforcerPerformance from "../views/enforcer/EnforcerPerformance.vue";
+import EnforcerProfile from "@/views/enforcer/EnforcerProfile.vue";
+
+// Violator
+import ViolatorDashboard from "../views/violator/ViolatorDashboard.vue";
+import ViolatorHistory from "../views/violator/ViolatorHistory.vue";
+import ViolatorProfile from "../views/violator/ViolatorProfile.vue";
+import ViolatorNotifications from "../views/violator/ViolatorNotifications.vue";
 
 const routes = [
+    // Public
     {
         path: "/",
         name: "home",
         component: HomePage,
+        meta: { requiresGuest: true },
     },
     {
         path: "/login",
@@ -41,60 +50,90 @@ const routes = [
         component: RegisterPage,
         meta: { requiresGuest: true },
     },
-    // Admin routes
     {
         path: "/admin",
         redirect: "/admin/dashboard",
-        meta: { requiresAuth: true, role: "Admin" },
+        meta: { requiresAuth: true, role: ["Admin", "Deputy", "Head"] },
     },
     {
         path: "/admin/dashboard",
         name: "admin-dashboard",
         component: AdminDashboard,
-        meta: { requiresAuth: true, role: "Admin" },
+        meta: { requiresAuth: true, role: ["Admin", "Deputy", "Head"] },
     },
     {
         path: "/admin/profile",
-        redirect: "/admin/profile",
+        name: "admin-profile",
         component: AdminProfile,
-        meta: { requiresAuth: true, role: "Admin" },
+        meta: { requiresAuth: true, role: ["Admin", "Deputy", "Head"] },
     },
+
     {
         path: "/admin/users",
-        name: "admin-users",
-        component: AdminUsers,
-        meta: { requiresAuth: true, role: "Admin" },
+        redirect: "/admin/users/officials",
+        meta: { requiresAuth: true, role: ["Admin", "Deputy", "Head"] },
+        children: [
+            {
+                path: "officials",
+                name: "admin-officials",
+                component: OfficialsPage,
+                meta: { requiresAuth: true, role: ["Admin", "Deputy", "Head"] },
+            },
+            {
+                path: "violators",
+                name: "admin-violators",
+                component: ViolatorsPage,
+                meta: { requiresAuth: true, role: ["Admin", "Deputy", "Head"] },
+            },
+        ],
     },
+
     {
         path: "/admin/violations",
         name: "admin-violations",
         component: AdminViolations,
-        meta: { requiresAuth: true, role: "Admin" },
+        meta: { requiresAuth: true, role: ["Admin", "Deputy", "Head"] },
     },
     {
         path: "/admin/transactions",
         name: "admin-transactions",
         component: AdminTransactions,
-        meta: { requiresAuth: true, role: "Admin" },
+        meta: { requiresAuth: true, role: ["Admin", "Deputy", "Head"] },
     },
     {
         path: "/admin/reports",
         name: "admin-reports",
         component: AdminReports,
-        meta: { requiresAuth: true, role: "Admin" },
+        meta: { requiresAuth: true, role: ["Admin", "Deputy", "Head"] },
     },
+
     {
         path: "/admin/notifications",
-        name: "admin-notifications",
-        component: AdminNotifications,
-        meta: { requiresAuth: true, role: "Admin" },
+        redirect: "/admin/notifications/view",
+        meta: { requiresAuth: true, role: ["Admin", "Deputy", "Head"] },
+        children: [
+            {
+                path: "view",
+                name: "notification-view",
+                component: AdminNotifications,
+                meta: { requiresAuth: true, role: ["Admin", "Deputy", "Head"] },
+            },
+            {
+                path: "send",
+                name: "notification-send",
+                component: AdminSendNotifications,
+                meta: { requiresAuth: true, role: ["Admin", "Deputy", "Head"] },
+            },
+        ],
     },
+    
     {
         path: "/admin/archives",
         name: "admin-archives",
         component: Archives,
-        meta: { requiresAuth: true, role: "Admin" },
+        meta: { requiresAuth: true, role: ["Admin", "Deputy", "Head"] },
     },
+
     // Enforcer routes
     {
         path: "/enforcer",
@@ -125,6 +164,7 @@ const routes = [
         component: EnforcerProfile,
         meta: { requiresAuth: true, role: "Enforcer" },
     },
+
     // Violator routes
     {
         path: "/violator",
@@ -158,45 +198,50 @@ const routes = [
 ];
 
 const router = createRouter({
-  history: createWebHistory(process.env.BASE_URL),
-  routes
-})
+    history: createWebHistory(process.env.BASE_URL),
+    routes,
+});
 
-// Navigation guards
 router.beforeEach((to, from, next) => {
-  const { state } = useAuthStore()
-
-  if (to.meta.requiresAuth) {
-    if (!state.isAuthenticated) {
-      next('/login')
-      return
-    }
+    const { state } = useAuthStore();
+    const userRole = state.user?.role; 
 
     const roleRoutes = {
-      'Admin': '/admin/dashboard',
-      'Enforcer': '/enforcer/dashboard',
-      'Violator': '/violator/dashboard'
+        Head: "/admin/dashboard",
+        Deputy: "/admin/dashboard",
+        Admin: "/admin/dashboard",
+        Enforcer: "/enforcer/dashboard",
+        Violator: "/violator/dashboard",
+    };
+
+    if (to.path === "/" && state.isAuthenticated) {
+        next(roleRoutes[userRole] || "/");
+        return;
     }
 
-    if (to.meta.role) {
-      if (state.user?.role !== to.meta.role && state.user?.type !== to.meta.role) {
-        next(roleRoutes[state.user.role || state.user.type] || '/')
-        return
-      }
+    if (to.meta.requiresAuth) {
+        if (!state.isAuthenticated) {
+            next("/login");
+            return;
+        }
+
+        if (to.meta.role) {
+            const allowedRoles = Array.isArray(to.meta.role)
+                ? to.meta.role
+                : [to.meta.role];
+            if (!allowedRoles.includes(userRole)) {
+                next(roleRoutes[userRole] || "/");
+                return;
+            }
+        }
     }
-  }
 
-  if (to.meta.requiresGuest && state.isAuthenticated) {
-    const roleRoutes = {
-      'Admin': '/admin/dashboard',
-      'Enforcer': '/enforcer/dashboard',
-      'Violator': '/violator/dashboard'
+    if (to.meta.requiresGuest && state.isAuthenticated) {
+        next(roleRoutes[userRole] || "/");
+        return;
     }
-    next(roleRoutes[state.user.role || state.user.type] || '/')
-    return
-  }
 
-  next()
-})
+    next();
+});
 
-export default router
+export default router;

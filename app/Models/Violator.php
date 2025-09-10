@@ -13,6 +13,7 @@ class Violator extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
     protected $fillable = [
+        'id',
         'email',
         'password',
         'email_verified',

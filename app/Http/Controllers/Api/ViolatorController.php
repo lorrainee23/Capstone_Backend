@@ -18,7 +18,14 @@ class ViolatorController extends Controller
      */
     public function dashboard(Request $request)
     {
-        $violator = $request->user();
+        $violator = auth('violator')->user();
+
+        if (!($violator instanceof Violator)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized: only violators can access this endpoint'
+            ], 403);
+        }
         
         $stats = [
             'total_violations' => $violator->transactions()->count(),
@@ -29,14 +36,12 @@ class ViolatorController extends Controller
             'is_repeat_offender' => $violator->isRepeatOffender(),
         ];
 
-        // Recent violations
         $recentViolations = $violator->transactions()
             ->with(['violation', 'apprehendingOfficer'])
             ->latest()
             ->limit(5)
             ->get();
 
-        // Violation history by month
         $monthlyViolations = $violator->transactions()
             ->selectRaw('YEAR(date_time) as year, MONTH(date_time) as month, COUNT(*) as count')
             ->groupBy('year', 'month')
@@ -60,7 +65,14 @@ class ViolatorController extends Controller
      */
     public function getViolationHistory(Request $request)
     {
-        $violator = $request->user();
+        $violator = auth('violator')->user();
+
+        if (!($violator instanceof Violator)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized: only violators can access this endpoint'
+            ], 403);
+        }
         
         $query = $violator->transactions()->with(['violation', 'apprehendingOfficer']);
 
@@ -85,7 +97,14 @@ class ViolatorController extends Controller
      */
     public function getViolationDetails($id)
     {
-        $violator = auth()->user();
+        $violator = auth('violator')->user();
+        
+        if (!($violator instanceof Violator)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized: only violators can access this endpoint'
+            ], 403);
+        }
         
         $transaction = $violator->transactions()
             ->with(['violation', 'apprehendingOfficer'])
@@ -102,7 +121,14 @@ class ViolatorController extends Controller
      */
     public function updateProfile(Request $request)
     {
-        $violator = $request->user();
+        $violator = auth('violator')->user();
+
+        if (!($violator instanceof Violator)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized: only violators can access this endpoint'
+            ], 403);
+        }
 
         $validator = Validator::make($request->all(), [
             'first_name' => 'required|string|max:255',
@@ -146,6 +172,15 @@ class ViolatorController extends Controller
      */
     public function changePassword(Request $request)
     {
+        $violator = auth('violator')->user();
+
+        if (!($violator instanceof Violator)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized: only violators can access this endpoint'
+            ], 403);
+        }
+
         $validator = Validator::make($request->all(), [
             'current_password' => 'required|string',
             'new_password' => 'required|string|min:6|confirmed',
@@ -159,9 +194,6 @@ class ViolatorController extends Controller
             ], 422);
         }
 
-        $violator = $request->user();
-
-        // Check current password
         if (!Hash::check($request->current_password, $violator->password)) {
             return response()->json([
                 'status' => 'error',
@@ -169,7 +201,6 @@ class ViolatorController extends Controller
             ], 400);
         }
 
-        // Update password
         $violator->password = Hash::make($request->new_password);
         $violator->save();
 
@@ -180,51 +211,21 @@ class ViolatorController extends Controller
     }
 
     /**
-     * Upload receipt for violation
-     */
-    public function uploadReceipt(Request $request)
-{
-    $violator = $request->user();
-
-    $transactionId = $request->input('transaction_id');
-
-    $validator = Validator::make($request->all(), [
-        'receipt' => 'required|image|mimes:jpeg,png,jpg|max:2048',
-        'transaction_id' => 'required|exists:transactions,id'
-    ]);
-
-    if ($validator->fails()) {
-        return response()->json([
-            'status' => 'error',
-            'message' => 'Validation failed',
-            'errors' => $validator->errors()
-        ], 422);
-    }
-
-    // Make sure the transaction belongs to this violator
-    $transaction = $violator->transactions()->findOrFail($transactionId);
-
-    // Handle receipt upload
-    $receiptPath = $request->file('receipt')->store('receipts', 'public');
-    
-    $transaction->receipt = $receiptPath;
-    $transaction->save();
-
-    return response()->json([
-        'status' => 'success',
-        'message' => 'Receipt uploaded successfully',
-        'data' => $transaction->load(['violation', 'apprehendingOfficer'])
-    ]);
-}
-    /**
      * Get notifications for violator
      */
     public function getNotifications(Request $request)
     {
-        $user = $request->user();
+        $violator = auth('violator')->user();
 
-        $notifications = Notification::where('target_role', 'Violator')
-            ->where('violator_id', $user->id)
+        if (!($violator instanceof Violator)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized: only violators can access this endpoint'
+            ], 403);
+        }
+
+        $notifications = Notification::where('target_type', 'Violator')
+            ->where('violator_id', $violator->id)
             ->latest()
             ->paginate(15);
 
@@ -254,14 +255,20 @@ class ViolatorController extends Controller
 
     public function markAllAsRead(Request $request)
     {
-        $user = $request->user();
+        $violator = auth('violator')->user();
+
+        if (!($violator instanceof Violator)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized: only violators can access this endpoint'
+            ], 403);
+        }
 
         Notification::where('target_role', 'Violator')
-            ->where('violator_id', $user->id)
+            ->where('violator_id', $violator->id)
             ->update(['read_at' => now()]);
 
         return response()->json(['status' => 'success']);
-    
     }
     
     /**
@@ -269,7 +276,14 @@ class ViolatorController extends Controller
      */
     public function getStatistics(Request $request)
     {
-        $violator = $request->user();
+        $violator = auth('violator')->user();
+
+        if (!($violator instanceof Violator)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized: only violators can access this endpoint'
+            ], 403);
+        }
         
         $stats = [
             'total_violations' => $violator->transactions()->count(),
@@ -280,7 +294,6 @@ class ViolatorController extends Controller
             'is_repeat_offender' => $violator->isRepeatOffender(),
         ];
 
-        // Violations by type
         $violationsByType = $violator->transactions()
             ->with('violation')
             ->get()
@@ -292,7 +305,6 @@ class ViolatorController extends Controller
                 ];
             });
 
-        // Violations by month (last 12 months)
         $violationsByMonth = $violator->transactions()
             ->selectRaw('YEAR(date_time) as year, MONTH(date_time) as month, COUNT(*) as count, SUM(fine_amount) as total_fines')
             ->whereBetween('date_time', [now()->subMonths(12), now()])
@@ -316,7 +328,14 @@ class ViolatorController extends Controller
      */
     public function getProfile(Request $request)
     {
-        $violator = $request->user();
+        $violator = auth('violator')->user();
+
+        if (!($violator instanceof Violator)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized: only violators can access this endpoint'
+            ], 403);
+        }
 
         return response()->json([
             'status' => 'success',
@@ -332,9 +351,9 @@ class ViolatorController extends Controller
                     'gender' => $violator->gender,
                     'gender_text' => $violator->gender_text,
                     'license_number' => $violator->license_number,
-                    'plate_number' => $violator->plate_number,
-                    'model' => $violator->model,
-                    'address' => $violator->address,
+                    'plate_number' => $violator->plate_number ?? null,
+                    'model' => $violator->model ?? null,
+                    'address' => $violator->full_address ?? null,
                     'id_photo' => $violator->id_photo,
                     'total_fines' => $violator->total_fines,
                     'unpaid_fines' => $violator->unpaid_fines,
@@ -343,4 +362,4 @@ class ViolatorController extends Controller
             ]
         ]);
     }
-} 
+}

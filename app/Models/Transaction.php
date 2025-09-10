@@ -51,7 +51,7 @@ class Transaction extends Model
      */
     public function apprehendingOfficer()
     {
-        return $this->belongsTo(User::class, 'apprehending_officer');
+        return $this->belongsTo(Enforcer::class, 'apprehending_officer');
     }
     /**
      * Get the violator for this transaction.
@@ -114,7 +114,7 @@ class Transaction extends Model
     {
         static::creating(function ($transaction) {
             if (empty($transaction->ticket_number)) {
-                $last = Transaction::max('ticket_number') ?? 999;
+                $last = Transaction::max('ticket_number') ?? 1000;
                 $transaction->ticket_number = $last + 1;
             }
         });

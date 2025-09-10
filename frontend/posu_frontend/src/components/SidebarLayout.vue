@@ -33,21 +33,68 @@
         </div>
 
         <!-- Admin Navigation -->
-        <div v-if="userRole === 'Admin'" class="nav-section">
+        <div v-if="['Admin', 'Head', 'Deputy'].includes(userRole)" class="nav-section">
           <h3 class="nav-section-title" v-if="!sidebarCollapsed">Management</h3>
-          <router-link 
-            to="/admin/users" 
-            class="nav-item"
-            :class="{ active: $route.path === '/admin/users' }"
-          >
-            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-              <circle cx="9" cy="7" r="4"/>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-            </svg>
-            <span class="nav-text" v-if="!sidebarCollapsed">Users</span>
-          </router-link>
+          <div class="manage-dropdown-container">
+            <div class="nav-item manage-dropdown" @click="toggleManageDropdown" :class="{active: showManageDropdown,'dropdown-parent': showManageDropdown}">
+              <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+              <span class="nav-text" v-if="!sidebarCollapsed">Manage Officials and Violators</span>
+              <svg 
+                class="arrow-icon" 
+                :class="{ open: showManageDropdown }" 
+                v-if="!sidebarCollapsed"
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                stroke-width="2"
+              >
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </div>
+          <transition name="dropdown">
+            <div v-show="showManageDropdown && !sidebarCollapsed" class="dropdown-menu">
+              <div class="dropdown-content">
+                <!-- Officials -->
+                <router-link to="/admin/users/officials" class="dropdown-item" :class="{ active: $route.path === '/admin/users/officials' }">
+                  <div class="dropdown-item-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                      <circle cx="9" cy="7" r="4"/>
+                      <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                  </div>
+                  <div class="dropdown-item-content">
+                    <span class="dropdown-item-title">Officials</span>
+                    <span class="dropdown-item-subtitle">Manage officials</span>
+                  </div>
+                  <div class="dropdown-item-indicator"></div>
+                </router-link>
+
+                <router-link to="/admin/users/violators" class="dropdown-item" :class="{ active: $route.path === '/admin/users/violators' }">
+                  <div class="dropdown-item-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="7" r="4"/>
+                      <path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/>
+                      <path d="M8 17l8-8"/>
+                      <path d="M16 17L8 9"/>
+                    </svg>
+                  </div>
+                  <div class="dropdown-item-content">
+                    <span class="dropdown-item-title">Violators</span>
+                    <span class="dropdown-item-subtitle">Manage Traffic Violators</span>
+                  </div>
+                  <div class="dropdown-item-indicator"></div>
+                </router-link>
+              </div>
+            </div>
+          </transition>
+        </div>
           <router-link 
             to="/admin/violations" 
             class="nav-item"
@@ -59,6 +106,16 @@
               <line x1="12" y1="17" x2="12.01" y2="17"/>
             </svg>
             <span class="nav-text" v-if="!sidebarCollapsed">Violations</span>
+          </router-link>
+          <router-link 
+            to="/admin/transactions" 
+            class="nav-item"
+            :class="{ active: $route.path === '/admin/transactions' }"
+          >
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 15 9 22 9 16 14 18 21 12 17 6 21 8 14 2 9 9 9" />
+            </svg>
+            <span class="nav-text" v-if="!sidebarCollapsed">Transactions</span>
           </router-link>
           <router-link 
             to="/admin/reports" 
@@ -73,9 +130,9 @@
             <span class="nav-text" v-if="!sidebarCollapsed">Reports</span>
           </router-link>
           <router-link 
-            to="/admin/notifications" 
+            to="/admin/notifications/view" 
             class="nav-item"
-            :class="{ active: $route.path === '/admin/notifications' }"
+            :class="{ active: $route.path === '/admin/notifications/view' }"
           >
             <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
@@ -205,12 +262,12 @@
         <div class="header-right">
           <!-- Notifications -->
           <div class="notification-container">
-            <button @click="toggleNotifications" class="notification-btn" :class="{ 'has-notifications': hasUnreadNotifications }">
+            <button @click="toggleNotifications" class="notification-btn" :class="{ 'has-notifications': notificationsStore.unreadCount() > 0 }">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                 <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
               </svg>
-              <span v-if="notificationCount > 0" class="notification-badge">{{ notificationCount }}</span>
+              <span v-if="unreadCount > 0" class="notification-badge">{{ unreadCount }}</span>
             </button>
             
             <!-- Enhanced Notifications Dropdown -->
@@ -224,7 +281,7 @@
                   <h3>Notifications</h3>
                 </div>
                 <div class="notifications-header-actions">
-                  <button @click="markAllAsRead" class="mark-all-read">
+                  <button @click="notificationsStore.markAllAsRead" class="mark-all-read">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M20 6L9 17l-5-5"/>
                     </svg>
@@ -234,7 +291,7 @@
               </div>
 
               <div class="notifications-list">
-                <div v-if="notifications.length === 0" class="no-notifications">
+                <div v-if="notificationsStore.state.length === 0" class="no-notifications">
                   <svg class="no-notifications-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="10"/>
                     <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
@@ -246,10 +303,10 @@
                 </div>
                 
                 <div 
-                  v-for="notification in notifications.slice(0, 5)" 
-                  :key="notification.id"
+                  v-for="n in notificationsStore.state.notifications.slice(0, 5)" 
+                  :key="n.id"
                   class="notification-item"
-                  :class="{ 'unread': !notification.read }"
+                  :class="{ 'unread': !n.read }"
                 >
                   <div class="notification-icon-wrapper">
                     <svg class="notification-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -257,14 +314,14 @@
                       <line x1="12" y1="16" x2="12" y2="12"/>
                       <line x1="12" y1="8" x2="12.01" y2="8"/>
                     </svg>
-                    <div v-if="!notification.read" class="unread-dot"></div>
+                    <div v-if="!n.read" class="unread-dot"></div>
                   </div>
                   <div class="notification-content">
-                    <h4>{{ notification.title }}</h4>
-                    <p>{{ notification.message }}</p>
-                    <span class="notification-time">{{ formatTime(notification.created_at) }}</span>
+                    <h4>{{ n.title }}</h4>
+                    <p>{{ n.message }}</p>
+                    <span class="notification-time">{{ formatTime(n.created_at) }}</span>
                   </div>
-                  <button v-if="!notification.read" @click="markAsRead(notification.id)" class="mark-read-btn">
+                  <button v-if="n.read" @click="notificationsStore.markAsRead(n.id)" class="mark-read-btn">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <polyline points="20,6 9,17 4,12"/>
                     </svg>
@@ -347,7 +404,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { adminAPI, violatorAPI } from "@/services/api"
+import { useNotificationsStore } from '@/stores/useNotificationsStore.js'
 import Swal from 'sweetalert2'
 
 
@@ -362,7 +419,8 @@ export default {
   setup() {
     const router = useRouter()
     const { state, logout } = useAuthStore()
-    
+    const notificationsStore = useNotificationsStore()
+    const showManageDropdown = ref(false);
     const sidebarCollapsed = ref(false)
     const showNotifications = ref(false)
     const showUserMenu = ref(false)
@@ -400,45 +458,11 @@ export default {
 
     const getNotificationsRoute = () => {
       const roleRoutes = {
-        'Admin': '/admin/notifications',
+        'Admin': '/admin/notifications/view',
         'Violator': '/violator/notifications'
       }
       return roleRoutes[userRole.value] || '/notifications'
     }
-
-    const fetchNotifications = async () => {
-  if (!state.user) return;
-
-  try {
-    let res;
-    if (state.user.role === "Admin") {
-      res = await adminAPI.getNotifications();
-    } else if (state.user.role === "Violator") {
-      res = await violatorAPI.getNotifications();
-    }
-
-    const notificationsData = res.data.data?.data || res.data.data || [];
-
-    notifications.value = notificationsData.map(n => ({
-      id: n.id,
-      title: n.title,
-      message: n.message,
-      read_at: n.read_at,         
-      created_at: n.created_at,
-      read: !!n.read_at          
-    }));
-  } catch (error) {
-    console.error("Failed to fetch notifications:", error);
-  }
-};
-
-    const notificationCount = computed(() => {
-      return notifications.value.filter(n => !n.read).length
-    })
-
-    const hasUnreadNotifications = computed(() => {
-      return notificationCount.value > 0
-    })
     
     const toggleSidebar = () => {
       sidebarCollapsed.value = !sidebarCollapsed.value
@@ -454,39 +478,16 @@ export default {
       showNotifications.value = false
     }
 
-    const markAsRead = async (id) => {
-  try {
-    let response;
-    if (state.user.role === "Admin") {
-      response = await adminAPI.markNotificationAsRead(id);
-    } else if (state.user.role === "Violator") {
-      response = await violatorAPI.markNotificationAsRead(id);
-    }
-    const notif = notifications.value.find(n => n.id === id);
-    if (notif && response.data) {
-      notif.read = true;
-      notif.read_at = response.data.read_at || new Date().toISOString();
-    }
-  } catch (error) {
-    console.error(error);
-  }
-}
+  const toggleManageDropdown = () => {
+  showManageDropdown.value = !showManageDropdown.value;
+  };
 
-const markAllAsRead = async () => { 
-  try {
-    if (state.user.role === "Admin") {
-      await adminAPI.markAllNotificationsAsRead();
-    } else if (state.user.role === "Violator") {
-      await violatorAPI.markAllNotificationsAsRead();
-    }
-    notifications.value.forEach(n => {
-      n.read = true;
-      n.read_at = new Date().toISOString();
-    });
-  } catch (error) {
-    console.error(error);
-  }
-}
+const manageRoles = computed(() => {
+  if (userRole.value === 'Head') return ['Deputies', 'Admin', 'Enforcers', 'Violators'];
+  if (userRole.value === 'Deputy') return ['Enforcers', 'Violators'];
+  if (userRole.value === 'Admin') return ['Enforcers', 'Violators'];
+  return [];
+});
 
     const formatTime = (dateString) => {
   const now = new Date()
@@ -535,6 +536,9 @@ const markAllAsRead = async () => {
       }
     }
 
+    const unreadCount = computed(() => notificationsStore.unreadCount())
+
+
     // Close dropdowns when clicking outside
     const handleClickOutside = (event) => {
       if (notificationsDropdown.value && !notificationsDropdown.value.contains(event.target) && !event.target.closest('.notification-btn')) {
@@ -546,9 +550,9 @@ const markAllAsRead = async () => {
     }
 
     onMounted(() => {
-      fetchNotifications()
-    })
-    onMounted(() => {
+      if (state.user) {
+        notificationsStore.fetch(state.user.role)
+      }
       document.addEventListener('click', handleClickOutside)
     })
 
@@ -564,8 +568,7 @@ const markAllAsRead = async () => {
       notificationsDropdown,
       userDropdown,
       notifications,
-      notificationCount,
-      hasUnreadNotifications,
+      notificationsStore,
       userRole,
       userName,
       userInitials,
@@ -574,10 +577,12 @@ const markAllAsRead = async () => {
       toggleSidebar,
       toggleNotifications,
       toggleUserMenu,
-      markAsRead,
-      markAllAsRead,
       formatTime,
-      handleLogout
+      handleLogout,
+      showManageDropdown,
+      toggleManageDropdown,
+      manageRoles,
+      unreadCount,
     }
   }
 }
@@ -749,7 +754,7 @@ const markAllAsRead = async () => {
 .main-expanded {
   margin-left: 80px;
 }
-/* Continuing from the main-content styles */
+
 .top-header {
   background: white;
   border-bottom: 1px solid #e5e7eb;
@@ -1037,6 +1042,230 @@ const markAllAsRead = async () => {
 .view-all-link svg {
   width: 16px;
   height: 16px;
+}
+/* Enhanced Manage Dropdown Styles */
+/* Enhanced Manage Dropdown Styles */
+.manage-dropdown-container {
+  position: relative;
+}
+
+.manage-dropdown {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  padding: 12px 20px;
+  color: #6b7280;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  border-left: 3px solid transparent;
+  position: relative;
+}
+
+.manage-dropdown:hover {
+  background: #f9fafb;
+  color: #1f2937;
+}
+
+.manage-dropdown.active,
+.manage-dropdown.dropdown-parent {
+  background: #eff6ff;
+  color: #1e40af;
+  border-left-color: #3b82f6;
+}
+
+.arrow-icon {
+  width: 16px;
+  height: 16px;
+  color: inherit;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-left: auto;
+}
+
+.arrow-icon.open {
+  transform: rotate(180deg);
+}
+
+/* Dropdown Menu */
+.dropdown-menu {
+  margin-left: 20px;
+  margin-right: 20px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.dropdown-content {
+  padding: 8px 0;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  color: #374151;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  position: relative;
+  border-left: 3px solid transparent;
+}
+
+.dropdown-item:hover {
+  background: #ffffff;
+  color: #1f2937;
+  transform: translateX(2px);
+}
+
+.dropdown-item.active {
+  background: #ffffff;
+  color: #1e40af;
+  border-left-color: #3b82f6;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.dropdown-item-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  margin-right: 12px;
+  transition: all 0.2s ease;
+}
+
+.dropdown-item-icon svg {
+  width: 16px;
+  height: 16px;
+  color: #64748b;
+}
+
+.dropdown-item:hover .dropdown-item-icon {
+  background: #e2e8f0;
+}
+
+.dropdown-item.active .dropdown-item-icon {
+  background: #dbeafe;
+}
+
+.dropdown-item.active .dropdown-item-icon svg {
+  color: #1e40af;
+}
+
+.dropdown-item-content {
+  flex: 1;
+}
+
+.dropdown-item-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: inherit;
+  line-height: 1.2;
+}
+
+.dropdown-item-subtitle {
+  display: block;
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 2px;
+  line-height: 1.2;
+}
+
+.dropdown-item-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: transparent;
+  transition: all 0.2s ease;
+}
+
+.dropdown-item.active .dropdown-item-indicator {
+  background: #3b82f6;
+}
+
+.dropdown-enter-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dropdown-leave-active {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dropdown-enter-from {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.95);
+}
+
+.dropdown-leave-to {
+  opacity: 0;
+  transform: translateY(-4px) scale(0.98);
+}
+
+.sidebar-collapsed .dropdown-menu {
+  display: none;
+}
+
+.sidebar-collapsed .manage-dropdown {
+  justify-content: center;
+}
+
+.manage-dropdown:focus,
+.dropdown-item:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+.nav-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.nav-text {
+  margin-left: 12px;
+  flex-grow: 1;
+}
+
+.arrow-icon {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.3s;
+}
+
+.arrow-icon.open {
+  transform: rotate(180deg);
+}
+
+.dropdown-roles {
+  display: flex;
+  flex-direction: column;
+  padding-left: 36px;
+  background: #f9fafb;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  color: #374151;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.dropdown-item:hover {
+  color: #1e40af;
+}
+
+.dropdown-item .icon {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2;
+  flex-shrink: 0;
 }
 
 /* User Menu Styles */

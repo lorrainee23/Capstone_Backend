@@ -29,7 +29,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->foreign('violation_id')->references('id')->on('violations')->onDelete('cascade');
-            $table->foreign('apprehending_officer')->references('id')->on('users')->onDelete('cascade');
+            $table->foreign('apprehending_officer')->references('id')->on('enforcers')->onDelete('cascade');
             $table->foreign('violator_id')->references('id')->on('violators')->onDelete('cascade');
             $table->foreign('vehicle_id')->references('id')->on('vehicles')->onDelete('cascade');
         });

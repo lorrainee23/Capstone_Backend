@@ -40,43 +40,64 @@ api.interceptors.response.use(
 ============================ */
 export const authAPI = {
     login: (credentials) => api.post("/login", credentials),
-    register: (data) => api.post("/violator/register", data),
+    register: (data) => api.post("/register", data),
     logout: () => api.post("/logout"),
     profile: () => api.get("/profile"),
+    getRoles: () => api.get("/roles"),
 };
 
 /* ============================
    ADMIN API
 ============================ */
 export const adminAPI = {
+    // Dashboard
     dashboard: () => api.get("/admin/dashboard"),
-    changeUserStatus: (data) => api.post("/admin/toggle-status", data),
-    getTransactions: (params = {}) =>
-        api.get("/admin/transactions", { params }),
-    getUsers: () => api.get("/admin/users"),
+
+    // Officials Management
+    getUsers: (role = "") =>
+        api.get(`/admin/users${role ? `?role=${role}` : ""}`),
     createUser: (data) => api.post("/admin/users", data),
-    updateUser: (id, data) => api.put(`/admin/users/${id}`, data),
-    archiveUser: (id) => api.delete(`/admin/users/${id}`),
+    updateUser: (userType, id, data) =>
+        api.put(`/admin/users/${userType}/${id}`, data),
+    changeUserStatus: (payload) => api.post(`/admin/toggle-status`, payload),
+
+    // Archive
+    archiveUser: (userType, id) => api.delete(`/admin/users/${userType}/${id}`),
     getArchivedUsers: () => api.get("/admin/users/archived"),
     restoreUser: (id) => api.post(`/admin/users/${id}/restore`),
-    forceDeleteUser: (id) => api.delete(`/admin/users/${id}/force-delete`),
+
+    //Transactions
+    getTransactions: (params) => api.get("/admin/transactions", { params }),
+    updateTransaction: (id, payload) =>
+        api.put(`/admin/transactions/${id}/update`, payload),
+
+    // Violation Management
+    getViolations: (status = "") =>
+        api.get(`/admin/violations${status ? `?status=${status}` : ""}`),
+    createViolation: (data) => api.post("/admin/violations", data),
+    updateViolation: (id, data) => api.put(`/admin/violations/${id}`, data),
+    getViolation: (id) => api.get(`/admin/violation/${id}`),
+
+    // Violator Management
     getViolators: (params = {}) => api.get("/admin/violators", { params }),
+    getViolatorDetails: (id) => api.get(`/admin/violators/${id}`),
     updateViolator: (data) => api.put("/admin/update-violator", data),
     archiveViolator: (id) => api.delete(`/admin/violators/${id}`),
     getArchivedViolators: () => api.get("/admin/violators/archived"),
     restoreViolator: (id) => api.post(`/admin/violators/${id}/restore`),
     forceDeleteViolator: (id) =>
         api.delete(`/admin/violators/${id}/force-delete`),
-    getViolations: () => api.get("/admin/violations"),
-    createViolation: (data) => api.post("/admin/violations", data),
-    updateViolation: (id, data) => api.put(`/admin/violations/${id}`, data),
-    archiveViolation: (id) => api.delete(`/admin/violations/${id}`),
-    getArchivedViolations: () => api.get("/admin/violations/archived"),
-    restoreViolation: (id) => api.post(`/admin/violations/${id}/restore`),
-    forceDeleteViolation: (id) =>
-        api.delete(`/admin/violations/${id}/force-delete`),
-    getRepeatOffenders: () => api.get("/admin/repeat-offenders"),
-    getQuickStats: () => api.get("/admin/quick-stats"),
+
+    // Reports & Analytics
+    generateReport: (params = {}) =>
+        api.post(`/admin/generate-report/`, params),
+    getReportHistory: () => api.get("/admin/history"),
+    downloadReportFile: (filename) =>
+        api.get(`/admin/download-report/${filename}`, {
+            responseType: "blob",
+        }),
+
+    // Notifications
     getNotifications: () => api.get("/admin/notifications"),
     markNotificationAsRead: (id) => api.post(`/admin/notifications/${id}/read`),
     markNotificationAsUnread: (id) =>
@@ -84,34 +105,43 @@ export const adminAPI = {
     markAllNotificationsAsRead: () =>
         api.post("/admin/notifications/mark-all-read"),
     sendNotification: (data) => api.post("/admin/send-notifications", data),
-    generateReport: (data) => api.post("/admin/generate-report", data),
-    getReportHistory: () => api.get("/admin/history"),
-    clearReportHistory: () => api.delete("/admin/history/clear"),
-    restoreReport: (id) => api.post(`/admin/history/restore/${id}`),
-    downloadReportFile: (filename) =>
-        api.get(`/admin/download-report/${filename}`, {
-            responseType: "blob",
-        }),
+
+    // Dashboard Stats
+    getDashboardStats: () => api.get("/admin/dashboard/stats"),
+    getRecentActivities: () => api.get("/admin/activities/recent"),
 };
 
 /* ============================
    ENFORCER API
 ============================ */
 export const enforcerAPI = {
+    // Dashboard
     dashboard: () => api.get("/enforcer/dashboard"),
-    getViolators: () => api.get("/enforcer/violators"),
-    getViolationTypes: () => api.get("/enforcer/violation-types"),
+    
+    // Violations
+    getViolations: (status = '') => api.get(`/enforcer/violations${status ? `?status=${status}` : ''}`),
     recordViolation: (data) => api.post("/enforcer/violations", data),
-    getTransactions: (params = {}) =>
-        api.get("/enforcer/transactions", { params }),
+    getViolationDetails: (id) => api.get(`/enforcer/violations/${id}`),
+    updateViolationStatus: (id, status) => api.patch(`/enforcer/violations/${id}/status`, { status }),
+    getViolationTypes: () => api.get("/enforcer/violation-types"),
+    
+    // Violators
+    searchViolators: (query) => api.get(`/enforcer/violators/search?q=${encodeURIComponent(query)}`),
+    getViolatorDetails: (id) => api.get(`/enforcer/violators/${id}`),
+    
+    // Transactions
+    getTransactions: (params = {}) => api.get("/enforcer/transactions", { params }),
     getTransaction: (id) => api.get(`/enforcer/transactions/${id}`),
-    updateTransaction: (id, data) =>
-        api.put(`/enforcer/transactions/${id}`, data),
+    updateTransaction: (id, data) => api.put(`/enforcer/transactions/${id}`, data),
+    
+    // Profile
+    getProfile: () => api.get("/enforcer/profile"),
+    updateProfile: (data) => api.put("/enforcer/profile", data),
+    changePassword: (data) => api.post("/enforcer/change-password", data),
+    
+    // Performance
     getPerformanceStats: () => api.get("/enforcer/performance"),
-    updatePassword: (data) => api.post("/enforcer/change", data),
-    updateProfile: (data) => api.post("/enforcer/update", data),
 };
-
 /* ============================
    VIOLATOR API
 ============================ */

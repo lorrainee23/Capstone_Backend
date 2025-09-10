@@ -10,11 +10,31 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
 {
+    protected function getUserModelByIdentifier($identifier)
+{
+    if (filter_var($identifier, FILTER_VALIDATE_EMAIL)) {
+        $models = [
+            \App\Models\Admin::class,
+            \App\Models\Deputy::class,
+            \App\Models\Head::class,
+            \App\Models\Enforcer::class,
+        ];
+
+        foreach ($models as $model) {
+            $user = $model::where('email', $identifier)->first();
+            if ($user) return $user;
+        }
+    }
+
+    return null;
+}
+
     /**
-     * Single login for Admin, Enforcer, and Violator
+     * Login for Head, Deputy, Admin, Enforcer, and Violator
      */
     public function login(Request $request)
 {
@@ -26,40 +46,41 @@ class AuthController extends Controller
     $identifier = $request->identifier;
     $password = $request->password;
 
-    // Check if it's a valid email
-    if (filter_var($identifier, FILTER_VALIDATE_EMAIL)) {
-        // Try Admin/Enforcer login via User model
-        if (Auth::attempt(['email' => $identifier, 'password' => $password])) {
-            $user = Auth::user();
-
-            if (!$user->isActive()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Account is inactive'
-                ], 401);
-            }
-
-            $token = $user->createToken('user-token')->plainTextToken;
-
+    // Check Admin / Deputy / Head / Enforcer
+    $user = $this->getUserModelByIdentifier($identifier);
+    Log::info('Login attempt', [
+    'identifier' => $identifier,
+    'password_entered' => $password,
+    'user_found' => $user ? true : false,
+    'user_id' => $user->id ?? null,
+]);
+    if ($user && Hash::check($password, $user->password)) {
+        if (!$user->isActive()) {
             return response()->json([
-                'success' => true,
-                'message' => 'Login successful',
-                'data' => [
-                    'user' => $user,
-                    'token' => $token,
-                    'user_type' => 'user'
-                ]
-            ]);
+                'success' => false,
+                'message' => 'Account is inactive'
+            ], 401);
         }
+        $token = $user->createToken('auth-token')->plainTextToken;
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Login successful',
+            'data' => [
+                'user' => $user,
+                'token' => $token,
+                'user_type' => class_basename($user) 
+            ]
+        ]);
     }
 
-    // If it's a mobile number or a Violator email, try the Violator model
+    // Violator login 
     $violator = Violator::where('email', $identifier)
         ->orWhere('mobile_number', $identifier)
         ->first();
 
     if ($violator && Hash::check($password, $violator->password)) {
-        $token = $violator->createToken('violator-token')->plainTextToken;
+          $token = $violator->createToken('violator-token', ['*'])->plainTextToken;
 
         return response()->json([
             'success' => true,
@@ -91,9 +112,9 @@ class AuthController extends Controller
         $identifier = $request->identifier;
         $violator = null;
         if (filter_var($identifier, FILTER_VALIDATE_EMAIL)) {
-            $violator = \App\Models\Violator::where('email', $identifier)->first();
+            $violator = Violator::where('email', $identifier)->first();
         } elseif (preg_match('/^09\\d{9}$/', $identifier)) {
-            $violator = \App\Models\Violator::where('mobile_number', $identifier)->first();
+            $violator = Violator::where('mobile_number', $identifier)->first();
         }
 
         if (!$violator) {
@@ -129,37 +150,35 @@ class AuthController extends Controller
      * Logout
      */
     public function logout(Request $request)
-    {
-        $request->user()->currentAccessToken()->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Logged out successfully'
-        ]);
+{
+    $user = $request->user('sanctum');
+    if ($user) {
+        $user->currentAccessToken()->delete();
     }
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Logged out successfully'
+    ]);
+}
 
     /**
      * Get user profile
      */
     public function profile(Request $request)
-    {
-        $user = $request->user();
-
-        if ($user instanceof User) {
-
-            $user = User::find($user->id);
-
-            // Admin or Enforcer
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'user' => $user,
-                    'user_type' => 'user'
-                ]
-            ]);
-        } else {
-            
-            $violator = Violator::find($user->id);
+{
+    $user = $request->user('sanctum');
+    //Request profile by Admin, Deputy, Head, Enforcer, Violator
+    if ($type = class_basename($user)){
+        return response()->json([
+        'success' => true,
+        'data' => [
+            strtolower($type) => $user,
+            'user_type' => $type
+        ]
+    ]);
+    } else{
+         $violator = Violator::find($user->id);
 
             // Violator
             return response()->json([
@@ -169,6 +188,8 @@ class AuthController extends Controller
                     'user_type' => 'violator'
                 ]
             ]);
-        }
-    }
+    } 
+
+}
+
 } 

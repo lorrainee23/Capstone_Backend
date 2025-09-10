@@ -2,42 +2,31 @@
 
 namespace App\Models;
 
+use App\Traits\UserPermissionsTrait;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable
+class Enforcer extends Authenticatable
 {
-    use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
-
-    protected $table = 'users';
-    public $incrementing = false;
-    protected $keyType = 'integer';
+    use UserPermissionsTrait, HasApiTokens,HasFactory, SoftDeletes;
 
     protected $fillable = [
         'id',
         'first_name',
         'middle_name',
         'last_name',
+        'username',
         'email',
         'password',
         'image',
-        'role',
-        'status'
+        'status',
     ];
 
     protected $hidden = [
         'password',
         'remember_token',
-    ];
-
-    protected $casts = [
-        'email_verified_at' => 'datetime',
-        'password' => 'hashed',
-        'status' => 'string',
-        'role' => 'string'
     ];
 
     public function getFullNameAttribute()
@@ -48,16 +37,6 @@ class User extends Authenticatable
         }
         $name .= ' ' . $this->last_name;
         return $name;
-    }
-
-    public function isAdmin()
-    {
-        return $this->role === 'Admin';
-    }
-
-    public function isEnforcer()
-    {
-        return $this->role === 'Enforcer';
     }
 
     public function isActive()
@@ -77,8 +56,9 @@ class User extends Authenticatable
 
     public function violator()
     {
-        return $this->hasOne(Violator::class, 'violator_user_id');
+        return $this->hasOne(Violator::class, 'violator_id');
     }
+
     public function getImageUrlAttribute()
     {
         if ($this->image) {
@@ -86,4 +66,9 @@ class User extends Authenticatable
         }
         return null;
     }
+    public function receivedNotifications()
+    {
+        return $this->morphMany(Notification::class, 'target', 'target_type', 'target_id');
+    }
+
 }

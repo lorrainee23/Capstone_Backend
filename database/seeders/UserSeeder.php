@@ -3,8 +3,11 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use App\Models\Admin;
+use App\Models\Deputy;
+use App\Models\Head;
+use App\Models\Enforcer;
 
 class UserSeeder extends Seeder
 {
@@ -13,46 +16,68 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
-        // Create Admin user
-        User::create([
+        // 1 Admin
+        Admin::create([
             'id' => 1,
             'first_name' => 'Admin',
             'last_name' => 'User',
+            'username' => 'admin01',
             'email' => 'admin@moms.com',
             'password' => Hash::make('password123'),
-            'role' => 'Admin',
             'status' => 'active'
         ]);
 
-        // Create Enforcer users
-        User::create([
-            'id' => 2,
+        // 1 Head
+        Head::create([
+            'id' => 1,
+            'first_name' => 'Head',
+            'last_name' => 'User',
+            'username' => 'head01',
+            'email' => 'head@moms.com',
+            'password' => Hash::make('password123'),
+            'status' => 'active'
+        ]);
+
+        // 1 Deputy
+        Deputy::create([
+            'id' => 1,
+            'first_name' => 'Deputy',
+            'last_name' => 'User',
+            'username' => 'deputy01',
+            'email' => 'deputy@moms.com',
+            'password' => Hash::make('password123'),
+            'status' => 'active'
+        ]);
+
+        // 3 Enforcers
+        Enforcer::create([
+            'id' => 1,
             'first_name' => 'John',
             'last_name' => 'Doe',
+            'username' => 'enforcer01',
             'email' => 'enforcer1@moms.com',
             'password' => Hash::make('password123'),
-            'role' => 'Enforcer',
             'status' => 'active'
         ]);
 
-        User::create([
-            'id' => 3,
+        Enforcer::create([
+            'id' => 2,
             'first_name' => 'Jane',
             'last_name' => 'Smith',
+            'username' => 'enforcer02',
             'email' => 'enforcer2@moms.com',
             'password' => Hash::make('password123'),
-            'role' => 'Enforcer',
             'status' => 'active'
         ]);
 
-        User::create([
-            'id' => 4,
+        Enforcer::create([
+            'id' => 3,
             'first_name' => 'Mike',
             'last_name' => 'Johnson',
+            'username' => 'enforcer03',
             'email' => 'enforcer3@moms.com',
             'password' => Hash::make('password123'),
-            'role' => 'Enforcer',
             'status' => 'inactive'
         ]);
     }
-} 
+}

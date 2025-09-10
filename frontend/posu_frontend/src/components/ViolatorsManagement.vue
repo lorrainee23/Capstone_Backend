@@ -1,194 +1,29 @@
 <template>
-  <SidebarLayout page-title="User Management">
-    <div class="admin-users">
-      <!-- Header with Tabs -->
-      <div class="page-header">
-        <div class="header-left">
-          <h2>User Management</h2>
-          <p>Manage system users and track violators</p>
+  <header class="dashboard-header">
+        <div class="header-content">
+          <h1>Violators Management</h1>
+          <p>Manage Violators Information</p>
         </div>
-      </div>
-
-      <!-- Tab Navigation -->
-      <div class="tab-navigation">
-        <button 
-          @click="activeTab = 'users'" 
-          class="tab-button"
-          :class="{ active: activeTab === 'users' }"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <circle cx="8.5" cy="7" r="4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <line x1="20" y1="8" x2="20" y2="14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <button class="refresh-btn" @click="loadingViolators" aria-label="Refresh Dashboard">
+          <svg 
+            width="20" 
+            height="20" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            stroke-width="2" 
+            stroke-linecap="round" 
+            stroke-linejoin="round"
+          >
+            <path d="M21 12a9 9 0 1 1-3-6.7" />
+            <polyline points="21 3 21 9 15 9" />
           </svg>
-          System Users
-          <span class="tab-count">{{ filteredUsers.length }}</span>
+          Refresh
         </button>
-        <button 
-          @click="activeTab = 'violators'" 
-          class="tab-button"
-          :class="{ active: activeTab === 'violators' }"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="m22 22-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <circle cx="19.5" cy="19.5" r="2.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          Violators
-          <span class="tab-count">{{ violatorPaginationData.total }}</span>
-        </button>
-      </div>
-
-      <!-- System Users Tab -->
-      <div v-if="activeTab === 'users'" class="tab-content">
-        <!-- User Actions -->
-        <div class="content-header">
-          <button @click="showCreateModal = true" class="btn btn-primary">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
-              <line x1="12" y1="8" x2="12" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              <line x1="8" y1="12" x2="16" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            Add New User
-          </button>
-        </div>
-
-        <!-- User Filters -->
-        <div class="filters-card">
-          <div class="filters-row">
-            <div class="filter-group">
-              <label class="form-label">Role</label>
-              <select v-model="userFilters.role" class="form-select">
-                <option value="">All Roles</option>
-                <option value="Admin">Admin</option>
-                <option value="Enforcer">Enforcer</option>
-              </select>
-            </div>
-            <div class="filter-group">
-              <label class="form-label">Status</label>
-              <select v-model="userFilters.status" class="form-select">
-                <option value="">All Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="deactivate">Deactivated</option>
-              </select>
-            </div>
-            <div class="filter-group">
-              <label class="form-label">Search</label>
-              <input 
-                v-model="userFilters.search" 
-                type="text" 
-                class="form-input" 
-                placeholder="Search by name or email..."
-              />
-            </div>
-          </div>
-        </div>
-
-        <!-- Users Table -->
-        <div class="table-card">
-          <div v-if="loading" class="loading">
-            <div class="spinner"></div>
-          </div>
-          
-          <div v-else>
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>User</th>
-                  <th>Role</th>
-                  <th>Status</th>
-                  <th>Created</th>
-                  <th>Last Login</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="user in filteredUsers" :key="user.id">
-                  <td>
-                    <div class="user-info">
-                      <div class="user-avatar">
-                        <img 
-                        v-if="user.image" 
-                        :src="`http://127.0.0.1:8000/storage/${user.image}`" 
-                        alt="avatar" 
-                        class="avatar-img"
-                      />
-                      <span v-else>
-                        {{ getInitials(user.first_name, user.last_name) }}
-                      </span>
-                      </div>
-                      <div>
-                        <div class="user-name">{{ user.first_name }} {{ user.middle_name }} {{ user.last_name }}</div>
-                        <div class="user-email">{{ user.email }}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    <span class="role-badge" :class="`role-${user.role?.toLowerCase()}`">
-                      {{ user.role }}
-                    </span>
-                  </td>
-                  <td>
-                    <span class="status-badge" :class="`status-${user.status?.toLowerCase()}`">
-                      {{ user.status }}
-                    </span>
-                  </td>
-                  <td>{{ formatDate(user.created_at) }}</td>
-                  <td>{{ formatDate(user.last_login_at) || 'Never' }}</td>
-                  <td>
-                    <div class="action-buttons">
-                      <button @click="editUser(user)" class="btn-icon-sm btn-edit" title="Edit">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                      </button>
-                      <button 
-                        @click="toggleUserStatus(user)" 
-                        class="btn-icon-sm"
-                        :class="user.status === 'active' ? 'btn-warning' : 'btn-success'"
-                        :title="user.status === 'active' ? 'Deactivate' : 'Activate'"
-                      >
-                        <svg v-if="user.status === 'active'" width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <rect x="6" y="4" width="4" height="16" stroke="currentColor" stroke-width="2"/>
-                          <rect x="14" y="4" width="4" height="16" stroke="currentColor" stroke-width="2"/>
-                        </svg>
-                        <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <polygon points="5,3 19,12 5,21" stroke="currentColor" stroke-width="2" fill="currentColor"/>
-                        </svg>
-                      </button>
-                      <button @click="deleteUser(user)" class="btn-icon-sm btn-danger" title="Archive">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M21 8v13H3V8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                          <path d="M23 3H1v5h22V3z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                          <path d="M10 12h4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-            
-            <div v-if="filteredUsers.length === 0" class="no-data">
-              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                <circle cx="8.5" cy="7" r="4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-              <h3>No users found</h3>
-              <p>No users match your current filters.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Violators Tab -->
-      <div v-if="activeTab === 'violators'" class="tab-content">
-        <div class="violators-content">
-          <!-- Violator Filters -->
-          <div class="filters-card">
+      </header>
+	<div class="admin-users">
+	<br><br>
+ <div class="filters-card">
   <div class="filters-row">
     <div class="filter-group">
       <label class="form-label">Search Name</label>
@@ -256,7 +91,7 @@
               <table class="table">
                 <thead>
                   <tr>
-                    <th class="violator">Number</th>
+                    <th class="violator">No.</th>
                     <th class="violator">Violator Name</th>
                     <th class="violator">License Number</th>
                     <th class="violator">Email</th>
@@ -269,68 +104,74 @@
                 </thead>
                 <tbody>
                   <tr v-for="violator in paginatedViolators" :key="violator.id">
-                     
-  <td class="violator">
-    {{ violator.id }}
-  </td>
-  <td class="violator">
-    <div class="violator-info">
-      <div class="violator-avatar">
-        {{ getInitials(violator.first_name, violator.last_name) }}
-      </div>
-      <div>
-        <div class="violator-name">{{ violator.first_name }} {{ violator.last_name }}</div>
-      </div>
-    </div>
-  </td>
-  <td class="violator">
-    <div class="vehicle-type">
-      {{ violator.license_number || "N/A" }}
-    </div>
-  </td>
-  <td class="violator">
-    <div class="violator-name">
-      {{ violator.email || "N/A"}}
-    </div>
-  </td>
-  <td class="violator">
-    <div class="violator-name">
-      {{ violator.mobile_number }}
-    </div>
-  </td>
-   <td class="violator">
-     <div class="address-info">
-      {{ violator.barangay }} {{ violator.city }}, {{ violator.province }}
-    </div>
-  </td>
-<td class="violator">
-  <div class="violator-name">
-    {{ violator.gender ? 'Male' : 'Female' }}
-  </div>
-</td>
-<td class="violator">
-  <div class="violator-name">
-    {{ violator.professional ? 'Professional' : 'Non-Professional' }}
-  </div>
-</td>
-
-                    <td class="violator">
-                      <div class="action-buttons">
-                        <button @click="editViolator(violator)" class="btn-icon-sm btn-edit" title="Edit Transaction">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                          </svg>
-                        </button>
-                        <button @click="archiveViolator(violator)" class="btn-icon-sm btn-danger" title="Archive Transaction">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M21 8v13H3V8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M23 3H1v5h22V3z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                            <path d="M10 12h4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                          </svg>
-                        </button>
+                  <td class="violator">
+                    {{ violator.id }}
+                  </td>
+                  <td class="violator">
+                    <div class="violator-info">
+                      <div class="violator-avatar">
+                        {{ getInitials(violator.first_name, violator.last_name) }}
                       </div>
-                    </td>
+                      <div>
+                        <div class="violator-name">{{ violator.first_name }} {{ violator.middle_name }} {{ violator.last_name }}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td class="violator">
+                    <div class="vehicle-type">
+                      {{ violator.license_number || "N/A" }}
+                    </div>
+                  </td>
+                  <td class="violator">
+                    <div class="violator-name">
+                      {{ violator.email || "N/A"}}
+                    </div>
+                  </td>
+                  <td class="violator">
+                    <div class="violator-name">
+                      {{ violator.mobile_number }}
+                    </div>
+                  </td>
+                  <td class="violator">
+                    <div class="address-info">
+                      {{ violator.barangay }} {{ violator.city }}, {{ violator.province }}
+                    </div>
+                  </td>
+                <td class="violator">
+                  <div class="violator-name">
+                    {{ violator.gender ? 'Male' : 'Female' }}
+                  </div>
+                </td>
+                  <td class="violator">
+                    <div class="violator-name">
+                      {{ violator.professional ? 'Professional' : 'Non-Professional' }}
+                    </div>
+                  </td>
+                  <td class="violator">
+                    <div class="action-buttons">
+                      <button @click="editViolator(violator)" class="btn-icon-sm btn-edit" title="Edit Transaction">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                      </button>
+                      <span v-if="violator.transactions.some(t => t.status === 'Paid')"
+                            class="btn-icon-sm btn-success"
+                            title="Paid">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="36" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12l2 2l4-4m6 2a9 9 0 11-18 0a9 9 0 0118 0z"/>
+                        </svg>
+                      </span>
+                      <span v-else class="btn-icon-sm btn-warning" title="Pending">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="23" height="36" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0a9 9 0 0118 0z"/>
+                        </svg>
+                      </span>
+                    </div>
+                  </td>
                   </tr>
                 </tbody>
               </table>
@@ -382,10 +223,9 @@
               <span>per page</span>
             </div>
           </div>
-            </div>
-          </div>
-        </div>
+         </div>
       </div>
+
 
       <!-- Create/Edit User Modal -->
       <div v-if="showCreateModal || showEditModal" class="modal-overlay" @click="closeModals">
@@ -421,16 +261,11 @@
               <label class="form-label">Email *</label>
               <input v-model="userForm.email" type="email" class="form-input" required />
             </div>
-            
+            <div class="form-group">
+              <label class="form-label">Username</label>
+              <input v-model="userForm.username" type="text" class="form-input" />
+            </div>
             <div class="form-row">
-              <div class="form-group">
-                <label class="form-label">Role *</label>
-                <select v-model="userForm.role" class="form-select" required>
-                  <option value="">Select Role</option>
-                  <option value="Admin">Admin</option>
-                  <option value="Enforcer">Enforcer</option>
-                </select>
-              </div>
               <div class="form-group">
                 <label class="form-label">Status *</label>
                 <select v-model="userForm.status" class="form-select" required>
@@ -441,11 +276,6 @@
               </div>
             </div>
             
-            <div v-if="!showEditModal" class="form-group">
-              <label class="form-label">Password *</label>
-              <input v-model="userForm.password" type="password" class="form-input" :required="!showEditModal" />
-            </div>
-          
             <div class="modal-footer">
               <button @click="closeModals" type="button" class="btn btn-secondary">Cancel</button>
               <button type="submit" class="btn btn-primary" :disabled="saving">
@@ -532,6 +362,11 @@
         </div>
       </div>
 
+       <div class="form-group">
+              <label class="form-label">Password *</label>
+              <input v-model="violatorForm.password" type="password" class="form-input" />
+            </div>
+          
       <div class="modal-footer">
         <button @click="closeEditViolatorModal" type="button" class="btn btn-secondary">Cancel</button>
         <button type="submit" class="btn btn-primary" :disabled="savingViolator">
@@ -543,66 +378,53 @@
     </form>
   </div>
 </div>
-
-    </div>
-  </SidebarLayout>
+</div>
 </template>
-
 <script>
 import { ref, onMounted, computed } from 'vue'
-import SidebarLayout from '@/components/SidebarLayout.vue'
 import { adminAPI } from '@/services/api'
 import Swal from 'sweetalert2'
 
 export default {
-  name: 'AdminUsers',
+  name: 'ViolatorsManagement',
   components: {
-    SidebarLayout,
   },
   setup() {
     const loading = ref(true)
     const loadingViolators = ref(true)
     const saving = ref(false)
     const activeTab = ref('users')
-    const users = ref([])
     const violators = ref([])
-    const showCreateModal = ref(false)
-    const showEditModal = ref(false)
     const showViolatorDetailsModal = ref(false)
     const selectedViolator = ref(null)
     const showEditViolatorModal = ref(false);
     const editingViolator = ref(null);
 
-const violatorForm = ref({
-  id:'',
-  first_name: '',
-  middle_name: '',
-  last_name: '',
-  license_number: '',
-  mobile_number: '',
-  barangay: '',
-  city: '',
-  province: '',
-});
+    const violatorForm = ref({
+      id:'',
+      first_name: '',
+      middle_name: '',
+      last_name: '',
+      license_number: '',
+      mobile_number: '',
+      barangay: '',
+      city: '',
+      province: '',
+      password: '',
+    });
 
-const savingViolator = ref(false);
+    const savingViolator = ref(false);
 
     const error = ref('')
     
-    const userFilters = ref({
-      role: '',
-      status: '',
-      search: ''
-    })
-    
     const violatorFilters = ref({
-  name: '',
-  address: '',
-  mobile_number: '',
-  gender: '',
-  professional: '',
-  license_number: ''
-})
+    name: '',
+    address: '',
+    mobile_number: '',
+    gender: '',
+    professional: '',
+    license_number: ''
+  })
     
     const violatorPaginationData = ref({
       current_page: 1,
@@ -637,42 +459,6 @@ const savingViolator = ref(false);
       return pages;
     })
     
-    const userForm = ref({
-      first_name: '',
-      middle_name: '',
-      last_name: '',
-      email: '',
-      role: '',
-      status: 'active',
-      password: ''
-    })
-    
-    const editingUser = ref(null)
-    
-    const filteredUsers = computed(() => {
-      const base = Array.isArray(users.value) ? users.value : []
-      let filtered = base.filter(u => !!u)
-      
-      if (userFilters.value.role) {
-        filtered = filtered.filter(user => user?.role === userFilters.value.role)
-      }
-      
-      if (userFilters.value.status) {
-        filtered = filtered.filter(user => user?.status === userFilters.value.status)
-      }
-      
-      if (userFilters.value.search) {
-        const search = userFilters.value.search.toLowerCase()
-        filtered = filtered.filter(user => {
-          const fn = user?.first_name?.toLowerCase?.() || ''
-          const ln = user?.last_name?.toLowerCase?.() || ''
-          const em = user?.email?.toLowerCase?.() || ''
-          return fn.includes(search) || ln.includes(search) || em.includes(search)
-        })
-      }
-      
-      return filtered
-    })
 
     const editViolator = (violator) => {
   editingViolator.value = violator;
@@ -736,21 +522,6 @@ const saveViolator = async () => {
     savingViolator.value = false;
   }
 };
-
-    const loadUsers = async () => {
-      try {
-        loading.value = true
-        const response = await adminAPI.getUsers()
-        
-        if (response.data.status === 'success') {
-          users.value = response.data.data.data
-        }
-      } catch (error) {
-        console.error('Failed to load users:', error)
-      } finally {
-        loading.value = false
-      }
-    }
     
     const loadViolators = async (page = 1) => {
   loadingViolators.value = true;
@@ -828,126 +599,6 @@ const paginatedViolators = computed(() => {
   return filteredViolators.value; 
 });
     
-    const saveUser = async () => {
-      saving.value = true
-      error.value = ''
-
-      try {
-        let response
-        if (showEditModal.value && editingUser.value) {
-          response = await adminAPI.updateUser(editingUser.value.id, userForm.value)
-        } else {
-          response = await adminAPI.createUser(userForm.value)
-        }
-
-        if (response.data.status === 'success') {
-          await loadUsers()
-          closeModals()
-          Swal.fire({
-            icon: 'success',
-            title: 'Success',
-            text: showEditModal.value ? 'User updated successfully' : 'User created successfully',
-            timer: 1500,
-            showConfirmButton: true
-          })
-        } else {
-          Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: response.data.message || 'Failed to save user'
-          })
-        }
-      } catch (err) {
-        if (err.response?.status === 422) {
-  const errors = err.response.data?.errors || {}
-  const messages = Object.values(errors).flat().join('\n') || 'Validation error occurred'
-  Swal.fire({
-    icon: 'error',
-    title: 'Validation Error',
-    html: messages.replace(/\n/g, '<br/>')
-  })
-} else {
-          Swal.fire({
-            icon: 'error',
-            title: 'Error',
-            text: err.response?.data?.message || err.message || 'Failed to save user'
-          })
-        }
-      } finally {
-        saving.value = false
-      }
-    }
-
-    const editUser = (user) => {
-      editingUser.value = user
-      userForm.value = {
-        first_name: user.first_name,
-        middle_name: user.middle_name || '',
-        last_name: user.last_name,
-        email: user.email,
-        role: user.role,
-        status: user.status,
-        password: ''
-      }
-      showEditModal.value = true
-    }
-    
-    const toggleUserStatus = async (user) => {
-      try {
-        const newStatus = user.status === 'active' ? 'inactive' : 'active'
-        await adminAPI.changeUserStatus({ id: user.id, status: newStatus });
-        await loadUsers()
-        
-        Swal.fire({
-          icon: 'success',
-          title: 'Status Updated',
-          text: `User ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`,
-          timer: 1500,
-          showConfirmButton: true
-        })
-      } catch (error) {
-        console.error('Failed to update user status:', error)
-        Swal.fire({
-          icon: 'error',
-          title: 'Error',
-          text: 'Failed to update user status'
-        })
-      }
-    }
-    
-    const deleteUser = async (user) => {
-      const result = await Swal.fire({
-        title: 'Archive user?',
-        html: `Are you sure you want to archive <strong>${user?.first_name || ''} ${user?.last_name || ''}</strong>?<br><br>Archived users can be restored later from the Archives page.`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonText: 'Yes, archive',
-        cancelButtonText: 'Cancel',
-        confirmButtonColor: '#dc2626',
-        iconColor: '#dc2626'
-      })
-      
-      if (result.isConfirmed) {
-        try {
-          await adminAPI.archiveUser(user.id)
-          await loadUsers()
-          await Swal.fire({
-            title: 'Archived',
-            text: 'User has been archived successfully.',
-            icon: 'success',
-            timer: 1500,
-            showConfirmButton: true
-          })
-        } catch (error) {
-          console.error('Failed to archive user:', error)
-          await Swal.fire({
-            title: 'Archive failed',
-            text: 'Could not delete user. Please try again.',
-            icon: 'error'
-          })
-        }
-      }
-    }
 
     const viewViolatorDetails = (violator) => {
       selectedViolator.value = violator;
@@ -1060,21 +711,6 @@ const formatDateTime = (dateString) => {
     }
      
     
-    const closeModals = () => {
-      showCreateModal.value = false
-      showEditModal.value = false
-      editingUser.value = null
-      error.value = ''
-      userForm.value = {
-        first_name: '',
-        middle_name: '',
-        last_name: '',
-        email: '',
-        role: '',
-        status: 'active',
-        password: ''
-      }
-    }
     
     const formatDate = (dateString) => {
       if (!dateString) return null
@@ -1099,17 +735,65 @@ const formatDateTime = (dateString) => {
     }
     
     onMounted(() => {
-      loadUsers()
       loadViolators()
     })
     
-    return {loading,loadingViolators,saving,activeTab,users,violators,paginatedViolators,filteredUsers,userFilters,violatorFilters,violatorPaginationData,violatorPerPage,visibleViolatorPages,showCreateModal,showEditModal,saveViolator,userForm,error,saveUser,editUser,toggleUserStatus,deleteUser,viewViolatorDetails,closeViolatorDetailsModal,showViolatorDetailsModal,selectedViolator,archiveViolator,goToViolatorPage,changeViolatorPerPage,getAttemptClass,formatAttempt,closeModals,formatDate,formatDateTime,formatCurrency,getInitials,editViolator,showEditViolatorModal,violatorForm,closeEditViolatorModal,savingViolator
+    return {loading,loadingViolators,saving,activeTab,violators,paginatedViolators,violatorFilters,violatorPaginationData,violatorPerPage,visibleViolatorPages,saveViolator,error,viewViolatorDetails,closeViolatorDetailsModal,showViolatorDetailsModal,selectedViolator,archiveViolator,goToViolatorPage,changeViolatorPerPage,getAttemptClass,formatAttempt,formatDate,formatDateTime,formatCurrency,getInitials,editViolator,showEditViolatorModal,violatorForm,closeEditViolatorModal,savingViolator,
     }
   }
 }
 </script>
 
 <style scoped>
+
+.admin-dashboard {
+  background-color: #f9fafb;
+  padding: 32px;
+  min-height: 100vh;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+  padding: 40px;
+  border-radius: 24px;
+  color: white;
+  box-shadow: 0 20px 40px rgba(102, 126, 234, 0.3);
+}
+
+.header-content h1 {
+  color: white;
+  margin-bottom: 4px;
+  letter-spacing: -0.025em;
+}
+
+.header-content p {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.refresh-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+}
+
+.refresh-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
 .transaction-details {
   padding: 8px;
 }

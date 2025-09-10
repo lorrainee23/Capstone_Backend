@@ -31,21 +31,7 @@ for ($d = strtotime('2025-08-28'); $d <= strtotime('2025-09-05'); $d = strtotime
             ['Pedro', 'Reyes', 'Martinez', true],
             ['Ana', 'Lopez', 'Rodriguez', false],
             ['Carlos', 'Gonzalez', 'Perez', true],
-            ['Isabella', 'Fernandez', 'Torres', false],
-            ['Miguel', 'Ramirez', 'Flores', true],
-            ['Sofia', 'Morales', 'Vargas', false],
-            ['Luis', 'Castro', 'Diaz', true],
-            ['Camila', 'Ramos', 'Ortega', false],
-            ['Daniel', 'Mendoza', 'Navarro', true],
-            ['Emma', 'Torres', 'Santos', false],
-            ['Rafael', 'Reyes', 'Gutierrez', true],
-            ['Gabriela', 'Lopez', 'Cabrera', false],
-            ['Antonio', 'Sanchez', 'Martinez', true],
-            ['Victoria', 'Delgado', 'Morales', false],
-            ['Fernando', 'Garcia', 'Perez', true],
-            ['Mariana', 'Diaz', 'Ramos', false],
-            ['Ricardo', 'Vargas', 'Santos', true],
-            ['Elena', 'Cruz', 'Fernandez', false],
+            
         ];
 
         $plateLetters = ['ABC','DEF','GHI','JKL','MNO','PQR','STU','VWX','YZA','BCD'];
@@ -86,6 +72,7 @@ for ($d = strtotime('2025-08-28'); $d <= strtotime('2025-09-05'); $d = strtotime
                     'owner_city' => 'Echague',
                     'owner_province' => 'Isabela',
                     'plate_number' => $plate_number,
+                    'color' => ['Red','Blue','Black','White','Gray','Green'][rand(0,5)], 
                 ]);
 
                 $violation = Violation::inRandomOrder()->first();

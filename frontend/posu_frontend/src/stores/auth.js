@@ -46,7 +46,6 @@ export const useAuthStore = () => {
       }
   };
 
-
   const logout = async () => {
     try {
       await authAPI.logout()
