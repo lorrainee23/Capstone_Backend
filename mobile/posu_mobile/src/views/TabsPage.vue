@@ -30,7 +30,7 @@
         <ion-tab-button tab="tab4" href="/tabs/tab4" class="tab-button">
           <div class="tab-content">
             <ion-icon :icon="notificationsOutline" class="tab-icon" />
-            <ion-label class="tab-label">Voice</ion-label>
+            <ion-label class="tab-label">Notifications</ion-label>
           </div>
         </ion-tab-button>
 

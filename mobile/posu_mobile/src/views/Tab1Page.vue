@@ -135,274 +135,125 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import AppHeader from '@/components/AppHeader.vue'
+import { bluetoothService } from '@/services/bluetooth.js'
 import {
-  IonPage,
-  IonHeader,
-  IonToolbar,
-  IonTitle,
-  IonContent,
-  IonButton,
-  IonCard,
-  IonCardContent,
-  IonIcon,
-  IonBadge,
-  alertController,
-  toastController
+  IonPage, IonHeader, IonToolbar, IonTitle, IonContent,
+  IonButton, IonCard, IonCardContent, IonIcon, IonBadge,
+  toastController, alertController
 } from '@ionic/vue'
 import {
-  bluetoothOutline,
-  checkmarkCircle,
-  closeCircle,
-  closeOutline,
-  refresh,
-  print,
-  chevronForward,
-  documentText,
-  receipt,
-  pulse
+  bluetoothOutline, checkmarkCircle, closeCircle, closeOutline,
+  refresh, print, chevronForward, documentText, receipt, pulse
 } from 'ionicons/icons'
-
-const permissions = window.cordova?.plugins?.permissions
-const bluetoothSerial = window.bluetoothSerial
 
 const devices = ref([])
 const selectedDevice = ref('')
-const isScanning = ref(false)
 const isConnected = ref(false)
+const isScanning = ref(false)
+
+// Date & Time
 const currentTime = ref('')
 const currentDate = ref('')
-
-// Update date and time every second
 const updateDateTime = () => {
   const now = new Date()
-  currentTime.value = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-  currentDate.value = now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
+  currentTime.value = now.toLocaleTimeString()
+  currentDate.value = now.toLocaleDateString()
 }
 
+// Computed connection status
 const connectionStatus = computed(() => {
   if (isConnected.value && selectedDevice.value) {
     const device = devices.value.find(d => d.id === selectedDevice.value)
-    return {
-      connected: true,
-      message: `Connected to ${device?.name || 'Unknown Device'}`
-    }
+    return { connected: true, message: `Connected to ${device?.name || 'Unknown Device'}` }
   }
-  return {
-    connected: false,
-    message: 'No active connection'
-  }
+  return { connected: false, message: 'No active connection' }
 })
 
-// Show toast notification
-const showToast = async (message, color = 'primary') => {
-  const toast = await toastController.create({
-    message,
-    duration: 2000,
-    color,
-    position: 'bottom'
-  })
+// Toast & Alert helpers
+const showToast = async (msg, color='primary') => {
+  const toast = await toastController.create({ message: msg, duration: 2000, color, position:'bottom' })
   await toast.present()
 }
 
-// Show alert dialog
-const showAlert = async (header, message) => {
-  const alert = await alertController.create({
-    header,
-    message,
-    buttons: ['OK']
-  })
+const showAlert = async (header, msg) => {
+  const alert = await alertController.create({ header, message: msg, buttons:['OK'] })
   await alert.present()
 }
 
-// Format device ID for display
-const formatDeviceId = (id) => {
-  if (!id) return 'Unknown ID'
-  return id.length > 20 ? id.substring(0, 17) + '...' : id
-}
+// Format device ID
+const formatDeviceId = id => id?.length > 20 ? id.substring(0,17)+'...' : id
 
-// Request runtime permissions for Android 12+
-const requestPermissions = async () => {
-  if (!permissions) return true
-
-  const perms = [
-    permissions.BLUETOOTH_CONNECT,
-    permissions.BLUETOOTH_SCAN,
-    permissions.ACCESS_FINE_LOCATION
-  ]
-
-  return new Promise((resolve, reject) => {
-    permissions.hasPermission(perms, (status) => {
-      if (status.hasPermission) {
-        resolve(true)
-      } else {
-        permissions.requestPermissions(perms, (status2) => {
-          if (status2.hasPermission) resolve(true)
-          else reject('Permission denied')
-        }, reject)
-      }
-    }, reject)
-  })
-}
-
-// Scan paired devices
+// Actions
 const listDevices = async () => {
   if (isScanning.value) return
-  
+  isScanning.value = true
   try {
-    isScanning.value = true
-    await requestPermissions()
-    
-    if (!bluetoothSerial) {
-      await showAlert('Error', 'Bluetooth plugin not available yet')
-      return
-    }
-    
-    bluetoothSerial.list(
-      (data) => {
-        devices.value = data
-        isScanning.value = false
-        if (data.length === 0) {
-          showToast('No paired devices found', 'warning')
-        } else {
-          showToast(`Found ${data.length} device${data.length > 1 ? 's' : ''}`, 'success')
-        }
-      },
-      (err) => {
-        isScanning.value = false
-        showAlert('Scan Error', 'Error listing devices: ' + JSON.stringify(err))
-      }
-    )
+    await bluetoothService.listDevices()
+    devices.value = [...bluetoothService.devices]
+    showToast(devices.value.length ? `Found ${devices.value.length} device(s)` : 'No paired devices', devices.value.length ? 'success' : 'warning')
   } catch (err) {
-    isScanning.value = false
-    showAlert('Permission Error', err.toString())
+    showAlert('Scan Error', JSON.stringify(err))
+  } finally { isScanning.value = false }
+}
+
+const connect = async (address) => {
+  try {
+    await bluetoothService.connect(address)
+    selectedDevice.value = address
+    isConnected.value = true
+    showToast('Connected successfully', 'success')
+  } catch (err) {
+    selectedDevice.value = ''
+    isConnected.value = false
+    showAlert('Connection Error', JSON.stringify(err))
   }
 }
 
-// Connect to device
-const connect = (address) => {
-  if (selectedDevice.value === address && isConnected.value) return
-  
-  selectedDevice.value = address
-  const device = devices.value.find(d => d.id === address)
-  
-  bluetoothSerial.connect(
-    address,
-    () => {
-      isConnected.value = true
-      showToast(`Connected to ${device?.name || 'device'}`, 'success')
-    },
-    (err) => {
-      isConnected.value = false
-      selectedDevice.value = ''
-      showAlert('Connection Failed', 'Failed to connect: ' + JSON.stringify(err))
-    }
-  )
-}
-
-// Disconnect from current device
-const disconnect = () => {
-  if (!selectedDevice.value) return
-  
-  bluetoothSerial.disconnect(
-    () => {
-      isConnected.value = false
-      selectedDevice.value = ''
-      showToast('Disconnected successfully', 'medium')
-    },
-    (err) => {
-      showAlert('Disconnect Error', 'Failed to disconnect: ' + JSON.stringify(err))
-    }
-  )
-}
-
-// Check connection status
-const checkConnection = () => {
-  if (!selectedDevice.value) {
-    showToast('No device selected', 'warning')
-    return
+const disconnect = async () => {
+  try {
+    await bluetoothService.disconnect()
+    selectedDevice.value = ''
+    isConnected.value = false
+    showToast('Disconnected', 'medium')
+  } catch (err) {
+    showAlert('Disconnect Error', JSON.stringify(err))
   }
-  
-  bluetoothSerial.isConnected(
-    () => {
-      isConnected.value = true
-      showToast('Connection is active', 'success')
-    },
-    () => {
-      isConnected.value = false
-      showToast('Connection lost, please reconnect', 'danger')
-    }
-  )
 }
 
-// Print test page
-const printTest = () => {
-  if (!selectedDevice.value) {
-    showToast('Please connect to a printer first', 'warning')
-    return
-  }
-  
-  bluetoothSerial.isConnected(
-    () => {
-      const ESC = '\x1B'
-      const INIT = ESC + '@'          
-      const FONT_NORMAL = ESC + '!' + '\x00'
-      const CENTER = ESC + 'a' + '\x01'
-      const LEFT = ESC + 'a' + '\x00'
-      
-      const text = INIT + CENTER + FONT_NORMAL + 
-                  `*** PRINTER TEST ***\n\n` +
-                  LEFT +
-                  `Date: ${new Date().toLocaleDateString()}\n` +
-                  `Time: ${new Date().toLocaleTimeString()}\n` +
-                  `Device: ${devices.value.find(d => d.id === selectedDevice.value)?.name || 'Unknown'}\n\n` +
-                  `Test completed successfully!\n\n\n`
-
-      bluetoothSerial.write(text,
-        () => showToast('Test page printed successfully!', 'success'),
-        (err) => showAlert('Print Error', 'Print failed: ' + JSON.stringify(err))
-      )
-    },
-    () => {
-      isConnected.value = false
-      showToast('Not connected, please reconnect', 'danger')
-    }
-  )
+const checkConnection = async () => {
+  const status = await bluetoothService.checkConnection()
+  isConnected.value = status
+  showToast(status ? 'Connection active' : 'Connection lost', status ? 'success' : 'danger')
 }
 
-// Print simple receipt
-const printSimple = () => {
-  if (!selectedDevice.value) {
-    showToast('Please connect to a printer first', 'warning')
-    return
-  }
-  
-  bluetoothSerial.isConnected(
-    () => {
-      const text = `Simple Receipt\n` +
-                  `----------------\n` +
-                  `Item 1: $10.00\n` +
-                  `Item 2: $15.50\n` +
-                  `----------------\n` +
-                  `Total: $25.50\n\n`
+const printTest = async () => {
+  if (!isConnected.value) return showToast('Connect to printer first','warning')
 
-      bluetoothSerial.write(text,
-        () => showToast('Receipt printed successfully!', 'success'),
-        (err) => showAlert('Print Error', 'Print failed: ' + JSON.stringify(err))
-      )
-    },
-    () => {
-      isConnected.value = false
-      showToast('Not connected, please reconnect', 'danger')
-    }
-  )
+  const ESC = '\x1B'
+  const INIT = ESC+'@'
+  const CENTER = ESC+'a'+'\x01'
+  const LEFT = ESC+'a'+'\x00'
+  const FONT_NORMAL = ESC+'!'+ '\x00'
+  const text = INIT + CENTER + FONT_NORMAL +
+               '*** PRINTER TEST ***\n\n' +
+               LEFT + `Date: ${currentDate.value}\nTime: ${currentTime.value}\n\nTest completed successfully!\n\n\n`
+
+  try { await bluetoothService.printText(text); showToast('Test printed', 'success') }
+  catch(err){ showAlert('Print Error', JSON.stringify(err)) }
+}
+
+const printSimple = async () => {
+  if (!isConnected.value) return showToast('Connect to printer first','warning')
+  const text = `Simple Receipt\n----------------\nItem 1: $10.00\nItem 2: $15.50\n----------------\nTotal: $25.50\n\n`
+  try { await bluetoothService.printText(text); showToast('Receipt printed', 'success') }
+  catch(err){ showAlert('Print Error', JSON.stringify(err)) }
 }
 
 onMounted(() => {
   updateDateTime()
   setInterval(updateDateTime, 1000)
-  console.log('Page mounted, BluetoothSerial ready:', !!bluetoothSerial)
 })
 </script>
 

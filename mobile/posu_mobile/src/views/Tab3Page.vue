@@ -36,7 +36,17 @@
                 placeholder="Enter name or license number"
                 :disabled="isSearching"
                 @keyup.enter="performSearch"
+                @input="onSearchInput"
               ></ion-input>
+              <ion-button
+                v-if="searchQuery.length > 0"
+                slot="end"
+                fill="clear"
+                @click="clearSearch"
+                class="clear-button"
+              >
+                <ion-icon :icon="closeOutline"></ion-icon>
+              </ion-button>
               <ion-button
                 slot="end"
                 fill="clear"
@@ -92,14 +102,14 @@
           </div>
 
           <!-- Selected Record Notice -->
-          <ion-item v-if="selectedRecord" class="selected-notice" color="success" fill="outline">
-            <ion-icon :icon="checkmarkCircleOutline" slot="start" color="success"></ion-icon>
-            <ion-label>
-              <strong>Selected: {{ selectedRecord.first_name }} {{ selectedRecord.last_name }}</strong>
-            </ion-label>
-            <ion-button slot="end" color="danger" fill="clear" @click="clearSelection">
-              <ion-icon :icon="closeOutline"></ion-icon>
-            </ion-button>
+          <ion-item v-if="selectedRecord" class="selected-notice" color="primary" fill="outline">
+            <ion-icon :icon="checkmarkCircleOutline" slot="start" color="primary"></ion-icon>
+              <ion-label>
+                <strong style="color: white;">Selected: {{ selectedRecord.first_name }} {{ selectedRecord.last_name }}</strong>
+              </ion-label>
+              <ion-button slot="end" color="light" fill="clear" @click="clearSelection">
+                <ion-icon :icon="closeOutline"></ion-icon>
+              </ion-button>
           </ion-item>
         </ion-card-content>
       </ion-card>
@@ -459,11 +469,13 @@
           fill="outline"
           color="medium"
           class="secondary-btn"
-          @click="resetForm"
+          :disabled="!recordedTransaction"
+          @click="printTicket"
         >
-          <ion-icon :icon="refreshOutline" slot="start"></ion-icon>
-          Reset Form
+          <ion-icon :icon="printOutline" slot="start"></ion-icon>
+          Print Ticket
         </ion-button>
+
       </div>
 
       <!-- Bottom spacing -->
@@ -485,8 +497,9 @@ import {
   searchOutline, personOutline, cardOutline, callOutline,
   locationOutline, chevronForwardOutline, checkmarkCircleOutline, closeOutline,
   carOutline, warningOutline, cameraOutline,
-  cloudUploadOutline, saveOutline, refreshOutline, alertCircleOutline
+  cloudUploadOutline, saveOutline, alertCircleOutline
 } from 'ionicons/icons'
+import { bluetoothService } from '@/services/bluetooth.js'
 import { enforcerAPI } from '@/services/api.js'
 import Swal from "sweetalert2"
 
@@ -500,6 +513,7 @@ const searchResults = ref([])
 const selectedRecord = ref(null)
 const isSearching = ref(false)
 const fileInput = ref(null)
+const recordedTransaction = ref(null)
 
 const violationForm = reactive({
   first_name: "", 
@@ -570,6 +584,11 @@ const isFormValid = computed(() => {
     violationForm.location
   )
 })
+
+const clearSearch = () => {
+  searchQuery.value = ""
+  searchResults.value = []
+}
 
 // Format currency
 const formatCurrency = (amount) => {
@@ -681,6 +700,29 @@ const selectExistingRecord = (record) => {
 const clearSelection = () => {
   selectedRecord.value = null
   searchResults.value = []
+
+  // Clear all form inputs when clearing selection
+  Object.keys(violationForm).forEach((key) => {
+    if (typeof violationForm[key] === "string") {
+      violationForm[key] = ""
+    } else {
+      violationForm[key] = null
+    }
+  })
+
+  // Clear photo
+  idPhoto.value = null
+  if (fileInput.value) {
+    fileInput.value.value = ""
+  }
+}
+
+// Handle search input changes
+const onSearchInput = (event) => {
+  const value = event.target.value
+  if (value.length === 0) {
+    searchResults.value = []
+  }
 }
 
 // Load violation types
@@ -737,6 +779,7 @@ const recordViolation = async () => {
     }
 
     const response = await enforcerAPI.recordViolation(payload)
+    recordedTransaction.value = response.data.data.transaction
 
     await Swal.fire({
       ...swalConfig,
@@ -744,9 +787,18 @@ const recordViolation = async () => {
       title: "Success!",
       text: `Violation recorded successfully! Ticket Number: ${response.data.data.transaction.ticket_number}`,
       confirmButtonColor: "#28a745",
+      showCancelButton: true,
+      confirmButtonText: "Print Ticket",
+      cancelButtonText: "Record Another"
+    }).then((result) => {
+      if (result.isConfirmed) {
+        printTicket()
+      } else if (result.dismiss === Swal.DismissReason.cancel) {
+        scrollToTop()
+        resetForm()
+      }
     })
 
-    resetForm()
   } catch (err) {
     console.error("Error:", err.response?.data || err.message)
     await Swal.fire({
@@ -758,6 +810,124 @@ const recordViolation = async () => {
     })
   } finally {
     recording.value = false
+  }
+}
+
+// Updated print ticket function with better flow
+const printTicket = async () => {
+  if (!bluetoothService.isConnected) {
+    await Swal.fire({
+      ...swalConfig,
+      icon: "warning",
+      title: "Printer Not Connected",
+      text: "Please connect to a Bluetooth printer first.",
+      confirmButtonColor: "#ffc107",
+    });
+    return;
+  }
+
+  if (!recordedTransaction.value) {
+    await Swal.fire({
+      ...swalConfig,
+      icon: "error",
+      title: "No Transaction Found",
+      text: "Please record a violation first.",
+      confirmButtonColor: "#dc3545",
+    });
+    return;
+  }
+
+  const ticketNumber = recordedTransaction.value.ticket_number;
+  const violation = violationTypes.value.find(
+    (v) => v.id === violationForm.violation_id
+  )?.name || "N/A";
+  const professionalStatus = violationForm.professional ? "Professional" : "Non-Professional";
+
+  // ESC/POS commands
+  const smallFont = '\x1D\x21\x00';
+  const resetFont = '\x1D\x21\x00';
+
+  const ticketLines = [
+    smallFont,
+    "REPUBLIC OF THE PHILIPPINES",
+    "Province of Isabela",
+    "MUNICIPALITY OF ECHAGUE",
+    "       CITATION TICKET",
+    `No. ${ticketNumber}`,
+    "",
+    "-----------------------------",
+    `Driver's Name:`,
+    `    ${violationForm.first_name} ${violationForm.middle_name} ${violationForm.last_name}`,
+    `Address:`,
+    `    ${violationForm.barangay} ${violationForm.city}, ${violationForm.province}`,
+    `License No.: ${violationForm.license_number}`,
+    professionalStatus,
+    `Make: ${violationForm.make}`,
+    `Model: ${violationForm.model}`,
+    `Plate No.: ${violationForm.plate_number}`,
+    `Owner's Name:`,
+    `    ${violationForm.owner_first_name} ${violationForm.owner_middle_name} ${violationForm.owner_last_name}`,
+    `Owner's Address:`,
+    `    ${violationForm.owner_barangay}, ${violationForm.owner_city}, ${violationForm.owner_province}`,
+    `Violation: ${violation}`,
+    "",
+    "You are hereby directed to report to the Echague Police Station",
+    "within seven (7) days from the date hereof for appropriate action.",
+    "",
+    "If you contest the Citation Ticket issued, you may pay the fine",
+    "to the Municipal Treasurer after reporting to the station.",
+    "Failure to report or settle within seven (7) days will result",
+    "to the filing of this violation to the appropriate court.",
+    "",
+    "-----------------------------",
+    "Driver's Signature:",
+    "", 
+    "_______________",
+    "",
+    "Apprehending Officer:",
+    "",
+    "_______________",
+    "-----------------------------",
+    resetFont
+  ];
+
+  const ticketText = ticketLines.join("\n");
+
+  try {
+    await bluetoothService.printText(ticketText);
+
+    await Swal.fire({
+      ...swalConfig,
+      icon: "success",
+      title: "Printed Successfully!",
+      confirmButtonColor: "#28a745",
+      showCancelButton: true,
+      confirmButtonText: "Record Another",
+      cancelButtonText: "Done"
+    }).then((result) => {
+      if (result.isConfirmed) {
+        scrollToTop()
+        resetForm()
+      }
+    });
+
+  } catch (err) {
+    console.error("Print error:", err);
+    await Swal.fire({
+      ...swalConfig,
+      icon: "error",
+      title: "Print Failed",
+      text: "Failed to print the ticket. Please try again.",
+      confirmButtonColor: "#dc3545",
+    });
+  }
+};
+
+// Scroll to top function
+const scrollToTop = () => {
+  const content = document.querySelector('ion-content');
+  if (content) {
+    content.scrollToTop(500);
   }
 }
 
@@ -777,6 +947,7 @@ const resetForm = () => {
   searchQuery.value = ""
   searchResults.value = []
   selectedRecord.value = null
+  recordedTransaction.value = null
 
   if (fileInput.value) {
     fileInput.value.value = ""
@@ -1126,6 +1297,26 @@ ion-spinner {
 .primary-btn ion-spinner {
   --color: white;
   margin-right: 8px;
+}
+
+.clear-button {
+  --color: #94a3b8;
+  margin-right: -8px;
+}
+
+.clear-button:hover {
+  --color: #64748b;
+}
+
+.selected-notice {
+  margin-top: 16px;
+  --border-radius: 16px;
+  --background: #3b82f6;
+  border: 1px solid #2563eb;
+}
+
+.search-button {
+  --color: #3b82f6;
 }
 
 /* Responsive Design */
