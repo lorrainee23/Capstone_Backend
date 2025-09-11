@@ -36,25 +36,25 @@
           </div>
 
           <form @submit.prevent="handleSubmit" class="notification-form">
-            <!-- Target Role -->
+            <!-- Target Audience -->
             <div class="form-group">
               <label class="form-label required">Target Audience</label>
               <p class="form-description">Select which user group should receive this notification</p>
               <div class="radio-group">
                 <label 
-                  v-for="role in targetRoles" 
+                  v-for="role in availableTargetRoles" 
                   :key="role.value"
                   class="radio-option"
-                  :class="{ active: form.target_role === role.value }"
+                  :class="{ active: form.target_type === role.value }"
                 >
                   <input 
                     type="radio" 
                     :value="role.value" 
-                    v-model="form.target_role"
+                    v-model="form.target_type"
                     class="radio-input"
                   />
                   <div class="radio-content">
-                    <div class="radio-icon" :class="{ active: form.target_role === role.value }">
+                    <div class="radio-icon" :class="{ active: form.target_type === role.value }">
                       <svg viewBox="0 0 24 24" fill="currentColor">
                         <path :d="role.icon"></path>
                       </svg>
@@ -66,7 +66,29 @@
                   </div>
                 </label>
               </div>
-              <div v-if="errors.target_role" class="form-error">{{ errors.target_role[0] }}</div>
+              <div v-if="errors.target_type" class="form-error">{{ errors.target_type[0] }}</div>
+            </div>
+
+            <!-- Target Specific User -->
+            <div class="form-group" v-if="form.target_type">
+              <label for="target_id" class="form-label">Specific User (Optional)</label>
+              <p class="form-description">Leave empty to send to all {{ getTargetLabel(form.target_type) }} users</p>
+              <div class="input-wrapper">
+                <select
+                  id="target_id"
+                  v-model="form.target_id"
+                  class="form-input"
+                >
+                  <option value="">All {{ getTargetLabel(form.target_type) }}</option>
+                  <option 
+                    v-for="user in filteredUsers" 
+                    :key="user.id" 
+                    :value="user.id"
+                  >
+                    {{ user.first_name }} {{ user.last_name }} ({{ user.email }})
+                  </option>
+                </select>
+              </div>
             </div>
 
             <!-- Notification Type -->
@@ -171,7 +193,8 @@
                             <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
                             <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                           </svg>
-                          {{ getRoleLabel(form.target_role) || 'Target Audience' }}
+                          {{ getTargetLabel(form.target_type) || 'Target Audience' }}
+                          {{ form.target_id ? `(ID: ${form.target_id})` : '' }}
                         </span>
                         <span class="meta-item">
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -232,7 +255,7 @@
             </svg>
           </div>
           <h3>Notification Sent Successfully!</h3>
-          <p>Your notification has been delivered to all {{ getRoleLabel(form.target_role) }} users.</p>
+          <p>Your notification has been delivered to {{ getDeliveryMessage() }}.</p>
           <div class="modal-actions">
             <button @click="resetForm" class="btn btn-secondary">Send Another</button>
             <router-link to="/admin/notifications" class="btn btn-primary">View All Notifications</router-link>
@@ -270,7 +293,8 @@
                       <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
                       <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                     </svg>
-                    {{ getRoleLabel(form.target_role) }}
+                    {{ getTargetLabel(form.target_type) }}
+                    {{ form.target_id ? `(ID: ${form.target_id})` : '' }}
                   </span>
                   <span class="meta-item">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -300,10 +324,11 @@
 </template>
 
 <script>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import SidebarLayout from '@/components/SidebarLayout.vue'
 import { adminAPI } from '@/services/api'
+import { useAuthStore } from '@/stores/auth'
 
 export default {
   name: 'SendNotification',
@@ -311,49 +336,57 @@ export default {
     SidebarLayout
   },
   setup() {
+    const allUsers = ref({ admins: [], deputies: [], enforcers: [] })
     const router = useRouter()
+    const authStore = useAuthStore()
     const sending = ref(false)
     const showSuccess = ref(false)
     const showPreview = ref(false)
     const errors = ref({})
 
     const form = ref({
-      target_role: '',
+      target_type: '',
+      target_id: '',
       title: '',
       message: '',
       type: ''
     })
 
-    const targetRoles = ref([
+    const allTargetRoles = ref([
       {
         value: 'admin',
         label: 'Administrators',
-        description: 'System administrators and super users',
-        icon: 'M12 14l9-5-9-5-9 5 9 5z M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z'
+        description: 'Administrators',
+        icon: 'M12 14l9-5-9-5-9 5 9 5z M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z',
+        allowedFor: ['admin'] 
       },
       {
         value: 'head',
         label: 'Department Heads',
-        description: 'Department heads and managers',
-        icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4'
+        description: 'Department heads',
+        icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4',
+        allowedFor: [] 
       },
       {
         value: 'deputy',
         label: 'Deputy Officers',
-        description: 'Deputy officers and supervisors',
-        icon: 'M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z'
+        description: 'Deputy officers',
+        icon: 'M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z',
+        allowedFor: ['head', 'deputy'] 
       },
       {
         value: 'enforcer',
         label: 'Enforcers',
-        description: 'Traffic enforcement officers',
-        icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z'
+        description: 'Traffic Enforcer',
+        icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
+        allowedFor: ['admin', 'head', 'deputy']
       },
       {
         value: 'violator',
         label: 'Violators',
-        description: 'Traffic violation perpetrators',
-        icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'
+        description: 'Traffic Violators',
+        icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
+        allowedFor: ['admin', 'head', 'deputy']
       }
     ])
 
@@ -384,8 +417,37 @@ export default {
       }
     ])
 
+    const availableTargetRoles = computed(() => {
+      const currentUser = authStore.state.user
+      if (!currentUser || !currentUser.role) {
+        return []
+      }
+
+      const userRole = currentUser.role.toLowerCase()
+      
+      let allowedTargets = []
+      
+      switch(userRole) {
+        case 'head':
+          allowedTargets = ['deputy', 'enforcer']
+          break
+        case 'deputy':
+          allowedTargets = ['admin', 'enforcer']  
+          break
+        case 'admin':
+          allowedTargets = ['admin', 'enforcer']
+          break
+        default:
+          allowedTargets = []
+      }
+      
+      return allTargetRoles.value.filter(role => 
+        allowedTargets.includes(role.value)
+      )
+    })
+
     const isFormValid = computed(() => {
-      return form.value.target_role && 
+      return form.value.target_type && 
              form.value.title.trim() && 
              form.value.message.trim() && 
              form.value.type
@@ -398,12 +460,19 @@ export default {
         sending.value = true
         errors.value = {}
         
-        await adminAPI.sendNotification({
-          target_role: form.value.target_role,
+        const currentUser = authStore.state.user
+        
+        const notificationData = {
+          sender_id: currentUser.id,
+          sender_role: currentUser.role,
+          target_type: form.value.target_type,
+          target_id: form.value.target_id || null,
           title: form.value.title.trim(),
           message: form.value.message.trim(),
           type: form.value.type
-        })
+        }
+        
+        await adminAPI.sendNotification(notificationData)
         
         showSuccess.value = true
       } catch (error) {
@@ -419,7 +488,8 @@ export default {
 
     const resetForm = () => {
       form.value = {
-        target_role: '',
+        target_type: '',
+        target_id: '',
         title: '',
         message: '',
         type: ''
@@ -433,9 +503,9 @@ export default {
       router.push('/admin/notifications')
     }
 
-    const getRoleLabel = (role) => {
-      const roleData = targetRoles.value.find(r => r.value === role)
-      return roleData?.label || ''
+    const getTargetLabel = (targetType) => {
+      const targetData = allTargetRoles.value.find(r => r.value === targetType)
+      return targetData?.label || ''
     }
 
     const getTypeLabel = (type) => {
@@ -448,21 +518,54 @@ export default {
       return typeData?.icon || 'M15 17h5l-5 5v-5z'
     }
 
+    const getDeliveryMessage = () => {
+      const targetLabel = getTargetLabel(form.value.target_type)
+      if (form.value.target_id) {
+        return `the specific ${targetLabel.slice(0, -1).toLowerCase()} (ID: ${form.value.target_id})`
+      }
+      return `all ${targetLabel} users`
+    }
+
+    const filteredUsers = computed(() => {
+    if (!form.value.target_type) return []
+    switch (form.value.target_type) {
+      case 'admin': return allUsers.value.admins
+      case 'deputy': return allUsers.value.deputies
+      case 'enforcer': return allUsers.value.enforcers
+      default: return []
+    }
+  })
+
+    onMounted(() => {
+      const currentUser = authStore.state.user
+      if (!currentUser) {
+        router.push('/login')
+        return
+      }
+      })
+
+      onMounted(async () => {
+        const { data } = await adminAPI.getAllUsers()
+        allUsers.value = data
+      })
+      
     return {
       form,
       errors,
       sending,
       showSuccess,
       showPreview,
-      targetRoles,
+      availableTargetRoles,
       notificationTypes,
       isFormValid,
       handleSubmit,
       resetForm,
       closeSuccessModal,
-      getRoleLabel,
+      getTargetLabel,
       getTypeLabel,
       getTypeIcon,
+      getDeliveryMessage,
+      filteredUsers,
     }
   }
 }

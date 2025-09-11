@@ -19,6 +19,8 @@ class Enforcer extends Authenticatable
         'last_name',
         'username',
         'email',
+        'office',
+        'model',
         'password',
         'image',
         'status',
@@ -27,6 +29,10 @@ class Enforcer extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+    ];
+
+    protected $casts = [
+        'email_verified_at' => 'datetime',
     ];
 
     public function getFullNameAttribute()

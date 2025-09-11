@@ -44,6 +44,8 @@ export const authAPI = {
     logout: () => api.post("/logout"),
     profile: () => api.get("/profile"),
     getRoles: () => api.get("/roles"),
+    forgotPassword: (identifier) => api.post("/forgot-password", { identifier }),
+    resetPassword: (data) => api.post("/reset-password", data),
 };
 
 /* ============================
@@ -51,7 +53,7 @@ export const authAPI = {
 ============================ */
 export const adminAPI = {
     // Dashboard
-    dashboard: () => api.get("/admin/dashboard"),
+    dashboard: (params) => api.get("/admin/dashboard", {params}),
 
     // Officials Management
     getUsers: (role = "") =>
@@ -63,8 +65,9 @@ export const adminAPI = {
 
     // Archive
     archiveUser: (userType, id) => api.delete(`/admin/users/${userType}/${id}`),
-    getArchivedUsers: () => api.get("/admin/users/archived"),
-    restoreUser: (id) => api.post(`/admin/users/${id}/restore`),
+    getArchivedUsers: (params) => api.get("/admin/users/archived", { params }),
+    restoreUser: (userType, id) =>
+        api.post(`/admin/users/${userType}/${id}/restore`),
 
     //Transactions
     getTransactions: (params) => api.get("/admin/transactions", { params }),
@@ -77,6 +80,11 @@ export const adminAPI = {
     createViolation: (data) => api.post("/admin/violations", data),
     updateViolation: (id, data) => api.put(`/admin/violations/${id}`, data),
     getViolation: (id) => api.get(`/admin/violation/${id}`),
+
+    // Vehicles Management
+    getVehicles: (params = {}) => api.get("/admin/vehicles", { params }),
+    getVehiclesDetails: (id) => api.get(`/admin/vehicles/${id}`),
+    updateVehicle: (id, data) => api.put(`/admin/vehicles/${id}`, data),
 
     // Violator Management
     getViolators: (params = {}) => api.get("/admin/violators", { params }),
@@ -105,10 +113,10 @@ export const adminAPI = {
     markAllNotificationsAsRead: () =>
         api.post("/admin/notifications/mark-all-read"),
     sendNotification: (data) => api.post("/admin/send-notifications", data),
+    getAllUsers: () => api.get("/admin/get-users"),
 
     // Dashboard Stats
     getDashboardStats: () => api.get("/admin/dashboard/stats"),
-    getRecentActivities: () => api.get("/admin/activities/recent"),
 };
 
 /* ============================

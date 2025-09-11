@@ -14,7 +14,9 @@ return new class extends Migration
             $table->string('middle_name', 255)->nullable();
             $table->string('last_name', 255);
             $table->string('username', 255);
-            $table->string('email', 255)->unique()->nullable();
+            $table->string('email', 255)->unique()->unique()->nullable();
+            $table->string('office',255);
+            $table->timestamp('email_verified_at')->nullable();
             $table->string('password', 255);
             $table->string('image', 255)->nullable();
             $table->enum('status', ['active', 'inactive', 'deactivate'])->default('active');

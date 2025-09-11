@@ -55,6 +55,7 @@ class UserSeeder extends Seeder
             'first_name' => 'John',
             'last_name' => 'Doe',
             'username' => 'enforcer01',
+            'office' => 'POSU',
             'email' => 'enforcer1@moms.com',
             'password' => Hash::make('password123'),
             'status' => 'active'
@@ -65,6 +66,7 @@ class UserSeeder extends Seeder
             'first_name' => 'Jane',
             'last_name' => 'Smith',
             'username' => 'enforcer02',
+             'office' => 'PNP ISmart',
             'email' => 'enforcer2@moms.com',
             'password' => Hash::make('password123'),
             'status' => 'active'
@@ -75,9 +77,10 @@ class UserSeeder extends Seeder
             'first_name' => 'Mike',
             'last_name' => 'Johnson',
             'username' => 'enforcer03',
+             'office' => 'PNP ISmart',
             'email' => 'enforcer3@moms.com',
             'password' => Hash::make('password123'),
-            'status' => 'inactive'
+            'status' => 'deactivate'
         ]);
     }
 }

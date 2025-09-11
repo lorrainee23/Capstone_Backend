@@ -418,11 +418,11 @@
                                     </div>
                                     <div class="detail-item">
                                         <label>Date & Time:</label>
-                                        <span>{{
-                                            formatDateTime(
-                                                selectedTransaction.date_time
-                                            )
-                                        }}</span>
+                                        <span>
+                                          {{formatDateTime(selectedTransaction.date_time).date +" " +
+                                            formatDateTime(selectedTransaction.date_time).time
+                                          }}
+                                        </span>
                                     </div>
                                     <div class="detail-item">
                                         <label>Fine Amount:</label>
@@ -447,6 +447,66 @@
                                             {{ selectedTransaction.apprehending_officer?.last_name || '' }}
                                         </span>
                                     </div>
+                                </div>
+                            </div>
+
+                            <div class="detail-section">
+                                <h4>Vehicle Information</h4>
+                                <div class="detail-grid">
+                                    <div class="detail-item">
+                                        <label>Owner Name:</label>
+                                        <span
+                                            >{{
+                                                selectedTransaction.vehicle
+                                                    ?.owner_first_name
+                                            }} {{
+                                                selectedTransaction.vehicle
+                                                    ?.owner_middle_name
+                                            }}
+                                            {{
+                                                selectedTransaction.vehicle
+                                                    ?.owner_last_name
+                                            }}</span
+                                        >
+                                    </div>
+                                    <div class="detail-item">
+                                        <label>Plate Number:</label>
+                                        <span>{{
+                                            selectedTransaction.vehicle
+                                                ?.plate_number
+                                        }}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <label>Make:</label>
+                                        <span>{{
+                                            selectedTransaction.vehicle
+                                                ?.make
+                                        }}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <label>Model:</label>
+                                        <span>{{
+                                            selectedTransaction.vehicle
+                                                ?.model
+                                        }}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <label>Color:</label>
+                                        <span>{{
+                                            selectedTransaction.vehicle
+                                                ?.color
+                                        }}</span>
+                                    </div>
+                                </div><br>
+                                <div class="detail-item full-width">
+                                    <label>Address:</label>
+                                    <span>
+                                        {{
+                                            (selectedTransaction.vehicle?.owner_barangay || '') + ' ' +
+                                            (selectedTransaction.vehicle?.owner_city || '') +
+                                            (selectedTransaction.vehicle?.owner_province ? ', ' + selectedTransaction.vehicle.province : '')
+                                        }}
+                                    </span>
                                 </div>
                             </div>
 

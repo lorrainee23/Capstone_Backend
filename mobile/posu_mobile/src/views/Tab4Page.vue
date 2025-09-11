@@ -185,7 +185,10 @@
                 <p class="notification-message" :class="{ 'deleted-text': notification.deleted_at }">
                   {{ notification.message }}
                 </p>
-                
+                <small class="notification-sender">
+                  — Sent by {{ getSenderDisplay(notification) }}
+                </small>
+                                
                 <div class="notification-actions">
                   <template v-if="!notification.deleted_at">
                     <!-- Regular actions for active notifications -->
@@ -365,6 +368,14 @@ const getNotificationIcon = (type) => {
       return informationCircle
   }
 }
+const getSenderDisplay = (notification) => {
+  if (!notification.sender) return 'Unknown sender'
+  const first = notification.sender.first_name || ''
+  const last = notification.sender.last_name || ''
+  const fullName = `${first} ${last}`.trim() || notification.sender.username || 'Unknown'
+  return `${fullName} (${notification.sender_role})`
+}
+
 
 // Get notification icon class
 const getNotificationIconClass = (type) => {
@@ -1025,6 +1036,12 @@ ion-segment-button {
 .deleted-badge {
   font-size: 0.7rem;
   text-transform: uppercase;
+}
+.notification-sender {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.8rem;
+  color: var(--ion-color-medium);
 }
 
 .notification-meta {

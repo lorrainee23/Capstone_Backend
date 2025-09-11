@@ -2,7 +2,7 @@ const permissions = window.cordova?.plugins?.permissions;
 const bluetoothSerial = window.bluetoothSerial;
 
 const devices = [];
-let selectedDevice = "";
+let selectedDevice = localStorage.getItem('printer_selected_device') || "";
 let isConnected = false;
 
 export const bluetoothService = {
@@ -71,11 +71,13 @@ export const bluetoothService = {
                 address,
                 () => {
                     isConnected = true;
+                    localStorage.setItem('printer_selected_device', selectedDevice);
                     resolve(true);
                 },
                 (err) => {
                     selectedDevice = "";
                     isConnected = false;
+                    localStorage.removeItem('printer_selected_device');
                     reject(err);
                 }
             );
@@ -90,6 +92,7 @@ export const bluetoothService = {
                 () => {
                     selectedDevice = "";
                     isConnected = false;
+                    localStorage.removeItem('printer_selected_device');
                     resolve(true);
                 },
                 (err) => reject(err)

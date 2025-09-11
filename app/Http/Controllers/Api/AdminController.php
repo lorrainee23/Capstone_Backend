@@ -24,58 +24,180 @@ use App\Models\Report;
 // Exports & External Packages
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\ArrayExport;
+use App\Mail\POSUEmail;
+use App\Models\Vehicle;
 use PhpOffice\PhpWord\PhpWord;
 use PhpOffice\PhpWord\IOFactory;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Swagger\Client\Configuration;
 use Swagger\Client\Api\ConvertDocumentApi;
 use GuzzleHttp\Client;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 class AdminController extends Controller
 {
     use UserPermissionsTrait;
 
-    public function dashboard()
-    {
-        $stats = [
-            'total_violators'      => Violator::count(),
-            'total_transactions'   => Transaction::count(),
-            'pending_transactions' => Transaction::where('status', 'Pending')->count(),
-            'paid_transactions'    => Transaction::where('status', 'Paid')->count(),
-            'total_revenue'        => Transaction::where('status', 'Paid')->sum('fine_amount'),
-            'pending_revenue'      => Transaction::where('status', 'Pending')->sum('fine_amount'),
-            'repeat_offenders'     => Violator::withCount('transactions')
-                                        ->having('transactions_count', '>', 1)
-                                        ->count(),
-            'active_enforcers' => Enforcer::where('status', 'active')->count(),
-            'active_admins'    => Admin::where('status', 'active')->count(),
-            'active_deputies'  => Deputy::where('status', 'active')->count(),
-            'active_heads'     => Head::where('status', 'active')->count(),
-        ];
+    public function dashboard(Request $request)
+{
+    $period = $request->get('period', 'all');
+    $now = now();
+
+    $transactionQuery = Transaction::query();
+
+    if ($period === 'year') {
+        $transactionQuery->whereYear('date_time', $now->year);
+    } elseif ($period === 'month') {
+        $transactionQuery->whereYear('date_time', $now->year)
+                         ->whereMonth('date_time', $now->month);
+    } elseif ($period === 'week') {
+        $startOfWeek = $now->copy()->startOfWeek();
+        $endOfWeek = $now->copy()->endOfWeek();
+        $transactionQuery->whereBetween('date_time', [$startOfWeek, $endOfWeek]);
+    }
+
+    $totalViolators = Violator::whereHas('transactions', function($q) use ($period, $now) {
+        if ($period === 'year') {
+            $q->whereYear('date_time', $now->year);
+        } elseif ($period === 'month') {
+            $q->whereYear('date_time', $now->year)
+              ->whereMonth('date_time', $now->month);
+        } elseif ($period === 'week') {
+            $q->whereBetween('date_time', [$now->copy()->startOfWeek(), $now->copy()->endOfWeek()]);
+        }
+    })->count();
+
+    $getRepeatOffendersQuery = function() use ($period, $now) {
+        return Violator::whereHas('transactions', function($q) use ($period, $now) {
+            if ($period === 'year') {
+                $q->whereYear('date_time', $now->year);
+            } elseif ($period === 'month') {
+                $q->whereYear('date_time', $now->year)
+                  ->whereMonth('date_time', $now->month);
+            } elseif ($period === 'week') {
+                $q->whereBetween('date_time', [$now->copy()->startOfWeek(), $now->copy()->endOfWeek()]);
+            }
+        });
+    };
+
+    $repeatOffenders = $getRepeatOffendersQuery()
+        ->withCount(['transactions' => function($q) use ($period, $now) {
+            if ($period === 'year') {
+                $q->whereYear('date_time', $now->year);
+            } elseif ($period === 'month') {
+                $q->whereYear('date_time', $now->year)
+                  ->whereMonth('date_time', $now->month);
+            } elseif ($period === 'week') {
+                $q->whereBetween('date_time', [$now->copy()->startOfWeek(), $now->copy()->endOfWeek()]);
+            }
+        }])
+        ->having('transactions_count', '>', 1)
+        ->count();
+
+    $stats = [
+        'total_violators'      => $totalViolators,
+        'total_transactions'   => $transactionQuery->count(),
+        'pending_transactions' => (clone $transactionQuery)->where('status', 'Pending')->count(),
+        'paid_transactions'    => (clone $transactionQuery)->where('status', 'Paid')->count(),
+        'total_revenue'        => (clone $transactionQuery)->where('status', 'Paid')->sum('fine_amount'),
+        'pending_revenue'      => (clone $transactionQuery)->where('status', 'Pending')->sum('fine_amount'),
+        'repeat_offenders'     => $repeatOffenders,
+        'active_enforcers'     => Enforcer::where('status', 'active')->count(),
+        'active_admins'        => Admin::where('status', 'active')->count(),
+        'active_deputies'      => Deputy::where('status', 'active')->count(),
+        'active_heads'         => Head::where('status', 'active')->count(),
+    ];
+
+    // Trends 
+    $weeklyTrends = [];
+    $monthlyTrends = [];
+    $yearlyTrends = [];
 
         $weeklyTrends = Transaction::selectRaw('DATE(date_time) as date, COUNT(*) as count')
-            ->whereBetween('date_time', [now()->subDays(7), now()])
-            ->groupBy('date')
-            ->orderBy('date')
-            ->get();
+    ->groupBy('date')
+    ->orderBy('date', 'asc')
+    ->get();
 
-        $commonViolations = Violation::withCount('transactions')
-            ->orderBy('transactions_count', 'desc')
-            ->limit(5)
-            ->get();
+// Monthly trends - all months from all years  
+$monthlyTrends = Transaction::selectRaw('MONTH(date_time) as month, YEAR(date_time) as year, COUNT(*) as count')
+    ->groupBy('year', 'month')
+    ->orderBy('year', 'asc')
+    ->orderBy('month', 'asc')
+    ->get();
 
-        $enforcerPerformance = Enforcer::with(['transactions'])->get();
+// Yearly trends - all years
+$yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as count')
+    ->groupBy('year')
+    ->orderBy('year', 'asc')
+    ->get();
 
-        return response()->json([
-            'status' => 'success',
-            'data'   => [
-                'stats'                => $stats,
-                'weekly_trends'        => $weeklyTrends,
-                'common_violations'    => $commonViolations,
-                'enforcer_performance' => $enforcerPerformance,
-            ]
-        ]);
+    $commonViolations = Violation::withCount('transactions')
+        ->orderBy('transactions_count', 'desc')
+        ->limit(5)
+        ->get();
+
+    $enforcerPerformance = Enforcer::with('transactions')->get();
+
+    // Trend percentage (affected by period)
+    if ($period === 'all') {
+        $percentage = 0;
+        $trendDirection = 'same';
+        
+    } else {
+        $currentPeriodQuery = Transaction::query();
+        $previousPeriodQuery = Transaction::query();
+
+        if ($period === 'year') {
+            $currentPeriodQuery->whereYear('date_time', $now->year);
+            $previousPeriodQuery->whereYear('date_time', $now->year - 1);
+            
+        } elseif ($period === 'month') {
+            $currentPeriodQuery->whereYear('date_time', $now->year)
+                               ->whereMonth('date_time', $now->month);
+            $prevMonth = $now->copy()->subMonth();
+            $previousPeriodQuery->whereYear('date_time', $prevMonth->year)
+                                ->whereMonth('date_time', $prevMonth->month);
+                                
+        } elseif ($period === 'week') {
+            $currentPeriodQuery->whereBetween('date_time', [
+                $now->copy()->startOfWeek(), 
+                $now->copy()->endOfWeek()
+            ]);
+            $previousPeriodQuery->whereBetween('date_time', [
+                $now->copy()->subWeek()->startOfWeek(), 
+                $now->copy()->subWeek()->endOfWeek()
+            ]);
+        }
+
+        $currentTransactions = $currentPeriodQuery->count();
+        $previousTransactions = $previousPeriodQuery->count();
+
+        $percentage = $previousTransactions > 0
+            ? round((($currentTransactions - $previousTransactions) / $previousTransactions) * 100, 2)
+            : ($currentTransactions > 0 ? 100 : 0);
+
+        $trendDirection = $percentage > 0 ? 'up' : ($percentage < 0 ? 'down' : 'same');
     }
+
+    return response()->json([
+        'status' => 'success',
+        'data'   => [
+            'stats'                => $stats,
+            'weekly_trends'        => $weeklyTrends,
+            'monthly_trends'       => $monthlyTrends,
+            'yearly_trends'        => $yearlyTrends,
+            'common_violations'    => $commonViolations,
+            'enforcer_performance' => $enforcerPerformance,
+            'trends'               => [
+                'transactions' => [
+                    'percentage' => $percentage,
+                    'direction'  => $trendDirection
+                ]
+            ],
+        ]
+    ]);
+}
 
     /* ==============================
      * USERS MANAGEMENT (All User Types)
@@ -168,6 +290,7 @@ class AdminController extends Controller
             'middle_name'  => 'nullable|string|max:255',
             'last_name'    => 'required|string|max:255',
             'username'     => 'required|string|max:255|unique:admins,username|unique:heads,username|unique:deputies,username|unique:enforcers,username',
+            'office'       => 'required|string|max:255',
             'password'     => 'required|string|min:6',
             'status'       => 'required|in:active,inactive,deactivate',
             'image'        => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
@@ -186,6 +309,7 @@ class AdminController extends Controller
             'middle_name' => $request->middle_name,
             'last_name'  => $request->last_name,
             'username'   => $request->username,
+            'office'     =>$request->office,
             'password'   => Hash::make($request->password),
             'status'     => $request->status,
         ];
@@ -197,12 +321,39 @@ class AdminController extends Controller
 
         $modelClass = $this->getModelClass($userType);
         $user = $modelClass::create($userData);
-        $user->user_type = $userType;
+
+        // If email is provided
+        if (!empty($request->email)) {
+            $user->email = $request->email;
+            $user->save();
+
+            try {
+                $fullName = trim($user->first_name . ' ' . ($user->middle_name ? $user->middle_name . ' ' : '') . $user->last_name);
+                $loginUrl = env('FRONTEND_LOGIN_URL', 'http://localhost:8080/login');
+                
+                Mail::to($user->email)->send(
+                    new POSUEmail('welcome', [
+                        'user_name' => $user->first_name,
+                        'full_name' => $fullName,
+                        'email' => $user->email,
+                        'account_type' => $userType,
+                        'registration_date' => now()->format('F j, Y'),
+                        'login_url' => $loginUrl,
+                        'temporary_password' => $request->password,
+                    ])
+                );
+            } catch (\Exception $e) {
+                Log::error('Failed to send welcome email: ' . $e->getMessage());
+            }
+        }
+
+        // Remove password from response
+        unset($user->password);
 
         return response()->json([
             'status' => 'success',
-            'message' => 'User created successfully',
-            'data' => $user
+            'message' => 'User created successfully' . (!empty($request->email) ? ' and welcome email sent' : ''),
+            'data' => array_merge($user->toArray(), ['user_type' => $userType])
         ], 201);
     }
 
@@ -332,7 +483,7 @@ class AdminController extends Controller
                     'ticket_time'      => $tx->date_time ? $tx->date_time->format('g:i A') : 'N/A',
                     'officer_name'     => $officerName,
                     'officer_office'   => $officer->office ?? 'N/A',
-                    'remarks'          => $tx->remarks ?? '',
+                    'remarks'          => $tx->status ?? 'N/A',
                     'penalty_amount'   => (float) ($tx->fine_amount ?? 0),
                 ];
             })->values();
@@ -834,6 +985,71 @@ class AdminController extends Controller
     }
 
     /* ==============================
+     * VEHICLES MANAGEMENT
+     * ============================== */
+
+    public function getVehicles(Request $request)
+    {
+        $perPage = $request->input('per_page', 15);
+        $page    = $request->input('page', 1);
+
+        
+        $vehicles = Vehicle::with('violator') 
+            ->paginate($perPage, ['*'], 'page', $page);
+
+        $vehicles->getCollection()->transform(function ($vehicle) {
+            if ($vehicle->violator) {
+                $vehicle->owner_full_name = $vehicle->violator->full_name ?? $vehicle->ownerName();
+            } else {
+                $vehicle->owner_full_name = $vehicle->ownerName();
+            }
+            return $vehicle;
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => $vehicles
+        ]);
+    }
+
+    public function updateVehicle(Request $request, $id)
+    {
+        $vehicle = Vehicle::find($id);
+
+        if (!$vehicle) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Vehicle not found.'
+            ], 404);
+        }
+
+        // Validate incoming data
+        $validated = $request->validate([
+            'owner_first_name' => 'sometimes|string|max:255',
+            'owner_middle_name' => 'sometimes|string|max:255|nullable',
+            'owner_last_name' => 'sometimes|string|max:255',
+            'plate_number' => 'sometimes|string|max:50',
+            'make' => 'sometimes|string|max:255',
+            'model' => 'sometimes|string|max:255',
+            'color' => 'sometimes|string|max:50',
+            'owner_barangay' => 'sometimes|string|max:255|nullable',
+            'owner_city' => 'sometimes|string|max:255|nullable',
+            'owner_province' => 'sometimes|string|max:255|nullable',
+            'vehicle_type' => 'sometimes|string|max:50',
+        ]);
+
+        // Update vehicle
+        $vehicle->update($validated);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Vehicle updated successfully',
+            'data' => $vehicle
+        ]);
+    }
+
+
+    /* ==============================
      * VIOLATIONS MANAGEMENT
      * ============================== */
 
@@ -955,7 +1171,7 @@ class AdminController extends Controller
     public function sendNotification(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'target_role' => 'required|in:admin,head,deputy,enforcer,violator',
+            'target_type' => 'required|in:admin,head,deputy,enforcer,violator',
             'title'       => 'required|string|max:100',
             'message'     => 'required|string',
             'type'        => 'required|in:info,alert,reminder,warning',
@@ -1028,5 +1244,19 @@ class AdminController extends Controller
 
         return response()->json(['status' => 'success', 'message' => 'All notifications marked as read']);
     }
+    
+    public function getAllUsers()
+    {
+        $admins = Admin::all(['id', 'first_name', 'last_name', 'email']);
+        $deputies = Deputy::all(['id', 'first_name', 'last_name', 'email']);
+        $enforcers = Enforcer::all(['id', 'first_name', 'last_name', 'email']);
 
+        $users = [
+            'admins' => $admins,
+            'deputies' => $deputies,
+            'enforcers' => $enforcers,
+        ];
+
+        return response()->json($users);
+    }
 }

@@ -30,7 +30,7 @@ class Vehicle extends Model
      */
     public function violator()
     {
-        return $this->belongsTo(Violator::class);
+        return $this->belongsTo(Violator::class, 'violators_id');
     }
 
     /**

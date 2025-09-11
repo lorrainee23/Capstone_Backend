@@ -5,6 +5,8 @@ import { useAuthStore } from "@/stores/auth";
 import HomePage from "../views/HomePage.vue";
 import LoginPage from "../views/LoginPage.vue";
 import RegisterPage from "../views/RegisterPage.vue";
+import ForgotPassword from "../views/ForgotPassword.vue";
+import ResetPassword from "../views/ResetPassword.vue";
 
 // Admin
 import AdminDashboard from "../views/admin/AdminDashboard.vue";
@@ -29,6 +31,7 @@ import ViolatorDashboard from "../views/violator/ViolatorDashboard.vue";
 import ViolatorHistory from "../views/violator/ViolatorHistory.vue";
 import ViolatorProfile from "../views/violator/ViolatorProfile.vue";
 import ViolatorNotifications from "../views/violator/ViolatorNotifications.vue";
+import VehiclesPage from "@/views/admin/ManageUsers/Vehicles.Page.vue";
 
 const routes = [
     // Public
@@ -48,6 +51,18 @@ const routes = [
         path: "/register",
         name: "register",
         component: RegisterPage,
+        meta: { requiresGuest: true },
+    },
+    {
+        path: "/forgot-password",
+        name: "forgot-password",
+        component: ForgotPassword,
+        meta: { requiresGuest: true },
+    },
+    {
+        path: "/reset-password",
+        name: "reset-password",
+        component: ResetPassword,
         meta: { requiresGuest: true },
     },
     {
@@ -83,6 +98,12 @@ const routes = [
                 path: "violators",
                 name: "admin-violators",
                 component: ViolatorsPage,
+                meta: { requiresAuth: true, role: ["Admin", "Deputy", "Head"] },
+            },
+            {
+                path: "vehicles",
+                name: "admin-vehicles",
+                component: VehiclesPage,
                 meta: { requiresAuth: true, role: ["Admin", "Deputy", "Head"] },
             },
         ],

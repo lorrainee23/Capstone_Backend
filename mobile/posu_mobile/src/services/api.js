@@ -3,8 +3,8 @@ import axios from "axios";
 
 // Create axios instance
 const api = axios.create({
-    baseURL: "http://127.0.0.1:8000/api",
-    timeout: 10000,
+    baseURL: "http://192.168.89.124:8000/api",
+    timeout: 60000,
     headers: {
         Accept: "application/json",
     },
@@ -26,9 +26,13 @@ api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
-            localStorage.removeItem("auth_token");
-            localStorage.removeItem("user_data");
-            window.location.href = "/login";
+            // Only redirect to login if we're online and it's a real auth error
+            // Don't redirect if offline (network error) or if it's a timeout
+            if (navigator.onLine && !error.code) {
+                localStorage.removeItem("auth_token");
+                localStorage.removeItem("user_data");
+                window.location.href = "/login";
+            }
         }
         return Promise.reject(error);
     }
@@ -42,9 +46,6 @@ export const authAPI = {
     logout: () => api.post("/logout"),
 };
 
-/* ============================
-   ENFORCER API
-============================ */
 /* ============================
    ENFORCER API
 ============================ */

@@ -35,27 +35,48 @@
           <!-- Password -->
           <div class="form-group">
             <label for="password" class="form-label">Password</label>
-            <input
-              id="password"
-              v-model="form.password"
-              type="password"
-              class="form-input"
-              placeholder="Create a secure password"
-              required
-            />
+            <div class="input-wrapper">
+              <input
+                id="password"
+                v-model="form.password"
+                :type="showPassword ? 'text' : 'password'"
+                class="form-input"
+                placeholder="Create a secure password"
+                required
+                @input="validatePassword"
+              />
+              <span class="toggle-eye" @click="showPassword = !showPassword">
+                {{ showPassword ? '🙈' : '👁️' }}
+              </span>
+            </div>
+
+            <!-- Strength bar -->
+            <div v-if="form.password.length > 0">
+              <div class="password-strength" :class="passwordStrength">
+                <div class="strength-bar"></div>
+              </div>
+              <div class="strength-text" :class="passwordStrength">
+                {{ passwordStrength === 'weak' ? 'Weak' : passwordStrength === 'medium' ? 'Medium' : 'Strong' }}
+              </div>
+            </div>
           </div>
 
           <!-- Confirm Password -->
           <div class="form-group">
             <label for="password_confirmation" class="form-label">Confirm Password</label>
-            <input
-              id="password_confirmation"
-              v-model="form.password_confirmation"
-              type="password"
-              class="form-input"
-              placeholder="Confirm your password"
-              required
-            />
+            <div class="input-wrapper">
+              <input
+                id="password_confirmation"
+                v-model="form.password_confirmation"
+                :type="showConfirmPassword ? 'text' : 'password'"
+                class="form-input"
+                placeholder="Confirm your password"
+                required
+              />
+              <span class="toggle-eye" @click="showConfirmPassword = !showConfirmPassword">
+                {{ showConfirmPassword ? '🙈' : '👁️' }}
+              </span>
+            </div>
           </div>
 
           <button type="submit" class="btn btn-primary btn-full" :disabled="loading">
@@ -84,44 +105,66 @@ export default {
   setup() {
     const router = useRouter()
     const { register } = useAuthStore()
-    
+
     const form = ref({
-      identifier: '',   
+      identifier: '',
       password: '',
       password_confirmation: ''
     })
-    
+
+    const passwordStrength = ref('')
     const error = ref('')
     const success = ref('')
     const loading = ref(false)
-    
+    const showPassword = ref(false)
+    const showConfirmPassword = ref(false)
+
+    const validatePassword = () => {
+      if (form.value.password.length < 8) {
+        passwordStrength.value = 'weak'
+        return
+      }
+
+      const hasUpperCase = /[A-Z]/.test(form.value.password)
+      const hasNumber = /\d/.test(form.value.password)
+
+      let strength = 0
+      if (hasUpperCase) strength++
+      if (hasNumber) strength++
+      if (form.value.password.length >= 12) strength++
+
+      if (strength === 0) {
+        passwordStrength.value = 'weak'
+      } else if (strength === 1) {
+        passwordStrength.value = 'medium'
+      } else {
+        passwordStrength.value = 'strong'
+      }
+    }
+
     const handleRegister = async () => {
       try {
         loading.value = true
         error.value = ''
         success.value = ''
-        
-        // Validate password confirmation
+
+        // Enforce minimum length rule
+        if (form.value.password.length < 8) {
+          error.value = 'Password must be at least 8 characters long'
+          return
+        }
+
         if (form.value.password !== form.value.password_confirmation) {
           error.value = 'Passwords do not match'
           return
         }
-        
+
         const result = await register(form.value)
-        
+
         if (result.success) {
           success.value = 'Account created successfully! You can now sign in.'
-          // Reset form
-          form.value = {
-            identifier: '',
-            password: '',
-            password_confirmation: ''
-          }
-          
-          // Redirect to login after 2 seconds
-          setTimeout(() => {
-            router.push('/login')
-          }, 2000)
+          form.value = { identifier: '', password: '', password_confirmation: '' }
+          setTimeout(() => router.push('/login'), 2000)
         } else {
           error.value = result.message
         }
@@ -132,13 +175,17 @@ export default {
         loading.value = false
       }
     }
-    
+
     return {
       form,
+      passwordStrength,
       error,
       success,
       loading,
-      handleRegister
+      handleRegister,
+      validatePassword,
+      showPassword,
+      showConfirmPassword
     }
   }
 }
@@ -213,6 +260,59 @@ export default {
 
 .register-form {
   margin-bottom: 24px;
+}
+.password-strength {
+  margin-top: 10px;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  background-color: #e5e7eb;
+}
+
+.strength-bar {
+  height: 100%;
+  width: 0;
+  transition: width 0.3s, background-color 0.3s;
+}
+
+.strength-text {
+  margin-top: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-align: right;
+}
+
+.weak .strength-bar { width: 33%; background-color: #ef4444; }
+.weak.strength-text { color: #ef4444; }
+
+.medium .strength-bar { width: 66%; background-color: #f59e0b; }
+.medium.strength-text { color: #f59e0b; }
+
+.strong .strength-bar { width: 100%; background-color: #10b981; }
+.strong.strength-text { color: #10b981; }
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-wrapper .form-input {
+  width: 100%;
+  padding-right: 40px; 
+}
+
+.toggle-eye {
+  position: absolute;
+  right: 12px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 1.1rem;
+  color: #6b7280;
+  transition: color 0.2s;
+}
+
+.toggle-eye:hover {
+  color: #111827;
 }
 
 .form-row {

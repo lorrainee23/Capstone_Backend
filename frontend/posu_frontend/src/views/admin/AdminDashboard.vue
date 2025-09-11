@@ -56,20 +56,30 @@
           
           <div class="stat-content">
             <p class="stat-title">{{ stat.label }}</p>
-            <p class="stat-value">{{ stat.value }}</p>
+            <p class="stat-value" :class="stat.valueColorClass">{{ stat.value }}</p>
             <p class="stat-trend" :class="stat.trend?.type">
-              <svg v-if="stat.trend?.type === 'up'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="7 17 17 7"></polyline>
-                <line x1="7" y1="7" x2="17" y2="7"></line>
-                <line x1="17" y1="7" x2="17" y2="17"></line>
-              </svg>
-              <svg v-else-if="stat.trend?.type === 'down'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="17 7 7 17"></polyline>
-                <line x1="7" y1="17" x2="17" y2="17"></line>
-                <line x1="7" y1="7" x2="7" y2="17"></line>
-              </svg>
-              <span>{{ stat.trend?.value }}</span>
-            </p>
+				<!-- Up Arrow -->
+				<svg v-if="stat.trend?.type === 'up'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<polyline points="7 17 17 7"></polyline>
+					<line x1="7" y1="7" x2="17" y2="7"></line>
+					<line x1="17" y1="7" x2="17" y2="17"></line>
+				</svg>
+
+				<!-- Down Arrow -->
+				<svg v-else-if="stat.trend?.type === 'down'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<polyline points="17 7 7 17"></polyline>
+					<line x1="7" y1="17" x2="17" y2="17"></line>
+					<line x1="7" y1="7" x2="7" y2="17"></line>
+				</svg>
+
+				<!-- Neutral Arrow -->
+				<svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<line x1="6" y1="12" x2="18" y2="12"></line>
+					<polyline points="12 6 18 12 12 18"></polyline>
+				</svg>
+
+				<span>{{ stat.trend?.value }}</span>
+				</p>
           </div>
 
           <div class="stat-arrow" aria-hidden="true">
@@ -85,17 +95,34 @@
       <section class="content-grid">
         <!-- Trends Chart -->
         <section class="chart-card" aria-label="Violation Trends">
+          <!-- Update your chart header section -->
           <header class="card-header">
             <h3>Violation Trends</h3>
             <div class="chart-controls">
-              <button 
-                v-for="period in chartPeriods" 
-                :key="period.value"
-                @click="selectedChartPeriod = period.value"
-                :class="['control-btn', { active: selectedChartPeriod === period.value }]"
-              >
-                {{ period.label }}
-              </button>
+              <!-- Chart period buttons -->
+              <div class="control-group">
+                <button 
+                  v-for="period in chartPeriods" 
+                  :key="period.value"
+                  @click="selectedChartPeriod = period.value"
+                  :class="['control-btn', { active: selectedChartPeriod === period.value }]"
+                >
+                  {{ period.label }}
+                </button>
+              </div>
+              
+              <!-- Year picker (only show when monthly is selected) -->
+              <div v-if="selectedChartPeriod === 'monthly'" class="year-picker">
+                <select 
+                  v-model="selectedYear" 
+                  class="year-select"
+                  aria-label="Select Year"
+                >
+                  <option v-for="year in availableYears" :key="year" :value="year">
+                    {{ year }}
+                  </option>
+                </select>
+              </div>
             </div>
           </header>
           <div class="chart-container">
@@ -116,7 +143,7 @@
                       minHeight: data.count > 0 ? '4px' : '0px'
                     }"
                   ></div>
-                  <div class="bar-label">{{ formatChartDate(data.date) }}</div>
+                  <div class="bar-label">{{ formatChartLabel(data, selectedChartPeriod) }}</div>
                 </div>
               </div>
               
@@ -227,7 +254,7 @@
               <tr>
                 <th scope="col">Enforcer</th>
                 <th scope="col">Total Cases</th>
-                <th scope="col">This {{ selectedChartPeriod === 'monthly'}}</th>
+                <th scope="col">This {{ getPeriodLabel(selectedChartPeriod) }}</th>
                 <th scope="col">Status</th>
                 <th scope="col">Last Active</th>
                 <th scope="col">Performance</th>
@@ -253,7 +280,7 @@
                     </div>
                   </div>
                 </td>
-                <td><span class="metric-number">{{ enforcer.transactions.length || 0 }}</span></td>
+                <td><span class="metric-number">{{ enforcer.transactions?.length || 0 }}</span></td>
                 <td>
                   <div class="metric-bar" aria-label="Apprehensions progress">
                     <div 
@@ -271,8 +298,8 @@
                 </td>
                 <td><time :datetime="enforcer.updated_at">{{ formatDate(enforcer.updated_at) }}</time></td>
                 <td>
-                  <div class="performance-score" :class="getPerformanceClass(enforcer.transactions.length)">
-                    {{ getPerformanceScore(enforcer.transactions.length) }}%
+                  <div class="performance-score" :class="getPerformanceClass(enforcer.transactions?.length || 0)">
+                    {{ getPerformanceScore(enforcer.transactions?.length || 0) }}%
                   </div>
                 </td>
               </tr>
@@ -427,7 +454,7 @@
             </button>
           </div>
           <div class="modal-body">
-            <label for="target-input">Target Cases per {{ selectedChartPeriod === 'monthly'}}</label>
+            <label for="target-input">Target Cases per {{ getPeriodLabel(selectedChartPeriod) }}</label>
             <input 
               id="target-input"
               type="number" 
@@ -465,13 +492,15 @@ export default {
     const weeklyData = ref([])
     const monthlyData = ref([])
     const yearlyData = ref([])
+    const trendsData = ref({})
     
     // Filter states
-    const selectedPeriod = ref('all')
-    const selectedChartPeriod = ref('Month')
-    const performanceTarget = ref(5)
+    const selectedPeriod = ref('month')
+    const selectedChartPeriod = ref('monthly')
+    const performanceTarget = ref(30)
     const newTarget = ref(5)
     const showEditTargetModal = ref(false)
+    const selectedYear = ref(new Date().getFullYear())
     
     // Filter options
     const filterPeriods = [
@@ -487,89 +516,150 @@ export default {
       { label: 'Yearly', value: 'yearly' }
     ]
     
-    const statsConfig = computed(() => [
-      {
-        iconSvg: `
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="7" r="4"></circle>
-            <path d="M5.5 21a6.5 6.5 0 0 1 13 0"></path>
-          </svg>`,
-        value: stats.value.total_violators || 0,
-        label: 'Total Violators',
-        trend: { type: 'up', value: '+12%' },
-        colorClass: 'stat-blue'
-      },
-      {
-        iconSvg: `
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-          </svg>`,
-        value: stats.value.total_transactions || 0,
-        label: 'Total Transactions',
-        trend: { type: 'up', value: '+8%' },
-        colorClass: 'stat-green'
-      },
-      {
-        iconSvg: `
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="12" y1="8" x2="12" y2="12"></line>
-            <line x1="12" y1="16" x2="12" y2="16"></line>
-          </svg>`,
-        value: stats.value.pending_transactions || 0,
-        label: 'Pending Payments',
-        trend: { type: 'down', value: '-3%' },
-        colorClass: 'stat-yellow'
-      },
-      {
-        iconSvg: `
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 1v22"></path>
-            <path d="M17 5H7a3 3 0 1 0 0 6h10a3 3 0 1 1 0 6H7"></path>
-            <circle cx="12" cy="12" r="1"></circle>
-          </svg>`,
-        value: `₱${formatCurrency(stats.value.pending_revenue || 0)}`,
-        label: 'Pending Revenue',
-        trend: { type: 'up', value: '+15%' },
-        colorClass: 'stat-purple'
-      },
-      {
-        iconSvg: `
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-            <circle cx="9" cy="7" r="4"></circle>
-            <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
-            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-          </svg>`,
-        value: stats.value.active_enforcers || 0,
-        label: 'Active Enforcers',
-        trend: { type: 'up', value: '+2%' },
-        colorClass: 'stat-cyan'
-      },
-      {
-        iconSvg: `
+    const statsConfig = computed(() => {
+    const percentage = trendsData.value.transactions?.percentage || 0
+		const direction = trendsData.value.transactions?.direction || '0'
+		const trendDisplay = `${percentage > 0 ? '+' : ''}${percentage}%`
+      
+      return [
+        {
+          iconSvg: `
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="7" r="4"></circle>
+              <path d="M5.5 21a6.5 6.5 0 0 1 13 0"></path>
+            </svg>`,
+          value: stats.value.total_violators || 0,
+          label: 'Total Violators',
+          trend: direction !== '0' 
+        ? { type: direction, value: trendDisplay } 
+        : { type: null, value: '0%' },
+          colorClass: 'stat-blue',
+          
+        },
+        {
+          iconSvg: `
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+            </svg>`,
+          value: stats.value.total_transactions || 0,
+          label: 'Total Transactions',
+          trend: direction !== '0' 
+        ? { type: direction, value: trendDisplay } 
+        : { type: null, value: '0%' },
+          colorClass: 'stat-green'
+        },
+        {
+          iconSvg: `
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12" y2="16"></line>
+            </svg>`,
+          value: stats.value.pending_transactions || 0,
+          label: 'Pending Payments',
+			trend: direction !== '0' 
+        ? { type: direction, value: trendDisplay } 
+        : { type: null, value: '0%' },
+          colorClass: 'stat-yellow'
+        },
+        {
+          iconSvg: `
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <path d="M9 12l2 2 4-4"></path>
+            </svg>`,
+          value: stats.value.paid_transactions || 0,
+          label: 'Paid Transactions',
+				trend: direction !== '0' 
+        ? { type: direction, value: trendDisplay } 
+        : { type: null, value: '0%' },
+          colorClass: 'stat-green'
+        },
+        {
+          iconSvg: `
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 1v22"></path>
+              <path d="M17 5H7a3 3 0 1 0 0 6h10a3 3 0 1 1 0 6H7"></path>
+              <circle cx="12" cy="12" r="1"></circle>
+            </svg>`,
+          value: `₱${formatCurrency(stats.value.total_revenue || 0)}`,
+          label: 'Total Revenue',
+			trend: direction !== '0' 
+        ? { type: direction, value: trendDisplay } 
+        : { type: null, value: '0%' },
+          colorClass: 'stat-green',
+          valueColorClass: 'text-green-600'
+        },
+        {
+          iconSvg: `
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+            </svg>`,
+          value: `₱${formatCurrency(stats.value.pending_revenue || 0)}`,
+          label: 'Pending Revenue',
+			trend: direction !== '0' 
+        ? { type: direction, value: trendDisplay } 
+        : { type: null, value: '0%' },
+          colorClass: 'stat-purple',
+          valueColorClass: 'text-green-600'
+        },
+        {
+           iconSvg: `
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
             <line x1="12" y1="9" x2="12" y2="13"></line>
             <path d="M12 17h.01"></path>
           </svg>`,
-        value: stats.value.repeat_offenders || 0,
-        label: 'Repeat Offenders',
-        trend: { type: 'down', value: '-5%' },
-        colorClass: 'stat-red'
-      }
-    ])
+          value: stats.value.repeat_offenders || 0,
+          label: 'Repeat Offenders',
+			trend: direction !== '0' 
+        ? { type: direction, value: trendDisplay } 
+        : { type: null, value: '0%' },
+          colorClass: 'stat-red'
+        },
+        {
+          iconSvg: `
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>`,
+          value: stats.value.active_enforcers || 0,
+          label: 'Active Enforcers',
+			trend: direction !== '0' 
+        ? { type: direction, value: trendDisplay } 
+        : { type: null, value: '0%' },
+          colorClass: 'stat-cyan'
+        }
+      ]
+    })
+
+    const availableYears = computed(() => {
+      if (!monthlyData.value.length) return [new Date().getFullYear()]
+      return [...new Set(monthlyData.value.map(item => item.year))].sort((a, b) => b - a)
+    })
     
     const chartData = computed(() => {
-      switch (selectedChartPeriod.value) {
-        case 'monthly':
-          return monthlyData.value
-        case 'yearly':
-          return yearlyData.value
-        default:
-          return weeklyData.value
-      }
-    })
+  switch (selectedChartPeriod.value) {
+    case 'monthly':
+      return monthlyData.value
+        .filter(item => item.year === selectedYear.value)
+        .map(item => ({
+          ...item,
+          date: `${item.year}-${String(item.month).padStart(2, '0')}-01`,
+          period: item.month
+        }))
+    case 'yearly':
+      return yearlyData.value.map(item => ({
+        ...item,
+        date: `${item.year}-01-01`,
+        period: item.year
+      }))
+    default:
+      return weeklyData.value
+  }
+})
     
     const maxChartCount = computed(() => {
       return Math.max(...chartData.value.map(d => d.count), 1)
@@ -587,11 +677,15 @@ export default {
     const loadDashboardData = async () => {
       try {
         loading.value = true
-        const response = await adminAPI.dashboard({
-          period: selectedPeriod.value,
-          chart_period: selectedChartPeriod.value
-        })
-        
+
+        const requestParams = {
+      period: selectedPeriod.value,
+      chart_period: selectedChartPeriod.value
+    }
+
+    
+    const response = await adminAPI.dashboard(requestParams)
+    
         if (response.data.status === 'success') {
           const data = response.data.data
           stats.value = data.stats || {}
@@ -600,6 +694,7 @@ export default {
           weeklyData.value = data.weekly_trends || []
           monthlyData.value = data.monthly_trends || []
           yearlyData.value = data.yearly_trends || []
+          trendsData.value = data.trends || {}
         }
       } catch (error) {
         console.error('Failed to load dashboard data:', error)
@@ -609,7 +704,8 @@ export default {
     }
 
     const getPeriodApprehensions = (transactions) => {
-      if (!transactions) return 0
+      if (!transactions || !Array.isArray(transactions)) return 0
+      
       const now = new Date()
       
       return transactions.filter(t => {
@@ -628,7 +724,7 @@ export default {
     }
 
     const formatCurrency = (amount) => {
-      return new Intl.NumberFormat('en-PH').format(amount)
+      return new Intl.NumberFormat('en-PH').format(amount || 0)
     }
     
     const formatDate = (dateString) => {
@@ -640,22 +736,27 @@ export default {
       })
     }
     
-    const formatChartDate = (dateString) => {
-      if (!dateString) return ''
-      const date = new Date(dateString)
-      
-      if (selectedChartPeriod.value === 'yearly') {
-        return date.getFullYear().toString()
-      } else if (selectedChartPeriod.value === 'monthly') {
-        return date.toLocaleDateString('en-PH', {
-          month: 'short',
-          year: 'numeric'
-        })
+    const formatChartLabel = (dataPoint, period) => {
+      if (period === 'yearly') {
+        return dataPoint.period || dataPoint.year
+      } else if (period === 'monthly') {
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+        const monthIndex = (dataPoint.period || dataPoint.month) - 1
+        return monthNames[monthIndex] || 'Unknown'
       } else {
-        return date.toLocaleDateString('en-PH', {
-          month: 'short',
-          day: 'numeric'
-        })
+        // Weekly - format as date
+        if (dataPoint.date) {
+          const date = new Date(dataPoint.date)
+          return date.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })
+        }
+        return 'Unknown'
+      }
+    }
+    
+    const getPeriodLabel = (period) => {
+      switch (period) {
+        case 'monthly': return 'Month'
+        default: return 'Month'
       }
     }
     
@@ -691,7 +792,7 @@ export default {
         visible: true,
         x: barRect.left - containerRect.left + barRect.width / 2,
         y: barRect.top - containerRect.top, 
-        content: `${formatChartDate(data.date)}: ${data.count} violations`
+        content: `${formatChartLabel(data, selectedChartPeriod.value)}: ${data.count} violations`
       }
     }
 
@@ -700,7 +801,7 @@ export default {
     }
     
     const updateTarget = () => {
-      performanceTarget.value = newTarget.value
+      performanceTarget.value = parseInt(newTarget.value) || 5
       showEditTargetModal.value = false
     }
     
@@ -708,8 +809,11 @@ export default {
       showEditTargetModal.value = false
       newTarget.value = performanceTarget.value
     }
-    
-    watch([selectedPeriod, selectedChartPeriod], () => {
+    const handlePeriodChange = (period) => {
+    selectedPeriod.value = period
+      }
+
+      watch([selectedPeriod, selectedChartPeriod], () => {
       loadDashboardData()
     })
     
@@ -737,7 +841,8 @@ export default {
       loadDashboardData,
       formatCurrency,
       formatDate,
-      formatChartDate,
+      formatChartLabel,
+      getPeriodLabel,
       getInitials,
       getPerformanceScore,
       getPerformanceClass,
@@ -746,7 +851,10 @@ export default {
       hideTooltip,
       getPeriodApprehensions,
       updateTarget,
-      closeModal
+      closeModal,
+      handlePeriodChange,
+      selectedYear,
+      availableYears
     }
   }
 }
@@ -1045,12 +1153,63 @@ export default {
   color: #64748b;
 }
 
+/* Add this to your CSS */
 .chart-controls {
   display: flex;
-  gap: 4px;
-  background: rgba(0, 0, 0, 0.05);
-  padding: 4px;
-  border-radius: 12px;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.control-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.year-picker {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.year-select {
+  padding: 0.5rem 0.75rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background-color: white;
+  color: #1f2937;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  outline: none;
+  min-width: 80px;
+}
+
+.year-select:hover {
+  border-color: #3b82f6;
+}
+
+.year-select:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .chart-controls {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  
+  .control-group {
+    order: 1;
+  }
+  
+  .year-picker {
+    order: 2;
+  }
 }
 
 .control-btn {

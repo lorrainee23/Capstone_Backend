@@ -410,7 +410,6 @@ const changePassword = async () => {
 }
 
 // Logout
-// Logout with confirmation
 const logout = async () => {
   const alert = await alertController.create({
     header: 'Confirm Logout',

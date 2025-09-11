@@ -2,6 +2,55 @@
   <ion-page>
     <AppHeader title="POSU Enforcer"/>
     <ion-content class="main-content">
+      <!-- Offline banner -->
+      <ion-card v-if="!isOnline" class="alert-card warning-alert">
+        <ion-card-content class="alert-content">
+          <ion-icon :icon="alertCircleOutline" class="alert-icon warning-icon"></ion-icon>
+          <span>No internet connection. Submissions will be saved offline and synced later. ({{ pendingCount }} pending)</span>
+        </ion-card-content>
+      </ion-card>
+      
+      <!-- Pending queue banner (when online but has pending items) -->
+      <ion-card v-if="isOnline && pendingCount > 0" class="alert-card info-alert">
+        <ion-card-content class="alert-content">
+          <ion-icon :icon="cloudUploadOutline" class="alert-icon info-icon"></ion-icon>
+          <span>{{ pendingCount }} violation(s) pending sync</span>
+          <ion-button 
+            fill="clear" 
+            size="small" 
+            @click="manualSync"
+            :disabled="isSyncing"
+            class="sync-btn"
+          >
+            <ion-spinner v-if="isSyncing" name="dots"></ion-spinner>
+            <span v-else>Sync Now</span>
+          </ion-button>
+        </ion-card-content>
+      </ion-card>
+      
+      <!-- Cache info banner (when offline with cached data) -->
+      <ion-card v-if="!isOnline && cacheInfo.violationTypesCount > 0" class="alert-card success-alert">
+        <ion-card-content class="alert-content">
+          <ion-icon :icon="saveOutline" class="alert-icon success-icon"></ion-icon>
+          <span>Using cached data: {{ cacheInfo.violationTypesCount }} violation types, {{ cacheInfo.violatorsCount }} violators</span>
+        </ion-card-content>
+      </ion-card>
+      
+      <!-- Debug banner for testing (remove in production) -->
+      <ion-card v-if="!isOnline && cacheInfo.violatorsCount === 0" class="alert-card warning-alert">
+        <ion-card-content class="alert-content">
+          <ion-icon :icon="alertCircleOutline" class="alert-icon warning-icon"></ion-icon>
+          <span>No cached violators for offline search</span>
+          <ion-button 
+            fill="clear" 
+            size="small" 
+            @click="addSampleData"
+            class="sync-btn"
+          >
+            Add Sample Data
+          </ion-button>
+        </ion-card-content>
+      </ion-card>
       <!-- Alerts -->
       <div v-if="error || success" class="alert-container">
         <ion-card v-if="error" class="alert-card error-alert">
@@ -501,6 +550,8 @@ import {
 } from 'ionicons/icons'
 import { bluetoothService } from '@/services/bluetooth.js'
 import { enforcerAPI } from '@/services/api.js'
+import { offlineQueue } from '@/services/offlineQueue.js'
+import { cacheService } from '@/services/cacheService.js'
 import Swal from "sweetalert2"
 
 // Reactive data
@@ -641,12 +692,50 @@ const handleFileUpload = (event) => {
 const performSearch = async () => {
   if (searchQuery.value.length < 2) return
   
+  isSearching.value = true
+  searchResults.value = []
+  
   try {
-    isSearching.value = true
-    searchResults.value = []
-    const response = await enforcerAPI.searchViolator({ search: searchQuery.value })
-    searchResults.value = response.data.data || []
+    if (navigator.onLine) {
+      // Online - try API search first, then cache results
+      try {
+        const response = await enforcerAPI.searchViolator({ search: searchQuery.value })
+        const results = response.data.data || []
+        searchResults.value = results
+        
+        // Cache the search results for offline use
+        if (results.length > 0) {
+          const cachedViolators = cacheService.getViolators() || []
+          const newViolators = results.filter(result => 
+            !cachedViolators.find(cached => cached.id === result.id)
+          )
+          if (newViolators.length > 0) {
+            cacheService.setViolators([...cachedViolators, ...newViolators])
+          }
+        }
+      } catch (apiErr) {
+        console.error("API search failed, trying local search:", apiErr)
+        // Fallback to local search if API fails
+        searchResults.value = cacheService.searchViolators(searchQuery.value)
+      }
+    } else {
+      // Offline - use local search
+      console.log('Offline search for:', searchQuery.value)
+      searchResults.value = cacheService.searchViolators(searchQuery.value)
+      console.log('Offline search results:', searchResults.value)
+      
+      if (searchResults.value.length === 0) {
+        await Swal.fire({
+          ...swalConfig,
+          icon: "info",
+          title: "No Results",
+          text: "No cached violators found. Connect to internet to search for new violators, or record violations manually.",
+          confirmButtonColor: "#3085d6",
+        })
+      }
+    }
   } catch (err) {
+    console.error("Search error:", err)
     searchResults.value = []
     await Swal.fire({
       ...swalConfig,
@@ -727,22 +816,119 @@ const onSearchInput = (event) => {
 
 // Load violation types
 const loadViolationTypes = async () => {
-  try {
-    const response = await enforcerAPI.getViolationTypes()
-    violationTypes.value = response.data.data || []
-  } catch (err) {
-    console.error("Failed to load violation types:", err)
-    await Swal.fire({
-      ...swalConfig,
-      icon: "error",
-      title: "Loading Error",
-      text: "Failed to load violation types.",
-      confirmButtonColor: "#dc3545",
-    })
+  // First try to get from cache
+  const cachedTypes = cacheService.getViolationTypes()
+  if (cachedTypes) {
+    violationTypes.value = cachedTypes
+    console.log("Using cached violation types")
+  }
+
+  // If online, try to fetch fresh data
+  if (navigator.onLine) {
+    try {
+      const response = await enforcerAPI.getViolationTypes()
+      const freshTypes = response.data.data || []
+      violationTypes.value = freshTypes
+      
+      // Cache the fresh data
+      cacheService.setViolationTypes(freshTypes)
+      console.log("Loaded and cached fresh violation types")
+    } catch (err) {
+      console.error("Failed to load fresh violation types:", err)
+      // If we have cached data, keep using it
+      if (!cachedTypes) {
+        // Use fallback only if no cache available
+        violationTypes.value = [
+          { id: 1, name: "No Helmet", description: "Driving without helmet" },
+          { id: 2, name: "No License", description: "Driving without valid license" },
+          { id: 3, name: "Reckless Driving", description: "Reckless driving behavior" },
+          { id: 4, name: "Overloading", description: "Vehicle overloading" },
+          { id: 5, name: "No Registration", description: "Unregistered vehicle" }
+        ]
+        console.log("Using fallback violation types")
+      }
+    }
+  } else {
+    // Offline - use cached data or fallback
+    if (!cachedTypes) {
+      violationTypes.value = [
+        { id: 1, name: "No Helmet", description: "Driving without helmet" },
+        { id: 2, name: "No License", description: "Driving without valid license" },
+        { id: 3, name: "Reckless Driving", description: "Reckless driving behavior" },
+        { id: 4, name: "Overloading", description: "Vehicle overloading" },
+        { id: 5, name: "No Registration", description: "Unregistered vehicle" }
+      ]
+      console.log("Using fallback violation types for offline mode")
+    }
   }
 }
 
 // Record violation
+const isOnline = ref(navigator.onLine)
+const isSyncing = ref(false)
+const pendingCount = computed(() => offlineQueue.getCount())
+const cacheInfo = computed(() => cacheService.getCacheInfo())
+
+window.addEventListener('online', () => { 
+  isOnline.value = true 
+  // Refresh cache when coming back online
+  refreshCache()
+})
+window.addEventListener('offline', () => { isOnline.value = false })
+
+// Refresh cache when coming back online
+const refreshCache = async () => {
+  try {
+    // Refresh violation types
+    const response = await enforcerAPI.getViolationTypes()
+    const freshTypes = response.data.data || []
+    cacheService.setViolationTypes(freshTypes)
+    violationTypes.value = freshTypes
+    console.log("Cache refreshed with fresh violation types")
+  } catch (err) {
+    console.error("Failed to refresh cache:", err)
+  }
+}
+
+// Add sample data for testing (remove in production)
+const addSampleData = () => {
+  cacheService.addSampleData()
+  console.log("Sample data added for testing")
+}
+
+// Manual sync function
+const manualSync = async () => {
+  if (!navigator.onLine || isSyncing.value) return
+  
+  isSyncing.value = true
+  try {
+    await offlineQueue.flush(async (queued) => {
+      if (queued.type === 'violation') {
+        await enforcerAPI.recordViolation(queued.payload)
+      }
+    })
+    
+    await Swal.fire({
+      ...swalConfig,
+      icon: "success",
+      title: "Sync Complete",
+      text: "All pending violations have been synced successfully.",
+      confirmButtonColor: "#28a745",
+    })
+  } catch (err) {
+    console.error("Sync error:", err)
+    await Swal.fire({
+      ...swalConfig,
+      icon: "error",
+      title: "Sync Failed",
+      text: "Failed to sync some violations. They will be retried later.",
+      confirmButtonColor: "#dc3545",
+    })
+  } finally {
+    isSyncing.value = false
+  }
+}
+
 const recordViolation = async () => {
   if (!isFormValid.value) {
     await Swal.fire({
@@ -778,8 +964,30 @@ const recordViolation = async () => {
       })
     }
 
+    // If offline, queue and exit gracefully
+    if (!navigator.onLine) {
+      console.log('Offline mode - queuing violation:', payload)
+      offlineQueue.push({ type: 'violation', payload })
+      console.log('Violation queued successfully')
+      
+      await Swal.fire({
+        ...swalConfig,
+        icon: 'info',
+        title: 'Saved Offline',
+        text: 'No internet. The violation was saved and will sync automatically when online.',
+        confirmButtonColor: '#3085d6',
+      })
+      
+      resetForm()
+      recording.value = false
+      return
+    }
+
     const response = await enforcerAPI.recordViolation(payload)
     recordedTransaction.value = response.data.data.transaction
+
+    // Cache the violator data for future searches
+    cacheService.addViolator(violationForm)
 
     await Swal.fire({
       ...swalConfig,
@@ -1030,6 +1238,30 @@ onMounted(() => {
 
 .success-icon {
   color: #16a34a;
+}
+
+.warning-alert {
+  --background: #fffbeb;
+  border-color: #fed7aa;
+}
+
+.warning-icon {
+  color: #f59e0b;
+}
+
+.info-alert {
+  --background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.info-icon {
+  color: #3b82f6;
+}
+
+.sync-btn {
+  margin-left: auto;
+  --color: #3b82f6;
+  font-size: 0.9rem;
 }
 
 /* Main Cards */

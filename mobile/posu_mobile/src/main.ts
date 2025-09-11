@@ -5,6 +5,12 @@ import router from "./router";
 
 import { IonicVue } from "@ionic/vue";
 import { StatusBar, Style } from "@capacitor/status-bar";
+// @ts-ignore
+import { offlineQueue } from "./services/offlineQueue";
+// @ts-ignore
+import { enforcerAPI } from "./services/api";
+// @ts-ignore
+import { cacheService } from "./services/cacheService";
 
 
 /* Core CSS required for Ionic components to work properly */
@@ -31,6 +37,16 @@ const app = createApp(App).use(IonicVue).use(router);
 router.isReady().then(() => {
     app.mount("#app");
 
+    // Check authentication on app start
+    const token = localStorage.getItem("auth_token");
+    if (token && window.location.pathname === "/login") {
+        // User is logged in but on login page, redirect to tabs
+        router.push("/tabs/tab1");
+    } else if (!token && window.location.pathname.startsWith("/tabs/")) {
+        // User not logged in but trying to access protected route, redirect to login
+        router.push("/login");
+    }
+
     // --- StatusBar / Fullscreen setup ---
     try {
         // Make webview overlay the status bar
@@ -44,4 +60,33 @@ router.isReady().then(() => {
     } catch (e) {
         console.warn("StatusBar plugin not available or failed:", e);
     }
+
+    const tryFlush = async () => {
+        if (!navigator.onLine) return;
+        await offlineQueue.flush(async (queued: any) => {
+            if (queued.type === 'violation') {
+                await enforcerAPI.recordViolation(queued.payload);
+            }
+        });
+    };
+
+    const refreshCacheOnStart = async () => {
+        if (navigator.onLine) {
+            try {
+                const response = await enforcerAPI.getViolationTypes();
+                cacheService.setViolationTypes(response.data.data || []);
+                console.log("Cache refreshed on app start");
+            } catch (err) {
+                console.error("Failed to refresh cache on start:", err);
+            }
+        }
+    };
+
+    // Attempt flush and cache refresh on start and when going online
+    tryFlush();
+    refreshCacheOnStart();
+    window.addEventListener('online', () => {
+        tryFlush();
+        refreshCacheOnStart();
+    });
 });

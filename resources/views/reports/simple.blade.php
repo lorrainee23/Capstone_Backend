@@ -61,6 +61,11 @@
         .footer .note {
             margin-top: 10px;
         }
+
+        .total-row {
+            font-weight: bold;
+            background: #f2f2f2;
+        }
     </style>
 </head>
 <body>
@@ -72,7 +77,7 @@
                 <h3>MUNICIPALITY OF ECHAGUE</h3>
                 <h4>TRAFFIC AND OTHER VIOLATIONS</h4>
                 <h4>S U M M A R Y  O F  R E P O R T</h4>
-                <p>{{ now()-> format('F d, Y')}}</p>
+                <p>{{ now()->format('F d, Y') }}</p>
             </div>
         </div>
 
@@ -88,7 +93,7 @@
                         <th colspan="3">CITATION TICKET</th>
                         <th colspan="2">APPREHENDING PERSONNEL</th>
                         <th rowspan="2">REMARKS</th>
-                        <th rowspan="2">PENALTY</th>
+                        <th rowspan="2">AMOUNT OF PENALTY</th>
                     </tr>
                     <tr>
                         <th>TYPE</th>
@@ -105,7 +110,9 @@
                     </tr>
                 </thead>
                 <tbody>
+                    @php $grandTotal = 0; @endphp
                     @foreach($rows as $index => $row)
+                        @php $grandTotal += $row['Penalty Amount'] ?? 0; @endphp
                         <tr>
                             <td>{{ $index + 1 }}</td>
                             <td>{{ $row['Violator Name'] ?? 'N/A' }}</td>
@@ -126,6 +133,11 @@
                             <td>₱{{ number_format($row['Penalty Amount'] ?? 0, 2) }}</td>
                         </tr>
                     @endforeach
+                    <tr class="total-row">
+                        <td colspan="15" style="text-align: left;">PENALTY TO BE COLLECTED</td>
+                        <td>₱{{ number_format($grandTotal, 2) }}</td>
+                        <td></td>
+                    </tr>
                 </tbody>
             </table>
         @elseif($type === 'Common Violations')
@@ -177,8 +189,8 @@
         @endif
 
         <div class="footer">
-            @if($type === 'All Violators')
-                <p><strong>Total Penalty to be Collected: ₱{{ number_format($totalPenalty ?? 0, 2) }}</strong></p>
+            @if($type === 'all_violators')
+                <p><strong>Total Penalty to be Collected: ₱{{ number_format($grandTotal, 2) }}</strong></p>
             @endif
             <div class="note">
                 <p>Noted by:</p>

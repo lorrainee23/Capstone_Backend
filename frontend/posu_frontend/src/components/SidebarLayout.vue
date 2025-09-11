@@ -43,7 +43,7 @@
                 <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
                 <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
               </svg>
-              <span class="nav-text" v-if="!sidebarCollapsed">Manage Officials and Violators</span>
+              <span class="nav-text" v-if="!sidebarCollapsed">Manage Gov. Officials and Violators</span>
               <svg 
                 class="arrow-icon" 
                 :class="{ open: showManageDropdown }" 
@@ -70,8 +70,8 @@
                     </svg>
                   </div>
                   <div class="dropdown-item-content">
-                    <span class="dropdown-item-title">Officials</span>
-                    <span class="dropdown-item-subtitle">Manage officials</span>
+                    <span class="dropdown-item-title">Gov. Officials</span>
+                    <span class="dropdown-item-subtitle">Manage Gov. officials</span>
                   </div>
                   <div class="dropdown-item-indicator"></div>
                 </router-link>
@@ -88,6 +88,21 @@
                   <div class="dropdown-item-content">
                     <span class="dropdown-item-title">Violators</span>
                     <span class="dropdown-item-subtitle">Manage Traffic Violators</span>
+                  </div>
+                  <div class="dropdown-item-indicator"></div>
+                </router-link>
+                <router-link to="/admin/users/vehicles" class="dropdown-item" :class="{ active: $route.path === '/admin/users/vehicles' }">
+                  <div class="dropdown-item-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="11" width="18" height="" rx="2" ry="2"></rect>
+                      <path d="M5 11L3 16h18l-2-5"></path>
+                      <circle cx="7.5" cy="18.5" r="1.5"></circle>
+                      <circle cx="16.5" cy="18.5" r="1.5"></circle>
+                    </svg>
+                  </div>
+                  <div class="dropdown-item-content">
+                    <span class="dropdown-item-title">Vehicles</span>
+                    <span class="dropdown-item-subtitle">Manage Vehicles</span>
                   </div>
                   <div class="dropdown-item-indicator"></div>
                 </router-link>
@@ -349,12 +364,12 @@
           <div class="user-menu-container">
             <button @click="toggleUserMenu" class="user-menu-btn">
               <div class="user-avatar-small">  <img 
-    v-if="profileImage" 
-    :src="profileImage" 
-    alt="Profile" 
-    class="profile-image-small"
-  />
-  <span v-else>{{ userInitials }}</span></div>
+                v-if="profileImage" 
+                :src="profileImage" 
+                alt="Profile" 
+                class="profile-image-small"
+              />
+              <span v-else>{{ userInitials }}</span></div>
               <span class="user-name-small">{{ userName }}</span>
               <svg class="dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="6,9 12,15 18,9"/>
@@ -365,12 +380,12 @@
             <div v-if="showUserMenu" class="user-dropdown" ref="userDropdown">
               <div class="user-dropdown-header">
                 <div class="profile-image"><img 
-    v-if="profileImage" 
-    :src="profileImage" 
-    alt="Profile" 
-    class="profile-image"
-  />
-  <span v-else>{{ userInitials }}</span></div>
+                  v-if="profileImage" 
+                  :src="profileImage" 
+                  alt="Profile" 
+                  class="profile-image"
+                />
+                <span v-else>{{ userInitials }}</span></div>
 
                 <div class="user-info-dropdown">
                   <div class="user-name-dropdown">{{ userName }}</div>
@@ -1367,11 +1382,17 @@ const manageRoles = computed(() => {
 }
 
 .user-role-dropdown {
+  display: inline-block;       
   font-size: 12px;
-  color: #6b7280;
+  color: #ffffff;          
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  background-color: #3b82f6;  
+  padding: 2px 8px;            
+  border-radius: 9999px;       
+  font-weight: 500;          
 }
+
 
 .user-dropdown-menu {
   padding: 8px;

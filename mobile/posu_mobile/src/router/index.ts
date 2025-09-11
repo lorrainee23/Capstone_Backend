@@ -14,6 +14,7 @@ const routes: Array<RouteRecordRaw> = [
     {
         path: "/tabs/",
         component: TabsPage,
+        meta: { requiresAuth: true },
         children: [
             {
                 path: "",
@@ -53,5 +54,23 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes
 })
+
+// Route guard to check authentication
+router.beforeEach((to, from, next) => {
+  const token = localStorage.getItem("auth_token");
+  
+  if (to.meta.requiresAuth) {
+    if (token) {
+      // User has token, allow access (even if offline)
+      next();
+    } else {
+      // No token, redirect to login
+      next("/login");
+    }
+  } else {
+    // Public route, allow access
+    next();
+  }
+});
 
 export default router

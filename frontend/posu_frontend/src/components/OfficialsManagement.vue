@@ -37,10 +37,13 @@
               <label class="form-label">Role</label>
               <select v-model="userFilters.role" class="form-select">
                 <option value="">All Roles</option>
-					<option value="head">Head</option>
-                <option value="deputy">Deputies</option>
-                <option value="admin">Admins</option>
-                <option value="enforcer">Enforcers</option>
+                <option 
+                  v-for="role in allowedRoles" 
+                  :key="role" 
+                  :value="role"
+                >
+                  {{ role.charAt(0).toUpperCase() + role.slice(1) }}
+                </option>
               </select>
             </div>
             <div class="filter-group">
@@ -78,6 +81,7 @@
                   <th>User</th>
                   <th>Username</th>
                   <th>Role</th>
+                  <th>Office</th>
                   <th>Status</th>
                   <th>Created</th>
                   <th>Last Login</th>
@@ -119,6 +123,11 @@
                     <span class="role-badge" :class="`role-${user.user_type?.toLowerCase()}`">
                       {{ user.user_type }}
                     </span>
+                  </td>
+                  <td>
+                    <div class="user-name">
+                      {{ user.office }}
+                    </div>
                   </td>
                   <td>
                     <span class="status-badge" :class="`status-${user.status?.toLowerCase()}`">
@@ -224,15 +233,9 @@
               </select>
             </div>
 
-            <!-- Info message for Admin -->
-            <div v-if="normalizedRole  === 'admin'" class="form-group">
-              <div class="alert alert-info">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-right: 8px;">
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
-                  <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-                <strong>Note:</strong> As an Admin, you can only create Enforcer accounts.
-              </div>
+            <div class="form-group">
+              <label class="form-label">Office *</label>
+              <input v-model="userForm.office" type="text" class="form-input" required />
             </div>
             
             <div class="form-group">
@@ -287,6 +290,7 @@ export default {
       email: "",
       username: "",
       status: "active",
+      office: "",
       password: "",
       user_type: ""
     })
@@ -296,9 +300,9 @@ export default {
     const normalizedRole = computed(() => props.currentUserRole?.toLowerCase() || "")
 
     const allowedRoles = computed(() => {
-      if (props.currentUserRole === "admin") return ["enforcer"]
-      if (props.currentUserRole === "deputy") return ["admin", "enforcer"]
-      if (props.currentUserRole === "head") return ["deputy", "admin", "enforcer"]
+      if (normalizedRole.value === "admin") return ["enforcer"]
+      if (normalizedRole.value === "deputy") return ["admin", "enforcer"]
+      if (normalizedRole.value === "head") return ["deputy", "admin", "enforcer"]
       return []
     })
 
@@ -366,7 +370,7 @@ export default {
       }
     } catch (e) {
       console.error("Error saving user:", e)
-      const errorMessage = e.response?.data?.message || "Failed to save user"
+      const errorMessage = e.response?.data?.message
       Swal.fire("Error", errorMessage, "error")
     } finally {
       saving.value = false
@@ -428,6 +432,7 @@ export default {
         middle_name: "",
         email: "",
         username: "",
+        office: "",
         status: "active",
         password: "",
         user_type: "",

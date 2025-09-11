@@ -17,6 +17,8 @@ use Illuminate\Support\Facades\Log;
 // Public routes
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'violatorRegister']);
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
 // Protected routes
 Route::middleware(['auth:sanctum', 'check.multiguard:admin,deputy,head,enforcer,violator'])->group(function () {
@@ -40,7 +42,6 @@ Route::prefix('admin')->group(function () {
     Route::delete('/users/{userType}/{id}', [AdminController::class, 'archiveUser']); 
     Route::get('/users/archived', [AdminController::class, 'getArchivedUsers']);
     Route::post('/users/{userType}/{id}/restore', [AdminController::class, 'restoreUser']); 
-    Route::delete('/users/{userType}/{id}/force-delete', [AdminController::class, 'forceDeleteUser']);
 
     // Violators 
     Route::get('/violators', [AdminController::class, 'getViolators']);
@@ -48,7 +49,10 @@ Route::prefix('admin')->group(function () {
     Route::delete('/violators/{id}', [AdminController::class, 'archiveViolator']);
     Route::get('/violators/archived', [AdminController::class, 'getArchivedViolators']);
     Route::post('/violators/{id}/restore', [AdminController::class, 'restoreViolator']);
-    Route::delete('/violators/{id}/force-delete', [AdminController::class, 'forceDeleteViolator']);
+
+    // Vehicles
+    Route::get('/vehicles', [AdminController::class, 'getVehicles']);
+    Route::put('/vehicles/{id}', [AdminController::class, 'updateVehicle']);
 
     // Violations 
     Route::get('/violations', [AdminController::class, 'getViolations']);
@@ -82,6 +86,7 @@ Route::get('/download-report/{filename}', function ($filename) {
     Route::post('/notifications/{id}/unread', [AdminController::class, 'markNotificationAsUnread']);
     Route::post('/notifications/mark-all-read', [AdminController::class, 'markAllNotificationsAsRead']);
     Route::post('/send-notifications', [AdminController::class, 'sendNotification']);
+    Route::get('/get-users', [AdminController::class, 'getAllUsers']);
 });
     
     // Enforcer routes

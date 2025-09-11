@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -17,8 +18,13 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Bootstrap any application services.
      */
-    public function boot(): void
+    public function boot()
     {
-        //
+        Relation::morphMap([
+            'Admin'    => \App\Models\Admin::class,
+            'Deputy'   => \App\Models\Deputy::class,
+            'Enforcer' => \App\Models\Enforcer::class,
+            'Head'     => \App\Models\Head::class,
+        ]);
     }
 }

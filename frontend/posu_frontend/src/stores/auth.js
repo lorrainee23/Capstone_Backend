@@ -86,11 +86,58 @@ export const useAuthStore = () => {
     }
   }
 
+  const forgotPassword = async (identifier) => {
+    try {
+      state.loading = true;
+      const response = await authAPI.forgotPassword({ identifier });
+      return { 
+        success: true, 
+        message: response.data?.message || 'A password reset link has been sent to your email',
+        ...response.data 
+      };
+    } catch (error) {
+      console.error('Forgot password error:', error);
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Failed to send reset link. Please try again.' 
+      };
+    } finally {
+      state.loading = false;
+    }
+  };
+
+  const resetPassword = async ({ email, token, password, password_confirmation }) => {
+    try {
+      state.loading = true;
+      const response = await authAPI.resetPassword({
+        email,
+        token,
+        password,
+        password_confirmation
+      });
+      return { 
+        success: true, 
+        message: response.data?.message || 'Your password has been reset successfully',
+        ...response.data 
+      };
+    } catch (error) {
+      console.error('Reset password error:', error);
+      return { 
+        success: false, 
+        message: error.response?.data?.message || 'Failed to reset password. Please try again.' 
+      };
+    } finally {
+      state.loading = false;
+    }
+  };
+
   return {
     state,
     login,
     logout,
     register,
-    initAuth
+    initAuth,
+    forgotPassword,
+    resetPassword
   }
 }

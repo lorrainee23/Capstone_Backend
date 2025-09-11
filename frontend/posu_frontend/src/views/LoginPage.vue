@@ -28,7 +28,10 @@
           </div>
 
           <div class="form-group">
-            <label for="password" class="form-label">Password</label>
+            <div class="password-header">
+              <label for="password" class="form-label">Password</label>
+              <router-link to="/forgot-password" class="forgot-password">Forgot Password?</router-link>
+            </div>
             <input
               id="password"
               v-model="form.password"
@@ -162,6 +165,30 @@ export default {
 .login-header {
   text-align: center;
   margin-bottom: 32px;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.password-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.forgot-password {
+  font-size: 0.875rem;
+  color: #3b82f6;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.forgot-password:hover {
+  color: #2563eb;
+  text-decoration: underline;
 }
 
 .logo {
