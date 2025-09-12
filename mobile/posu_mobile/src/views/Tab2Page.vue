@@ -338,7 +338,7 @@ import { enforcerAPI } from '@/services/api';
 const activeTab = ref('violators');
 const loading = ref(false);
 const searchTerm = ref('');
-const selectedDateRange = ref('today');
+const selectedDateRange = ref('all'); // Changed from 'today' to 'all' to show all data initially
 const selectedViolationType = ref('');
 const selectedStatus = ref('');
 
@@ -353,46 +353,180 @@ const selectedViolation = ref(null);
 
 let timeInterval = null;
 
-// Update date and time every second
 const updateDateTime = () => {
   const now = new Date();
   currentTime.value = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   currentDate.value = now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
 };
 
-// Computed properties
+// Enhanced date filtering function
+const isWithinDateRange = (dateTime, range) => {
+  if (!dateTime) return false;
+  
+  const itemDate = new Date(dateTime);
+  const now = new Date();
+  
+  // Add validation for invalid dates
+  if (isNaN(itemDate.getTime())) {
+    console.warn('Invalid date:', dateTime);
+    return false;
+  }
+  
+  switch (range) {
+    case 'today': {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(today.getDate() + 1);
+      
+      return itemDate >= today && itemDate < tomorrow;
+    }
+    case 'week': {
+      const weekAgo = new Date();
+      weekAgo.setDate(now.getDate() - 7);
+      weekAgo.setHours(0, 0, 0, 0);
+      return itemDate >= weekAgo;
+    }
+    case 'month': {
+      const monthAgo = new Date();
+      monthAgo.setMonth(now.getMonth() - 1);
+      monthAgo.setHours(0, 0, 0, 0);
+      return itemDate >= monthAgo;
+    }
+    case 'all':
+    default:
+      return true;
+  }
+};
+
+// Enhanced filtered violators with comprehensive debugging
 const filteredViolators = computed(() => {
+  console.log('\n🔍 === FILTERING DEBUG START ===');
   let filtered = transactions.value;
+  
+  console.log('📊 Initial data:', {
+    totalTransactions: filtered.length,
+    activeTab: activeTab.value,
+    currentUserId: currentUserId.value,
+    selectedDateRange: selectedDateRange.value,
+    searchTerm: searchTerm.value,
+    selectedViolationType: selectedViolationType.value,
+    selectedStatus: selectedStatus.value
+  });
   
   // Filter by tab (current user vs all)
   if (activeTab.value === 'violators' && currentUserId.value) {
-    filtered = filtered.filter(t => t.apprehending_officer === currentUserId.value);
+    console.log('🎯 Filtering for current user violations...');
+    console.log('Looking for apprehending_officer =', currentUserId.value);
+    
+    // Show all officers before filtering
+    const officerCounts = {};
+    filtered.forEach(t => {
+      officerCounts[t.apprehending_officer] = (officerCounts[t.apprehending_officer] || 0) + 1;
+    });
+    console.log('👮 Officers in data:', officerCounts);
+    
+    const beforeFilter = filtered.length;
+    filtered = filtered.filter(t => {
+      const match = String(t.apprehending_officer) === String(currentUserId.value);
+      return match;
+    });
+    
+    console.log(`👤 User filter result: ${beforeFilter} → ${filtered.length} transactions`);
+    
+    // Log the transactions that matched
+    if (filtered.length > 0) {
+      console.log('✅ Transactions for current user:');
+      filtered.forEach(t => {
+        console.log(`  - ID: ${t.id}, Ticket: ${t.ticket_number}, Date: ${t.date_time}, Violator: ${getViolatorFullName(t.violator)}`);
+      });
+    } else {
+      console.log('❌ No transactions found for current user');
+    }
+  } else {
+    console.log('🌐 Showing all violations (All Violators tab)');
   }
   
   // Search filter
   if (searchTerm.value) {
     const search = searchTerm.value.toLowerCase();
-    filtered = filtered.filter(t => 
-      getViolatorFullName(t.violator).toLowerCase().includes(search) ||
-      (t.vehicle?.plate_number || '').toLowerCase().includes(search) ||
-      (t.violator?.license_number || '').toLowerCase().includes(search)
-    );
+    console.log('🔍 Applying search filter:', search);
+    const beforeFilter = filtered.length;
+    
+    filtered = filtered.filter(t => {
+      const violatorName = getViolatorFullName(t.violator).toLowerCase();
+      const plateNumber = (t.vehicle?.plate_number || '').toLowerCase();
+      const licenseNumber = (t.violator?.license_number || '').toLowerCase();
+      
+      const matches = violatorName.includes(search) || 
+                     plateNumber.includes(search) || 
+                     licenseNumber.includes(search);
+      
+      if (matches) {
+        console.log(`  ✅ Search match: ${violatorName} | ${plateNumber} | ${licenseNumber}`);
+      }
+      
+      return matches;
+    });
+    
+    console.log(`🔍 Search filter result: ${beforeFilter} → ${filtered.length} transactions`);
   }
   
   // Violation type filter
   if (selectedViolationType.value) {
-    filtered = filtered.filter(t => t.violation?.name === selectedViolationType.value);
+    console.log('🏷️ Applying violation type filter:', selectedViolationType.value);
+    const beforeFilter = filtered.length;
+    
+    filtered = filtered.filter(t => {
+      const matches = t.violation?.name === selectedViolationType.value;
+      return matches;
+    });
+    
+    console.log(`🏷️ Violation type filter result: ${beforeFilter} → ${filtered.length} transactions`);
   }
   
   // Status filter
   if (selectedStatus.value) {
-    filtered = filtered.filter(t => t.status === selectedStatus.value);
+    console.log('📋 Applying status filter:', selectedStatus.value);
+    const beforeFilter = filtered.length;
+    
+    filtered = filtered.filter(t => {
+      const matches = t.status === selectedStatus.value;
+      return matches;
+    });
+    
+    console.log(`📋 Status filter result: ${beforeFilter} → ${filtered.length} transactions`);
   }
   
-  // Date range filter
+  // Date range filter with detailed logging
   if (selectedDateRange.value !== 'all') {
-    filtered = filtered.filter(t => isWithinDateRange(t.date_time, selectedDateRange.value));
+    console.log(`📅 Applying date filter: ${selectedDateRange.value}`);
+    const beforeFilter = filtered.length;
+    const now = new Date();
+    
+    filtered = filtered.filter(t => {
+      const result = isWithinDateRange(t.date_time, selectedDateRange.value);
+      if (!result) {
+        console.log(`  ❌ Date filtered out: ${t.date_time} (Transaction ${t.id})`);
+      } else {
+        console.log(`  ✅ Date passed: ${t.date_time} (Transaction ${t.id})`);
+      }
+      return result;
+    });
+    
+    console.log(`📅 Date filter result: ${beforeFilter} → ${filtered.length} transactions`);
+    console.log(`📅 Current date for reference: ${now.toISOString()}`);
   }
+  
+  console.log('🎯 === FINAL RESULT ===');
+  console.log('📊 Final filtered count:', filtered.length);
+  if (filtered.length > 0) {
+    console.log('📋 Final transactions:');
+    filtered.forEach(t => {
+      console.log(`  - ID: ${t.id}, Violator: ${getViolatorFullName(t.violator)}, Date: ${t.date_time}`);
+    });
+  }
+  console.log('========================\n');
   
   return filtered;
 });
@@ -411,70 +545,87 @@ const violatorsSummary = computed(() => {
   };
 });
 
-// Methods
+// Enhanced loadData function with comprehensive debugging
 const loadData = async () => {
   loading.value = true;
   try {
+    console.log('🔄 Loading data...');
+    
+    // 1. Get current user profile
+    const profileResponse = await enforcerAPI.getProfile();
+    currentUserId.value = profileResponse.data.data.id;
+    console.log('👤 Current User ID:', currentUserId.value, typeof currentUserId.value);
+    
+    // 2. Get transactions
     const response = await enforcerAPI.getTransactions();
+    console.log('📡 Raw API Response:', response);
+    
     const transactionsData = response.data?.data?.data || response.data?.data || [];
-    
-    // Process transactions and add officer information
-    const processedTransactions = await Promise.all(
-      transactionsData.map(async (transaction) => {
-        let officer = null;
-        if (transaction.apprehending_officer && activeTab.value === 'all-violators') {
-          try {
-            officer = {
-              id: transaction.apprehending_officer,
-              first_name: "Officer",
-              last_name: `#${transaction.apprehending_officer}`,
-              badge_number: transaction.apprehending_officer
-            };
-          } catch (error) {
-            console.error('Error fetching officer details:', error);
-          }
-        }
-        
-        return {
-          ...transaction,
-          officer
+    console.log('📝 Extracted Transactions Data:', transactionsData);
+    console.log('📊 Total Transactions Found:', transactionsData.length);
+
+    // Debug each transaction
+    transactionsData.forEach((transaction, index) => {
+      console.log(`📋 Transaction ${index + 1}:`, {
+        id: transaction.id,
+        ticket_number: transaction.ticket_number,
+        apprehending_officer: transaction.apprehending_officer,
+        apprehending_officer_type: typeof transaction.apprehending_officer,
+        violator: transaction.violator ? `${transaction.violator.first_name} ${transaction.violator.last_name}` : 'No violator',
+        violation: transaction.violation ? transaction.violation.name : 'No violation',
+        status: transaction.status,
+        date_time: transaction.date_time
+      });
+    });
+
+    const processedTransactions = transactionsData.map((transaction) => {
+      let officer = null;
+      if (transaction.apprehending_officer && activeTab.value === 'all-violators') {
+        officer = {
+          id: transaction.apprehending_officer,
+          first_name: "Officer",
+          last_name: `#${transaction.apprehending_officer}`,
+          badge_number: transaction.apprehending_officer
         };
-      })
-    );
-    
+      }
+      return {
+        ...transaction,
+        officer
+      };
+    });
+
     transactions.value = processedTransactions;
-    
+    console.log('✅ Processed Transactions stored:', transactions.value.length);
+
     // Extract unique violation types
     const uniqueTypes = transactionsData
       .filter(t => t.violation && t.violation.id && t.violation.name)
       .map(t => t.violation)
-      .filter((violation, index, self) => 
-        index === self.findIndex(v => v.id === violation.id)
-      );
+      .filter((violation, index, self) => index === self.findIndex(v => v.id === violation.id));
+    
     violationTypes.value = uniqueTypes;
-    
-    // Get current user ID (you'll need to implement this based on your auth system)
-    // currentUserId.value = await getCurrentUserId();
-    currentUserId.value = 2; // Placeholder - replace with actual current user ID
-    
+    console.log('🏷️ Violation Types found:', violationTypes.value);
+
   } catch (error) {
-    console.error('Error loading data:', error);
+    console.error('❌ Error loading data:', error);
     transactions.value = [];
     violationTypes.value = [];
   } finally {
     loading.value = false;
+    console.log('✅ Data loading completed');
   }
 };
 
 const handleSegmentChange = (event) => {
   activeTab.value = event.detail.value;
-  // Data will be filtered automatically through computed property
+  console.log('🔄 Tab changed to:', activeTab.value);
 };
 
 const searchTimeout = ref(null);
 
 const handleSearch = (event) => {
   searchTerm.value = event.detail.value;
+  console.log('🔍 Search term changed:', searchTerm.value);
   clearTimeout(searchTimeout.value);
   searchTimeout.value = setTimeout(() => {
     // Filters applied through computed properties
@@ -482,31 +633,8 @@ const handleSearch = (event) => {
 };
 
 const applyFilters = () => {
+  console.log('🔄 Filters changed, recomputing...');
   // Filters applied through computed properties
-};
-
-const isWithinDateRange = (dateTime, range) => {
-  if (!dateTime) return false;
-  
-  const itemDate = new Date(dateTime);
-  const now = new Date();
-  
-  switch (range) {
-    case 'today':
-      return itemDate.toDateString() === now.toDateString();
-    case 'week': {
-      const weekAgo = new Date();
-      weekAgo.setDate(now.getDate() - 7);
-      return itemDate >= weekAgo;
-    }
-    case 'month': {
-      const monthAgo = new Date();
-      monthAgo.setMonth(now.getMonth() - 1);
-      return itemDate >= monthAgo;
-    }
-    default:
-      return true;
-  }
 };
 
 const formatDate = (dateTime) => {
@@ -573,14 +701,30 @@ const openViolationDetail = (violation) => {
 };
 
 const handleRefresh = async (event) => {
+  console.log('🔄 Refreshing data...');
   await loadData();
   event.target.complete();
+};
+
+// Debug helper function - call from browser console
+window.debugViolatorData = () => {
+  console.log('=== DEBUG INFO ===');
+  console.log('Current User ID:', currentUserId.value);
+  console.log('Active Tab:', activeTab.value);
+  console.log('Selected Date Range:', selectedDateRange.value);
+  console.log('Total Transactions:', transactions.value.length);
+  console.log('Filtered Violators:', filteredViolators.value.length);
+  console.log('User\'s Transactions:', transactions.value.filter(t => String(t.apprehending_officer) === String(currentUserId.value)));
+  console.log('==================');
 };
 
 onMounted(() => {
   updateDateTime();
   timeInterval = setInterval(updateDateTime, 1000);
   loadData();
+  
+  // Make debug function available
+  console.log('💡 Debug tip: Run window.debugViolatorData() in console for detailed info');
 });
 
 onUnmounted(() => {
