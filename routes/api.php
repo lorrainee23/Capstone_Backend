@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\EnforcerController;
 use App\Http\Controllers\Api\ViolatorController;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /*
@@ -13,7 +14,22 @@ use Illuminate\Support\Facades\Log;
 | API Routes
 |--------------------------------------------------------------------------
 */
+Route::post('/transactions/update-date', function(Request $request) {
+    $request->validate([
+        'transaction_id' => 'required|integer',
+        'date_time'      => 'required|date'
+    ]);
 
+    DB::table('transactions')
+        ->where('id', $request->transaction_id)
+        ->update(['date_time' => $request->date_time]);
+
+    return response()->json([
+        'success' => true,
+        'transaction_id' => $request->transaction_id,
+        'new_date_time' => $request->date_time
+    ]);
+});
 // Public routes
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/enforcer-login', [EnforcerController::class, 'login']);
