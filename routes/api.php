@@ -82,8 +82,9 @@ Route::get('/download-report/{filename}', function ($filename) {
     return response()->file($filePath);
 })->name('download.report');
 
-    // Notifications (unchanged)
-    Route::get('/notifications', [AdminController::class, 'getAllNotifications']);
+    // Notifications
+    Route::get('/notifications', [AdminController::class, 'getReceivedNotifications']);
+    Route::get('/notifications/all', [AdminController::class, 'getAllNotifications']); 
     Route::get('/notifications/sent', [AdminController::class, 'getSentNotifications']);
     Route::post('/notifications/{id}/read', [AdminController::class, 'markNotificationAsRead']);
     Route::post('/notifications/{id}/unread', [AdminController::class, 'markNotificationAsUnread']);

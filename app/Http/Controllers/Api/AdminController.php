@@ -1205,20 +1205,57 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
         if (!$authUser) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Unauthorized: User is not a Official not logged in'
+                'message' => 'Unauthorized: User is not logged in'
             ], 403);
         }
 
-    $notifications = Notification::where(function($query) use ($authUser) {
-                $query->where('target_type', 'Management')
-                      ->orWhere(function($subQuery) use ($authUser) {
-                          $subQuery->where('sender_id', $authUser->id)
-                                   ->where('sender_role', ucfirst($this->getUserType($authUser)));
-                      });
-            })
+        $notifications = Notification::where('target_type', 'Management')
             ->orderBy('created_at', 'desc')
             ->take(15)
             ->get(['id','title', 'message', 'type','read_at', 'created_at', 'sender_id', 'sender_role', 'sender_name', 'target_type', 'target_id', 'violator_id', 'transaction_id']);
+
+        return response()->json([
+            'status' => 'success',
+            'data'   => $notifications
+        ]);
+    }
+
+    public function getReceivedNotifications(Request $request)
+    {
+        $authUser = $request->user('sanctum');
+        if (!$authUser) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized: User is not logged in'
+            ], 403);
+        }
+
+        $userRole = ucfirst($this->getUserType($authUser));
+        
+        $notifications = Notification::where(function($query) use ($authUser, $userRole) {
+                // For admins, get both admin and management notifications
+                if ($userRole === 'Admin') {
+                    $query->where(function($q) use ($authUser) {
+                        // Notifications for all admins
+                        $q->where('target_type', 'Admin')
+                          ->whereNull('target_id');
+                    })
+                    // Or notifications specifically for this admin
+                    ->orWhere(function($q) use ($authUser) {
+                        $q->where('target_type', 'Admin')
+                          ->where('target_id', $authUser->id);
+                    })
+                    // Or management notifications
+                    ->orWhere('target_type', 'Management');
+                } 
+                // For other user types
+                else {
+                    $query->where('target_type', $userRole)
+                          ->where('target_id', $authUser->id);
+                }
+            })
+            ->orderBy('created_at', 'desc')
+            ->get(['id','title', 'message', 'type','read_at', 'created_at', 'sender_id', 'sender_role', 'sender_name', 'target_type', 'target_id']);
 
         return response()->json([
             'status' => 'success',
