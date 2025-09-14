@@ -398,7 +398,7 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
         }
 
         $user->first_name = $request->input('first_name', $user->first_name);
-        $user->first_name = $request->input('middle_name', $user->first_name);
+        $user->middle_name = $request->input('middle_name', $user->middle_name);
         $user->last_name  = $request->input('last_name', $user->last_name);
         $user->email      = $request->input('email', $user->email);
         if ($request->filled('password')) {
@@ -1182,11 +1182,13 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
         }
 
         $authUser = $request->user('sanctum');
-        $senderRole = $this->getUserType($authUser);
+        $senderRole = ucfirst($this->getUserType($authUser));
+        $senderName = trim($authUser->first_name . ' ' . ($authUser->middle_name ? $authUser->middle_name . ' ' : '') . $authUser->last_name);
 
         $notification = Notification::create([
             'sender_id'   => $authUser->id,
             'sender_role' => $senderRole,
+            'sender_name' => $senderName,
             'target_type' => $request->target_type,
             'target_id'   => $request->target_id,
             'title'       => $request->title,
@@ -1198,25 +1200,52 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
     }
 
     public function getAllNotifications(Request $request)
-{
-    $authUser = $request->user('sanctum');
-    if (!$authUser) {
+    {
+        $authUser = $request->user('sanctum');
+        if (!$authUser) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized: User is not a Official not logged in'
+            ], 403);
+        }
+
+    $notifications = Notification::where(function($query) use ($authUser) {
+                $query->where('target_type', 'Management')
+                      ->orWhere(function($subQuery) use ($authUser) {
+                          $subQuery->where('sender_id', $authUser->id)
+                                   ->where('sender_role', ucfirst($this->getUserType($authUser)));
+                      });
+            })
+            ->orderBy('created_at', 'desc')
+            ->take(15)
+            ->get(['id','title', 'message', 'type','read_at', 'created_at', 'sender_id', 'sender_role', 'sender_name', 'target_type', 'target_id', 'violator_id', 'transaction_id']);
+
         return response()->json([
-            'status' => 'error',
-            'message' => 'Unauthorized: User is not a Official not logged in'
-        ], 403);
+            'status' => 'success',
+            'data'   => $notifications
+        ]);
     }
 
-   $notifications = Notification::where('target_type', 'Management')
-        ->orderBy('created_at', 'desc')
-        ->take(15)
-        ->get(['id', 'title', 'message', 'read_at', 'created_at']);
+    public function getSentNotifications(Request $request)
+    {
+        $authUser = $request->user('sanctum');
+        if (!$authUser || !in_array($authUser->role, ['Admin', 'Deputy'])) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized: Admin access required'
+            ], 403);
+        }
 
-    return response()->json([
-        'status' => 'success',
-        'data'   => $notifications
-    ]);
-}
+        $notifications = Notification::where('sender_id', $authUser->id)
+            ->where('sender_role', ucfirst($this->getUserType($authUser)))
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $notifications
+        ]);
+    }
 
     public function markNotificationAsRead($id)
     {

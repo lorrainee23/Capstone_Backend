@@ -14,6 +14,7 @@ return new class extends Migration
             // Sender info
             $table->unsignedInteger('sender_id')->nullable();
             $table->enum('sender_role', ['Head','Deputy','Admin','Enforcer','System'])->nullable();
+            $table->string('sender_name')->nullable();
 
             $table->unsignedInteger('target_id')->nullable();   
             $table->enum('target_type', ['Head','Deputy','Admin','Enforcer','Violator','All', 'Management'])->nullable();
@@ -27,7 +28,7 @@ return new class extends Migration
             $table->softDeletes();
             $table->timestamps();
             $table->timestamp('read_at')->nullable();
-
+            
             $table->foreign('violator_id')
                   ->references('id')->on('violators')
                   ->onDelete('cascade');
