@@ -1,9 +1,15 @@
-FROM php:8.1-fpm
+FROM php:8.2-fpm
 
 WORKDIR /var/www/html
 
 RUN apt-get update && apt-get install -y \
-    git unzip libzip-dev zip curl
+        libfreetype6-dev \
+        libjpeg62-turbo-dev \
+        libpng-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install gd \
+    && docker-php-ext-install pdo_mysql zip
+
 
 RUN docker-php-ext-install pdo pdo_mysql zip
 
