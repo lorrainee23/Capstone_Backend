@@ -21,6 +21,61 @@ use Illuminate\Support\Facades\Mail;
 class EnforcerController extends Controller
 {
     use UserPermissionsTrait;
+
+    public function login(Request $request)
+    {
+        $request->validate([
+            'identifier' => 'required|string',
+            'password'   => 'required|string',
+        ]);
+
+        $identifier = $request->identifier;
+        $password   = $request->password;
+
+        $enforcer = Enforcer::where('email', $identifier)
+            ->orWhere('username', $identifier)
+            ->first();
+
+        if ($enforcer && Hash::check($password, $enforcer->password)) {
+            if (!$enforcer->isActive()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Account is inactive'
+                ], 401);
+            }
+
+            $token = $enforcer->createToken('enforcer-token')->plainTextToken;
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Login successful',
+                'data' => [
+                    'user'      => $enforcer,
+                    'token'     => $token,
+                    'user_type' => 'Enforcer'
+                ]
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Invalid credentials'
+        ], 401);
+    }
+
+    public function logout(Request $request)
+    {
+        $user = $request->user('sanctum');
+        if ($user) {
+            $user->currentAccessToken()->delete();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Logged out successfully'
+        ]);
+    }
+    
     /**
      * Get enforcer dashboard
      */
@@ -65,13 +120,14 @@ class EnforcerController extends Controller
      */
     public function getViolationTypes()
     {
-        $violations = Violation::all();
+        $violations = Violation::orderBy('id', 'asc')->get();
 
         return response()->json([
             'status' => 'success',
             'data' => $violations
         ]);
     }
+
 
     /**
      * Search violator by license number or plate number
@@ -125,11 +181,11 @@ class EnforcerController extends Controller
             'mobile_number'   => 'required|string|size:11',
             'professional'    => 'required|boolean',
             'gender'          => 'required|boolean',
-            'license_number'  => 'required|string|size:16',
+            'license_number'  => 'required|string|size:11',
             'violation_id'    => 'required|exists:violations,id',
             'location'        => 'required|string|max:100',
             'vehicle_type'    => 'required|in:Motor,Motorcycle,Van,Car,SUV,Truck,Bus',
-            'plate_number'    => 'required|string|max:10',
+            'plate_number'    => 'required|string|max:7',
             'make'            => 'required|string|max:100',
             'model'           => 'required|string|max:100',
             'color'           => 'required|string|max:100', 
@@ -172,7 +228,6 @@ class EnforcerController extends Controller
                     'city'         => $request->city,
                     'province'     => $request->province,
                     'professional' => $request->professional,
-                    'password'    => null,
                 ]
             );
 
@@ -353,6 +408,24 @@ class EnforcerController extends Controller
         ]);
     }
 
+    /**
+     * Get all violators with transactions
+     */
+    public function getViolators(Request $request)
+    {
+        $perPage = $request->input('per_page', 1000);
+        $page = $request->input('page', 1);
+
+        $violators = Violator::whereHas('transactions')
+            ->withCount('transactions')
+            ->with('vehicles')
+            ->paginate($perPage, ['*'], 'page', $page);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $violators
+        ]);
+    }
 
    
     /**

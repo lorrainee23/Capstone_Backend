@@ -25,7 +25,6 @@ class AuthController extends Controller
                 \App\Models\Admin::class,
                 \App\Models\Deputy::class,
                 \App\Models\Head::class,
-                \App\Models\Enforcer::class,
             ];
 
             foreach ($models as $model) {
@@ -50,7 +49,7 @@ class AuthController extends Controller
         $identifier = $request->identifier;
         $password = $request->password;
 
-        // Check Admin / Deputy / Head / Enforcer
+        // Check Admin / Deputy / Head 
         $user = $this->getUserModelByIdentifier($identifier);
         Log::info('Login attempt', [
             'identifier' => $identifier,
@@ -101,7 +100,7 @@ class AuthController extends Controller
         return response()->json([
             'success' => false,
             'message' => 'Invalid credentials'
-        ], 200);
+        ], 401);
     }
 
     /**

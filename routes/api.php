@@ -16,14 +16,17 @@ use Illuminate\Support\Facades\Log;
 
 // Public routes
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/enforcer-login', [EnforcerController::class, 'login']);
 Route::post('/register', [AuthController::class, 'violatorRegister']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+
 
 // Protected routes
 Route::middleware(['auth:sanctum', 'check.multiguard:admin,deputy,head,enforcer,violator'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/profile', [AuthController::class, 'profile']);
+    Route::post('/enforcer-logout', [EnforcerController::class, 'logout']);
     
     // Admin routes
 Route::prefix('admin')->group(function () {
