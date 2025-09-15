@@ -1223,44 +1223,29 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
     public function getReceivedNotifications(Request $request)
     {
         $authUser = $request->user('sanctum');
-        if (!$authUser) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Unauthorized: User is not logged in'
-            ], 403);
-        }
+        $userRole = $this->getUserType($authUser);
 
-        $userRole = ucfirst($this->getUserType($authUser));
-        
-        $notifications = Notification::where(function($query) use ($authUser, $userRole) {
-                // For admins, get both admin and management notifications
-                if ($userRole === 'Admin') {
-                    $query->where(function($q) use ($authUser) {
-                        // Notifications for all admins
-                        $q->where('target_type', 'Admin')
-                          ->whereNull('target_id');
-                    })
-                    // Or notifications specifically for this admin
-                    ->orWhere(function($q) use ($authUser) {
-                        $q->where('target_type', 'Admin')
-                          ->where('target_id', $authUser->id);
-                    })
-                    // Or management notifications
-                    ->orWhere('target_type', 'Management');
-                } 
-                // For other user types
-                else {
-                    $query->where('target_type', $userRole)
-                          ->where('target_id', $authUser->id);
+        $query = Notification::query()
+            ->where(function ($q) use ($authUser, $userRole) {
+                $q->where(function ($sub) use ($authUser, $userRole) {
+                    $sub->where('target_type', $userRole)
+                        ->where(function ($s) use ($authUser) {
+                            $s->whereNull('target_id')
+                            ->orWhere('target_id', $authUser->id);
+                        });
+                });
+
+                // Management Notifications
+                if (in_array($userRole, ['admin', 'deputy', 'head'])) {
+                    $q->orWhere(function ($sub) {
+                        $sub->where('target_type', 'management')
+                            ->whereNull('target_id');
+                    });
                 }
             })
-            ->orderBy('created_at', 'desc')
-            ->get(['id','title', 'message', 'type','read_at', 'created_at', 'sender_id', 'sender_role', 'sender_name', 'target_type', 'target_id']);
+            ->orderBy('created_at', 'desc');
 
-        return response()->json([
-            'status' => 'success',
-            'data'   => $notifications
-        ]);
+        return $query->get();
     }
 
     public function getSentNotifications(Request $request)
