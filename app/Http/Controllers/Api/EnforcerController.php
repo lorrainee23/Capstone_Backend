@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use App\Traits\UserPermissionsTrait;
 use Illuminate\Support\Facades\Mail;
+use App\Services\AuditLogger;
 
 class EnforcerController extends Controller
 {
@@ -37,17 +38,10 @@ class EnforcerController extends Controller
             ->first();
 
         if ($enforcer && Hash::check($password, $enforcer->password)) {
-            if (!$enforcer->isActive()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Account is inactive'
-                ], 401);
-            }
-
             $token = $enforcer->createToken('enforcer-token')->plainTextToken;
 
             return response()->json([
-                'success' => true,
+                'status' => 'success',
                 'message' => 'Login successful',
                 'data' => [
                     'user'      => $enforcer,
@@ -58,7 +52,7 @@ class EnforcerController extends Controller
         }
 
         return response()->json([
-            'success' => false,
+            'status' => 'error',
             'message' => 'Invalid credentials'
         ], 401);
     }
@@ -82,6 +76,14 @@ class EnforcerController extends Controller
     public function dashboard(Request $request)
     {
         $user = $request->user();
+        
+        // Check if user is an enforcer
+        if (!$user instanceof Enforcer) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Access denied. Only enforcers can access this endpoint.'
+            ], 403);
+        }
         
         $stats = [
             'total_apprehensions' => $user->transactions()->count(),
@@ -107,11 +109,10 @@ class EnforcerController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'data' => [
-                'stats' => $stats,
+            'data' => array_merge($stats, [
                 'recent_transactions' => $recentTransactions,
                 'weekly_performance' => $weeklyPerformance,
-            ]
+            ])
         ]);
     }
 
@@ -155,13 +156,12 @@ class EnforcerController extends Controller
         })
         ->get();
 
-    if ($violators->isEmpty()) {
+        if ($violators->isEmpty()) {
         return response()->json([
             'status' => 'error',
             'message' => 'No violators found'
         ], 404);
     }
-
     return response()->json([
         'status' => 'success',
         'data' => $violators
@@ -173,13 +173,20 @@ class EnforcerController extends Controller
      */
     public function recordViolation(Request $request)
     {
-        $validator = Validator::make($request->all(), [
+        // Handle nested data structure from mobile app
+        $violatorData = $request->input('violator', []);
+        $vehicleData = $request->input('vehicle', []);
+        
+        // Merge nested data with main request data
+        $allData = array_merge($request->all(), $violatorData, $vehicleData);
+        
+        $validator = Validator::make($allData, [
             'first_name'      => 'required|string|max:100',
             'middle_name'     => 'nullable|string|max:100',
             'last_name'       => 'required|string|max:100',
             'email'           => 'nullable|email',
             'mobile_number'   => 'required|string|size:11',
-            'professional'    => 'required|boolean',
+            'professional'    => 'nullable|boolean',
             'gender'          => 'required|boolean',
             'license_number'  => 'required|string|size:11',
             'violation_id'    => 'required|exists:violations,id',
@@ -189,20 +196,21 @@ class EnforcerController extends Controller
             'make'            => 'required|string|max:100',
             'model'           => 'required|string|max:100',
             'color'           => 'required|string|max:100', 
-            'barangay'        => 'required|string|max:255',
-            'city'            => 'required|string|max:255',
-            'province'        => 'required|string|max:255',
+            'barangay'        => 'nullable|string|max:255',
+            'city'            => 'nullable|string|max:255',
+            'province'        => 'nullable|string|max:255',
             'owner_first_name'      => 'required|string|max:100',
             'owner_middle_name'     => 'nullable|string|max:100',
             'owner_last_name'       => 'required|string|max:100',
-            'owner_barangay'        => 'required|string|max:255',
-            'owner_city'            => 'required|string|max:255',
-            'id_photo'        => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'owner_barangay'        => 'nullable|string|max:255',
+            'owner_city'            => 'nullable|string|max:255',
+            'owner_province'        => 'nullable|string|max:255',
+            'image'           => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
-                'success' => false,
+                'status' => 'error',
                 'message' => 'Validation failed',
                 'errors'  => $validator->errors()
             ], 422);
@@ -213,45 +221,45 @@ class EnforcerController extends Controller
 
             // Create or get violator
             $violator = Violator::firstOrCreate(
-                ['license_number' => $request->license_number],
+                ['license_number' => $allData['license_number']],
                 [
-                    'first_name'  => $request->first_name,
-                    'middle_name' => $request->middle_name,
-                    'last_name'   => $request->last_name,
-                    'email'       => $request->email,
-                    'gender'      => $request->gender,
-                    'mobile_number' => $request->mobile_number,
-                    'id_photo'    => $request->hasFile('id_photo')
-                        ? $request->file('id_photo')->store('id_photos', 'public')
+                    'first_name'  => $allData['first_name'],
+                    'middle_name' => $allData['middle_name'] ?? null,
+                    'last_name'   => $allData['last_name'],
+                    'email'       => $allData['email'] ?? null,
+                    'gender'      => $allData['gender'],
+                    'mobile_number' => $allData['mobile_number'],
+                    'id_photo'    => $request->hasFile('image')
+                        ? $request->file('image')->store('id_photos', 'public')
                         : null,
-                    'barangay'     => $request->barangay,
-                    'city'         => $request->city,
-                    'province'     => $request->province,
-                    'professional' => $request->professional,
+                    'barangay'     => $allData['barangay'] ?? null,
+                    'city'         => $allData['city'] ?? null,
+                    'province'     => $allData['province'] ?? null,
+                    'professional' => $allData['professional'] ?? false,
                 ]
             );
 
             // Create or get vehicle
             $vehicle = Vehicle::firstOrCreate(
                 [
-                    'plate_number' => $request->plate_number,
+                    'plate_number' => $allData['plate_number'],
                     'violators_id' => $violator->id
                 ],
                 [
-                    'owner_first_name'   => $request->owner_first_name,
-                    'owner_middle_name'  => $request->owner_middle_name,
-                    'owner_last_name'    => $request->owner_last_name,
-                    'make'         => $request->make,
-                    'model'        => $request->model,
-                    'color'        =>$request->color,
-                    'owner_barangay'     => $request->owner_barangay,
-                    'owner_city'         => $request->owner_city,
-                    'owner_province'     => $request->owner_province,
-                    'vehicle_type' => $request->vehicle_type,
+                    'owner_first_name'   => $allData['owner_first_name'],
+                    'owner_middle_name'  => $allData['owner_middle_name'] ?? null,
+                    'owner_last_name'    => $allData['owner_last_name'],
+                    'make'         => $allData['make'],
+                    'model'        => $allData['model'],
+                    'color'        => $allData['color'],
+                    'owner_barangay'     => $allData['owner_barangay'] ?? null,
+                    'owner_city'         => $allData['owner_city'] ?? null,
+                    'owner_province'     => $allData['owner_province'] ?? null,
+                    'vehicle_type' => $allData['vehicle_type'],
                 ]
             );
 
-            $violation = Violation::findOrFail($request->violation_id);
+            $violation = Violation::findOrFail($allData['violation_id']);
 
             // Create transaction
             $transaction = Transaction::create([
@@ -260,10 +268,25 @@ class EnforcerController extends Controller
                 'violation_id'         => $violation->id,
                 'apprehending_officer' => auth()->id(),
                 'status'               => 'Pending',
-                'location'             => $request->location,
+                'location'             => $allData['location'],
                 'date_time'            => now(),
-                'fine_amount'          => $violation->fine_amount,
+                'fine_amount'          => $allData['fine_amount'] ?? $violation->fine_amount,
             ]);
+
+            // Audit: violation recorded
+            $actor = auth()->user();
+            $actorName = trim(($actor->first_name ?? '') . ' ' . ($actor->last_name ?? ''));
+            $ticketLabel = 'Ticket #' . ($transaction->ticket_number ?? $transaction->id);
+            AuditLogger::log(
+                $actor,
+                'Violation Recorded',
+                'Transaction',
+                $transaction->id,
+                $ticketLabel,
+                [],
+                $request,
+                "$actorName recorded a violation ($violation->name) for {$violator->first_name} {$violator->last_name}"
+            );
 
             $allowedRoles = ['System','Management','Head','Deputy','Admin','Enforcer','Violator'];
             $userType = class_basename(auth()->user());
@@ -333,8 +356,8 @@ class EnforcerController extends Controller
                 'type'        => 'info',
             ]);
 
-            // SEND CITATION EMAIL - ADD THIS SECTION RIGHT BEFORE DB::commit()
-            if ($request->email) {
+            
+            if ($request->filled('email')) {
                 try {
                     $violatorName = trim($violator->first_name . ' ' . ($violator->middle_name ? $violator->middle_name . ' ' : '') . $violator->last_name);
                     $vehicleInfo = $vehicle->make . ' ' . $vehicle->model . ' (' . $vehicle->color . ')';
@@ -364,8 +387,8 @@ class EnforcerController extends Controller
             DB::commit();
 
             return response()->json([
-                'success' => true,
-                'message' => 'Violation recorded successfully' . ($request->email ? ' and citation email sent' : ''),
+                'status' => 'success',
+                'message' => 'Violation recorded successfully' . (!empty($allData['email']) ? ' and citation email sent' : ''),
                 'data' => [
                     'transaction' => $transaction->load(['violator', 'vehicle', 'violation']),
                     'violator'    => $violator,
@@ -376,7 +399,7 @@ class EnforcerController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
-                'success' => false,
+                'status' => 'error',
                 'message' => 'Failed to record violation: ' . $e->getMessage()
             ], 500);
         }
@@ -437,9 +460,9 @@ class EnforcerController extends Controller
         
         $stats = [
             'total_apprehensions' => $user->transactions()->count(),
-            'this_month' => $user->transactions()->whereMonth('date_time', now()->month)->count(),
-            'this_week' => $user->transactions()->whereBetween('date_time', [now()->startOfWeek(), now()->endOfWeek()])->count(),
-            'today' => $user->transactions()->whereDate('date_time', today())->count(),
+            'monthly_apprehensions' => $user->transactions()->whereMonth('date_time', now()->month)->count(),
+            'weekly_apprehensions' => $user->transactions()->whereBetween('date_time', [now()->startOfWeek(), now()->endOfWeek()])->count(),
+            'daily_apprehensions' => $user->transactions()->whereDate('date_time', today())->count(),
             'pending_count' => $user->transactions()->where('status', 'Pending')->count(),
             'paid_count' => $user->transactions()->where('status', 'Paid')->count(),
             'total_revenue' => $user->transactions()->where('status', 'Paid')->sum('fine_amount'),
@@ -456,10 +479,7 @@ class EnforcerController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'data' => [
-                'stats' => $stats,
-                'monthly_performance' => $monthlyPerformance,
-            ]
+            'data' => $stats
         ]);
     }
     /**
@@ -479,6 +499,7 @@ public function getProfile(Request $request)
             'full_name'   => $user->full_name, // from accessor
             'username'    => $user->username,
             'email'       => $user->email,
+            'office'      => $user->office,
             'image'       => $user->image_url, // from accessor
             'status'      => $user->status,
             'created_at'  => $user->created_at,
@@ -495,6 +516,7 @@ public function updateProfile(Request $request)
         'first_name'   => 'required|string|max:100',
         'middle_name'  => 'nullable|string|max:100',
         'last_name'    => 'required|string|max:100',
+        'office'       => 'nullable|string|max:255',
         'image'        => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
     ]);
 
@@ -511,6 +533,7 @@ public function updateProfile(Request $request)
     $user->first_name  = $request->first_name;
     $user->middle_name = $request->middle_name;
     $user->last_name   = $request->last_name;
+    $user->office      = $request->office;
 
     if ($request->hasFile('image')) {
         $imagePath = $request->file('image')->store('profile_images', 'public');
@@ -551,7 +574,7 @@ public function updateProfile(Request $request)
             return response()->json([
                 'status' => 'error',
                 'message' => 'Current password is incorrect'
-            ], 400);
+            ], 422);
         }
 
         // Update to new password

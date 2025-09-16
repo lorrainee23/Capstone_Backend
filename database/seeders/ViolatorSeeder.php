@@ -39,7 +39,7 @@ class ViolatorSeeder extends Seeder
                 $email = strtolower($first) . $i . '@example.com';
 
                 $mobile_number = '09' . rand(100000000, 999999999);
-                $license_number = strtoupper(Str::random(2)) . rand(10,99) . '-' . rand(10,99) . '-' . rand(100000,999999);
+                $license_number = strtoupper(Str::random(2)) . rand(100000000, 999999999);
 
                 $violator = Violator::create([
                     'first_name' => $first,
@@ -57,7 +57,7 @@ class ViolatorSeeder extends Seeder
                     'password' => bcrypt('password123'),
                 ]);
 
-                $plate_number = $plateLetters[array_rand($plateLetters)] . rand(1000,9999);
+                $plate_number = $plateLetters[array_rand($plateLetters)] . rand(1000, 9999);
                 $vehicle = Vehicle::create([
                     'violators_id' => $violator->id,
                     'owner_first_name' => $first,

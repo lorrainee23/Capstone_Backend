@@ -37,6 +37,16 @@ class UserSeeder extends Seeder
             'password' => Hash::make('password123'),
             'status' => 'active'
         ]);
+         Head::create([
+            'id' => 2,
+            'first_name' => 'John',
+            'last_name' => 'Ray',
+            'username' => 'john02',
+            'email' => 'john@moms.com',
+            'password' => Hash::make('password123'),
+            'status' => 'active'
+        ]);
+
 
         // 1 Deputy
         Deputy::create([
@@ -66,7 +76,7 @@ class UserSeeder extends Seeder
             'first_name' => 'Jane',
             'last_name' => 'Smith',
             'username' => 'enforcer02',
-             'office' => 'PNP ISmart',
+            'office' => 'PNP ISmart',
             'email' => 'enforcer2@moms.com',
             'password' => Hash::make('password123'),
             'status' => 'active'
@@ -77,7 +87,7 @@ class UserSeeder extends Seeder
             'first_name' => 'Mike',
             'last_name' => 'Johnson',
             'username' => 'enforcer03',
-             'office' => 'PNP ISmart',
+            'office' => 'PNP ISmart',
             'email' => 'enforcer3@moms.com',
             'password' => Hash::make('password123'),
             'status' => 'deactivate'

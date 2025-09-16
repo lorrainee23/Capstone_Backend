@@ -20,6 +20,7 @@ use App\Models\Violation;
 use App\Models\Transaction;
 use App\Models\Notification;
 use App\Models\Report;
+use App\Models\AuditLog;
 
 // Exports & External Packages
 use Maatwebsite\Excel\Facades\Excel;
@@ -34,6 +35,7 @@ use Swagger\Client\Api\ConvertDocumentApi;
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use App\Services\AuditLogger;
 
 class AdminController extends Controller
 {
@@ -322,6 +324,21 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
         $modelClass = $this->getModelClass($userType);
         $user = $modelClass::create($userData);
 
+        // Audit: user created
+        $actorName = trim(($authUser->first_name ?? '') . ' ' . ($authUser->last_name ?? ''));
+        $targetName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
+        $targetTypeReadable = ucfirst($userType);
+        AuditLogger::log(
+            $authUser,
+            'User Created',
+            $targetTypeReadable,
+            $user->id,
+            $targetName,
+            [],
+            $request,
+            "$actorName created $targetTypeReadable $targetName"
+        );
+
         // If email is provided
         if (!empty($request->email)) {
             $user->email = $request->email;
@@ -406,6 +423,21 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
         }
         $user->status = $request->input('status', $user->status);
         $user->save();
+
+        // Audit: user updated
+        $actorName = trim(($authUser->first_name ?? '') . ' ' . ($authUser->last_name ?? ''));
+        $targetName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
+        $targetTypeReadable = ucfirst($userType);
+        AuditLogger::log(
+            $authUser,
+            'User Updated',
+            $targetTypeReadable,
+            $user->id,
+            $targetName,
+            [],
+            $request,
+            "$actorName updated $targetTypeReadable $targetName"
+        );
 
         return response()->json(['status' => 'success', 'message' => 'User updated successfully', 'data' => $user]);
     }
@@ -653,6 +685,21 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
             'files' => $files,
         ]);
 
+        // Audit: report generated
+        $actor = $request->user('sanctum');
+        $actorName = trim(($actor->first_name ?? '') . ' ' . ($actor->last_name ?? ''));
+        $desc = "$actorName generated a '{$report->type}' report for period '{$request->period}'";
+        AuditLogger::log(
+            $actor,
+            'Report Generated',
+            'Report',
+            $report->id,
+            $report->type,
+            [],
+            $request,
+            $desc
+        );
+
         return response()->json([
             'status' => 'success',
             'data' => [
@@ -731,6 +778,20 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
         }
         Report::query()->delete(); 
 
+        // Audit: reports cleared
+        $actor = request()->user('sanctum');
+        $actorName = trim(($actor->first_name ?? '') . ' ' . ($actor->last_name ?? ''));
+        AuditLogger::log(
+            $actor,
+            'Report History Cleared',
+            'Report',
+            null,
+            null,
+            [],
+            request(),
+            "$actorName cleared the report history"
+        );
+
         return response()->json([
             'message' => 'Report history cleared successfully (files deleted).'
         ]);
@@ -790,6 +851,21 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
         $modelClass = $this->getModelClass($userType);
         $user = $modelClass::findOrFail($id);
         $user->delete();
+
+        // Audit: user archived
+        $actorName = trim(($authUser->first_name ?? '') . ' ' . ($authUser->last_name ?? ''));
+        $targetName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
+        $targetTypeReadable = ucfirst($userType);
+        AuditLogger::log(
+            $authUser,
+            'User Archived',
+            $targetTypeReadable,
+            $user->id,
+            $targetName,
+            [],
+            request(),
+            "$actorName archived $targetTypeReadable $targetName"
+        );
 
         return response()->json(['status' => 'success', 'message' => 'User archived successfully']);
     }
@@ -858,6 +934,21 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
         $user = $modelClass::onlyTrashed()->findOrFail($id);
         $user->restore();
 
+        // Audit: user restored
+        $actorName = trim(($authUser->first_name ?? '') . ' ' . ($authUser->last_name ?? ''));
+        $targetName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
+        $targetTypeReadable = ucfirst($userType);
+        AuditLogger::log(
+            $authUser,
+            'User Restored',
+            $targetTypeReadable,
+            $user->id,
+            $targetName,
+            [],
+            request(),
+            "$actorName restored $targetTypeReadable $targetName"
+        );
+
         return response()->json(['status' => 'success', 'message' => 'User restored successfully', 'data' => $user]);
     }
 
@@ -892,6 +983,21 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
 
         $user->status = $request->status;
         $user->save();
+
+        // Audit: user status toggled
+        $actorName = trim(($authUser->first_name ?? '') . ' ' . ($authUser->last_name ?? ''));
+        $targetName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
+        $targetTypeReadable = ucfirst($request->user_type);
+        AuditLogger::log(
+            $authUser,
+            'User Status Changed',
+            $targetTypeReadable,
+            $user->id,
+            $targetName,
+            [],
+            $request,
+            "$actorName changed status of $targetTypeReadable $targetName to {$request->status}"
+        );
 
         return response()->json([
             'status' => 'success',
@@ -1083,6 +1189,20 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
 
         $violation = Violation::create($request->all());
 
+        // Audit: violation created
+        $actor = $request->user('sanctum');
+        $actorName = trim(($actor->first_name ?? '') . ' ' . ($actor->last_name ?? ''));
+        AuditLogger::log(
+            $actor,
+            'Violation Created',
+            'Violation',
+            $violation->id,
+            $violation->name,
+            [],
+            $request,
+            "$actorName created violation '{$violation->name}'"
+        );
+
         return response()->json(['status' => 'success', 'message' => 'Violation created', 'data' => $violation], 201);
     }
 
@@ -1101,6 +1221,20 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
         }
 
         $violation->update($request->all());
+
+        // Audit: violation updated
+        $actor = $request->user('sanctum');
+        $actorName = trim(($actor->first_name ?? '') . ' ' . ($actor->last_name ?? ''));
+        AuditLogger::log(
+            $actor,
+            'Violation Updated',
+            'Violation',
+            $violation->id,
+            $violation->name,
+            [],
+            $request,
+            "$actorName updated violation '{$violation->name}'"
+        );
 
         return response()->json(['status' => 'success', 'message' => 'Violation updated', 'data' => $violation]);
     }
@@ -1154,8 +1288,25 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
             ], 404);
         }
 
+        $previousStatus = $transaction->status;
         $transaction->status = $request->input('status', 'Paid');
         $transaction->save();
+
+        // Audit: transaction updated
+        $actor = $request->user('sanctum');
+        $actorName = trim(($actor->first_name ?? '') . ' ' . ($actor->last_name ?? ''));
+        $ticketLabel = 'Ticket #' . ($transaction->ticket_number ?? $transaction->id);
+        $verb = $transaction->status === 'Paid' ? 'marked as Paid' : 'updated';
+        AuditLogger::log(
+            $actor,
+            'Transaction Updated',
+            'Transaction',
+            $transaction->id,
+            $ticketLabel,
+            [],
+            $request,
+            "$actorName $verb $ticketLabel"
+        );
 
         return response()->json([
             'status' => 'success',
@@ -1223,43 +1374,62 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
     public function getReceivedNotifications(Request $request)
     {
         $authUser = $request->user('sanctum');
-        $userRole = $this->getUserType($authUser);
+        if (!$authUser) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized: User is not logged in'
+            ], 403);
+        }
 
-        $query = Notification::query()
-            ->where(function ($q) use ($authUser, $userRole) {
-                $q->where(function ($sub) use ($authUser, $userRole) {
-                    $sub->where('target_type', $userRole)
-                        ->where(function ($s) use ($authUser) {
-                            $s->whereNull('target_id')
-                            ->orWhere('target_id', $authUser->id);
-                        });
-                });
+        $userRole = ucfirst($this->getUserType($authUser));
+        
+        $notifications = Notification::where(function($query) use ($authUser, $userRole) {
+                $isManagement = in_array($userRole, ['Admin', 'Deputy', 'Head']);
 
-                // Management Notifications
-                if (in_array($userRole, ['admin', 'deputy', 'head'])) {
-                    $q->orWhere(function ($sub) {
-                        $sub->where('target_type', 'management')
-                            ->whereNull('target_id');
+                if ($isManagement) {
+                    // Broadcasts to their role without specific target
+                    $query->where(function($q) use ($userRole) {
+                        $q->where('target_type', $userRole)
+                          ->whereNull('target_id');
+                    })
+                    // Or notifications specifically to this user
+                    ->orWhere(function($q) use ($authUser, $userRole) {
+                        $q->where('target_type', $userRole)
+                          ->where('target_id', $authUser->id);
+                    })
+                    // Or organization-wide management broadcasts
+                    ->orWhere(function($q) {
+                        $q->where('target_type', 'Management')
+                          ->whereNull('target_id');
                     });
+                } else {
+                    // Non-management users only see messages targeted to their exact role + id
+                    $query->where('target_type', $userRole)
+                          ->where('target_id', $authUser->id);
                 }
             })
-            ->orderBy('created_at', 'desc');
+            ->orderBy('created_at', 'desc')
+            ->get(['id','title', 'message', 'type','read_at', 'created_at', 'sender_id', 'sender_role', 'sender_name', 'target_type', 'target_id']);
 
-        return $query->get();
+        return response()->json([
+            'status' => 'success',
+            'data'   => $notifications
+        ]);
     }
 
     public function getSentNotifications(Request $request)
     {
         $authUser = $request->user('sanctum');
-        if (!$authUser || !in_array($authUser->role, ['Admin', 'Deputy'])) {
+        $userRole = $authUser ? ucfirst($this->getUserType($authUser)) : null;
+        if (!$authUser || !in_array($userRole, ['Admin', 'Deputy', 'Head'])) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Unauthorized: Admin access required'
+                'message' => 'Unauthorized: Management access required'
             ], 403);
         }
 
+        // Match by sender_id only to avoid role label mismatches across clients
         $notifications = Notification::where('sender_id', $authUser->id)
-            ->where('sender_role', ucfirst($this->getUserType($authUser)))
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -1310,4 +1480,52 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
 
         return response()->json($users);
     }
+
+    /**
+     * Get audit logs with role-based visibility
+     */
+    public function getAuditLogs(Request $request)
+    {
+        $authUser = $request->user('sanctum');
+        $role = ucfirst($this->getUserType($authUser));
+
+        if (!in_array($role, ['Head', 'Deputy', 'Admin'])) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized: Management access required'
+            ], 403);
+        }
+
+        $allowedActorTypes = [];
+        if ($role === 'Head') {
+            $allowedActorTypes = ['Head','Deputy','Admin','Enforcer','Violator'];
+        } elseif ($role === 'Deputy') {
+            $allowedActorTypes = ['Deputy','Admin','Enforcer','Violator'];
+        } elseif ($role === 'Admin') {
+            $allowedActorTypes = ['Admin','Enforcer','Violator'];
+        }
+
+        $perPage = (int) $request->input('per_page', 15);
+        $search = trim((string) $request->input('search', ''));
+
+        $query = AuditLog::whereIn('actor_type', $allowedActorTypes)
+            ->orderBy('created_at', 'desc');
+
+        if ($search !== '') {
+            $query->where(function($q) use ($search) {
+                $q->where('action', 'like', "%$search%")
+                  ->orWhere('actor_name', 'like', "%$search%")
+                  ->orWhere('target_name', 'like', "%$search%");
+            });
+        }
+
+        $logs = $query->paginate($perPage);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $logs
+        ]);
+    }
+
+    // Deleting audit logs is disabled by policy.
 }
