@@ -225,7 +225,7 @@ class ViolatorController extends Controller
         }
 
         $notifications = Notification::where('target_type', 'Violator')
-            ->where('violator_id', $violator->id)
+            ->where('target_id', $violator->id)
             ->latest()
             ->paginate(15);
 
@@ -264,8 +264,9 @@ class ViolatorController extends Controller
             ], 403);
         }
 
-        Notification::where('target_role', 'Violator')
-            ->where('violator_id', $violator->id)
+        Notification::where('target_type', 'Violator')
+            ->where('target_id', $violator->id)
+            ->whereNull('read_at')
             ->update(['read_at' => now()]);
 
         return response()->json(['status' => 'success']);

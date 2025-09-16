@@ -19,6 +19,7 @@ use App\Models\Violator;
 use App\Models\Violation;
 use App\Models\Transaction;
 use App\Models\Notification;
+use App\Models\NotificationRead;
 use App\Models\Report;
 use App\Models\AuditLog;
 
@@ -1409,7 +1410,18 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
                 }
             })
             ->orderBy('created_at', 'desc')
-            ->get(['id','title', 'message', 'type','read_at', 'created_at', 'sender_id', 'sender_role', 'sender_name', 'target_type', 'target_id']);
+            ->get(['id','title', 'message', 'type','read_at', 'created_at', 'sender_id', 'sender_role', 'sender_name', 'target_type', 'target_id'])
+            ->map(function($n) use ($authUser, $userRole) {
+                // For broadcasts (Management/*), derive read status per-user from notification_reads
+                if ($n->target_type === 'Management' && $n->target_id === null) {
+                    $read = NotificationRead::where('notification_id', $n->id)
+                        ->where('user_id', $authUser->id)
+                        ->where('user_role', $userRole)
+                        ->value('read_at');
+                    $n->read_at = $read ?: null;
+                }
+                return $n;
+            });
 
         return response()->json([
             'status' => 'success',
@@ -1441,27 +1453,87 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
 
     public function markNotificationAsRead($id)
     {
+        $authUser = request()->user('sanctum');
+        $userRole = $authUser ? ucfirst($this->getUserType($authUser)) : null;
         $notification = Notification::findOrFail($id);
-        $notification->read_at = Carbon::now();
-        $notification->save();
+
+        if ($notification->target_type === 'Management' && $notification->target_id === null) {
+            // mark broadcast read for this user only
+            NotificationRead::updateOrCreate(
+                [
+                    'notification_id' => $notification->id,
+                    'user_id' => $authUser->id,
+                    'user_role' => $userRole,
+                ],
+                [
+                    'read_at' => Carbon::now(),
+                ]
+            );
+        } else {
+            $notification->read_at = Carbon::now();
+            $notification->save();
+        }
 
         return response()->json(['status' => 'success', 'message' => 'Notification marked as read']);
     }
 
     public function markNotificationAsUnread($id)
     {
+        $authUser = request()->user('sanctum');
+        $userRole = $authUser ? ucfirst($this->getUserType($authUser)) : null;
         $notification = Notification::findOrFail($id);
-        $notification->read_at = null;
-        $notification->save();
+
+        if ($notification->target_type === 'Management' && $notification->target_id === null) {
+            NotificationRead::where('notification_id', $notification->id)
+                ->where('user_id', $authUser->id)
+                ->where('user_role', $userRole)
+                ->delete();
+        } else {
+            $notification->read_at = null;
+            $notification->save();
+        }
 
         return response()->json(['status' => 'success', 'message' => 'Notification marked as unread']);
     }
 
     public function markAllNotificationsAsRead(Request $request)
     {
-        Notification::where('target_role', $request->user()->role)
-                    ->whereNull('read_at')
-                    ->update(['read_at' => Carbon::now()]);
+        $authUser = $request->user('sanctum');
+        if (!$authUser) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized'
+            ], 401);
+        }
+
+        // Determine normalized role label used in notifications
+        $userRole = ucfirst($this->getUserType($authUser)); // Admin | Deputy | Head
+
+        // Mark only notifications targeted specifically to this user
+        // Mark direct-targeted notifications for this user
+        Notification::where('target_type', $userRole)
+            ->where('target_id', $authUser->id)
+            ->whereNull('read_at')
+            ->update(['read_at' => Carbon::now()]);
+
+        // Mark broadcasts as read for this user via per-user rows
+        $broadcastIds = Notification::where('target_type', 'Management')
+            ->whereNull('target_id')
+            ->pluck('id');
+
+        $now = Carbon::now();
+        foreach ($broadcastIds as $nid) {
+            NotificationRead::updateOrCreate(
+                [
+                    'notification_id' => $nid,
+                    'user_id' => $authUser->id,
+                    'user_role' => $userRole,
+                ],
+                [
+                    'read_at' => $now,
+                ]
+            );
+        }
 
         return response()->json(['status' => 'success', 'message' => 'All notifications marked as read']);
     }
