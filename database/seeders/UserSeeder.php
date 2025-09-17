@@ -23,6 +23,7 @@ class UserSeeder extends Seeder
             'last_name' => 'User',
             'username' => 'admin01',
             'email' => 'admin@moms.com',
+            'office'=> 'POSU',
             'password' => Hash::make('password123'),
             'status' => 'active'
         ]);
@@ -34,6 +35,7 @@ class UserSeeder extends Seeder
             'last_name' => 'User',
             'username' => 'head01',
             'email' => 'head@moms.com',
+            'office'=> 'POSU',
             'password' => Hash::make('password123'),
             'status' => 'active'
         ]);
@@ -43,6 +45,7 @@ class UserSeeder extends Seeder
             'last_name' => 'Ray',
             'username' => 'john02',
             'email' => 'john@moms.com',
+            'office'=> 'POSU',
             'password' => Hash::make('password123'),
             'status' => 'active'
         ]);
@@ -55,6 +58,7 @@ class UserSeeder extends Seeder
             'last_name' => 'User',
             'username' => 'deputy01',
             'email' => 'deputy@moms.com',
+            'office'=> 'POSU',
             'password' => Hash::make('password123'),
             'status' => 'active'
         ]);

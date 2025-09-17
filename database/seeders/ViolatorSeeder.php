@@ -20,6 +20,7 @@ class ViolatorSeeder extends Seeder
 
         // Random first names/last names pool
         $firstNames = ['Juan','Maria','Pedro','Ana','Carlos','Jose','Luisa','Miguel','Rosa','Diego'];
+        $middleNames = ['Juan','Maria','Pedro','Ana','Carlos','Jose','Luisa','Miguel','Rosa','Diego'];
         $lastNames  = ['Dela Cruz','Santos','Reyes','Lopez','Garcia','Martinez','Rodriguez','Gonzalez','Perez','Torres'];
 
         // Vehicle options
@@ -35,7 +36,7 @@ class ViolatorSeeder extends Seeder
             try {
                 $first = $firstNames[array_rand($firstNames)];
                 $last  = $lastNames[array_rand($lastNames)];
-                $middle = Str::random(5);
+                $middle = $middleNames[array_rand($middleNames)];
                 $email = strtolower($first) . $i . '@example.com';
 
                 $mobile_number = '09' . rand(100000000, 999999999);

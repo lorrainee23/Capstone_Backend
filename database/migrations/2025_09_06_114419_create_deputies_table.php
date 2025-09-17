@@ -14,6 +14,7 @@ return new class extends Migration
             $table->string('middle_name', 255)->nullable();
             $table->string('last_name', 255);
             $table->string('username', 255);
+            $table->string('office',255);
             $table->string('email', 255)->unique()->nullable();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password', 255);

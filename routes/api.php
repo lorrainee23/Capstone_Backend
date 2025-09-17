@@ -30,6 +30,9 @@ Route::middleware(['auth:sanctum', 'check.multiguard:admin,deputy,head'])->prefi
 
     // Dashboard
     Route::get('/dashboard', [AdminController::class, 'dashboard']);
+    
+    // Profile 
+    Route::get('/profile', [AuthController::class, 'profile']);
     Route::post('toggle-status', [AdminController::class, 'toggleUserStatus']);
 
     // Transactions

@@ -18,6 +18,7 @@ class Deputy extends Authenticatable
         'middle_name',
         'last_name',
         'username',
+        'office',
         'email',
         'password',
         'image',

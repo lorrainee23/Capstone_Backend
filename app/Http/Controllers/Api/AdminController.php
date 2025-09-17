@@ -318,7 +318,7 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
         ];
 
         if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('users', 'public');
+            $imagePath = $request->file('image')->store('profile_images', 'public');
             $userData['image'] = $imagePath;
         }
 
@@ -382,24 +382,28 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
     {
         $authUser = $request->user('sanctum');
 
-         if (!$this->canManageUserType($authUser, $userType)) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'You are not authorized to update this type of user'
-            ], 403);
+        if (!$this->canManageUserType($authUser, $userType)) {
+            // Allow self-profile updates even if role cannot manage this type
+            $selfType = $this->getUserType($authUser);
+            if (!($selfType === $userType && (int) $id === (int) $authUser->id)) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'You are not authorized to update this type of user'
+                ], 403);
+            }
         }
 
         $modelClass = self::getModelClass($userType);
         $user = $modelClass::findOrFail($id);
 
         $validator = Validator::make($request->all(), [
-            'first_name'  => 'required|string|max:255',
-            'middle_name' => 'nullable|string|max:255',
-            'last_name'   => 'required|string|max:255',
-            'username'    => 'required|string|max:255|unique:' . $user->getTable() . ',username,' . $id,
-            'email'       => 'required|email|unique:' . $user->getTable() . ',email,' . $id,
-            'status'      => 'required|in:active,inactive,deactivate',
-            'image'       => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'first_name'  => 'sometimes|string|max:255',
+            'middle_name' => 'sometimes|nullable|string|max:255',
+            'last_name'   => 'sometimes|string|max:255',
+            'username'    => 'sometimes|string|max:255|unique:' . $user->getTable() . ',username,' . $id,
+            'email'       => 'sometimes|email|unique:' . $user->getTable() . ',email,' . $id,
+            'status'      => 'sometimes|in:active,inactive,deactivate',
+            'image'       => 'sometimes|nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
         if ($validator->fails()) {
@@ -411,18 +415,28 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
             if ($user->image) {
                 Storage::disk('public')->delete($user->image);
             }
-            $imagePath = $request->file('image')->store('users', 'public');
-            $updateData['image'] = $imagePath;
+            $imagePath = $request->file('image')->store('profile_images', 'public');
+            $user->image = $imagePath;
         }
 
-        $user->first_name = $request->input('first_name', $user->first_name);
-        $user->middle_name = $request->input('middle_name', $user->middle_name);
-        $user->last_name  = $request->input('last_name', $user->last_name);
-        $user->email      = $request->input('email', $user->email);
+        if ($request->has('first_name')) {
+            $user->first_name = $request->first_name;
+        }
+        if ($request->has('middle_name')) {
+            $user->middle_name = $request->middle_name;
+        }
+        if ($request->has('last_name')) {
+            $user->last_name  = $request->last_name;
+        }
+        if ($request->has('email')) {
+            $user->email      = $request->email;
+        }
         if ($request->filled('password')) {
             $user->password = Hash::make($request->password);
         }
-        $user->status = $request->input('status', $user->status);
+        if ($request->has('status')) {
+            $user->status = $request->status;
+        }
         $user->save();
 
         // Audit: user updated
@@ -1240,6 +1254,8 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
         return response()->json(['status' => 'success', 'message' => 'Violation updated', 'data' => $violation]);
     }
 
+    
+
     /* ==============================
      * TRANSACTIONS 
      * ============================== */
@@ -1361,9 +1377,18 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
             ], 403);
         }
 
-        $notifications = Notification::where('target_type', 'Management')
+        // Include organization-wide broadcasts for management roles as "all"
+        $notifications = Notification::where(function($q) {
+                $q->where('target_type', 'Management')
+                  ->whereNull('target_id');
+            })
+            ->orWhere(function($q) {
+                // Role-wide broadcasts for Admin/Deputy/Head (no specific target_id)
+                $q->whereIn('target_type', ['Admin','Deputy','Head'])
+                  ->whereNull('target_id');
+            })
             ->orderBy('created_at', 'desc')
-            ->take(15)
+            ->take(100)
             ->get(['id','title', 'message', 'type','read_at', 'created_at', 'sender_id', 'sender_role', 'sender_name', 'target_type', 'target_id', 'violator_id', 'transaction_id']);
 
         return response()->json([
@@ -1440,8 +1465,9 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
             ], 403);
         }
 
-        // Match by sender_id only to avoid role label mismatches across clients
+        // Require both sender_id and sender_role to match the authenticated user
         $notifications = Notification::where('sender_id', $authUser->id)
+            ->where('sender_role', $userRole)
             ->orderBy('created_at', 'desc')
             ->get();
 

@@ -20,21 +20,29 @@ class AuthController extends Controller
 {
     protected function getUserModelByIdentifier($identifier)
     {
-        if (filter_var($identifier, FILTER_VALIDATE_EMAIL)) {
-            $models = [
-                \App\Models\Admin::class,
-                \App\Models\Deputy::class,
-                \App\Models\Head::class,
-            ];
+        $models = [
+            \App\Models\Admin::class,
+            \App\Models\Deputy::class,
+            \App\Models\Head::class,
+        ];
 
+        // First try to find by email if it's a valid email
+        if (filter_var($identifier, FILTER_VALIDATE_EMAIL)) {
             foreach ($models as $model) {
                 $user = $model::where('email', $identifier)->first();
                 if ($user) return $user;
             }
         }
 
+        // Then try to find by username
+        foreach ($models as $model) {
+            $user = $model::where('username', $identifier)->first();
+            if ($user) return $user;
+        }
+
         return null;
     }
+
 
     /**
      * Login for Head, Deputy, Admin, Enforcer, and Violator
@@ -62,7 +70,7 @@ class AuthController extends Controller
             if (!$user->isActive()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Account is inactive'
+                    'message' => 'Account is deactivated'
                 ], 401);
             }
             $token = $user->createToken('auth-token')->plainTextToken;
@@ -99,7 +107,7 @@ class AuthController extends Controller
 
         return response()->json([
             'success' => false,
-            'message' => 'Invalid credentials'
+            'message' => 'Wrong Email/Number or Password'
         ], 401);
     }
 

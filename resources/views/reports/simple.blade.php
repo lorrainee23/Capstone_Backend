@@ -134,13 +134,13 @@
                         </tr>
                     @endforeach
                     <tr class="total-row">
-                        <td colspan="15" style="text-align: left;">PENALTY TO BE COLLECTED</td>
+                        <td colspan="16" style="text-align: left;">PENALTY TO BE COLLECTED</td>
                         <td>₱{{ number_format($grandTotal, 2) }}</td>
                         <td></td>
                     </tr>
                 </tbody>
             </table>
-        @elseif($type === 'Common Violations')
+        @elseif($type === 'common_violations')
             <table>
                 <thead>
                     <tr>
@@ -153,13 +153,13 @@
                     @foreach($rows as $index => $row)
                         <tr>
                             <td>{{ $index + 1 }}</td>
-                            <td>{{ $row['violation_name'] }}</td>
-                            <td>{{ $row['count'] }}</td>
+                            <td>{{ $row['Violation Name'] ?? $row['violation_name'] ?? 'N/A' }}</td>
+                            <td>{{ $row['Count'] ?? $row['count'] ?? 0 }}</td>
                         </tr>
                     @endforeach
                 </tbody>
             </table>
-        @elseif($type === 'Enforcer Performance')
+        @elseif($type === 'enforcer_performance')
             <table>
                 <thead>
                     <tr>
@@ -174,16 +174,16 @@
                     @foreach($rows as $index => $row)
                         <tr>
                             <td>{{ $index + 1 }}</td>
-                            <td>{{ $row['enforcer_name'] }}</td>
-                            <td>{{ $row['violations_issued'] }}</td>
-                            <td>{{ $row['collection_rate'] }}%</td>
-                            <td>₱{{ number_format($row['total_fines'], 2) }}</td>
+                            <td>{{ $row['Enforcer Name'] ?? $row['enforcer_name'] ?? 'N/A' }}</td>
+                            <td>{{ $row['Violations Issued'] ?? $row['violations_issued'] ?? 0 }}</td>
+                            <td>{{ $row['Collection Rate (%)'] ?? $row['collection_rate'] ?? 0 }}%</td>
+                            <td>₱{{ number_format($row['Total Fines'] ?? $row['total_fines'] ?? 0, 2) }}</td>
                         </tr>
                     @endforeach
                 </tbody>
             </table>
-        @elseif($type === 'Total Revenue')
-            <p><strong>Total Revenue: ₱{{ number_format($rows[0]['total_revenue'], 2) }}</strong></p>
+        @elseif($type === 'total_revenue')
+            <p><strong>Total Revenue: ₱{{ number_format($totalPenalty ?? ($rows[0]['Total Revenue'] ?? $rows[0]['total_revenue'] ?? 0), 2) }}</strong></p>
         @else
             <p>No data available for this report.</p>
         @endif
