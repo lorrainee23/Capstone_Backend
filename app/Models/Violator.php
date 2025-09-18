@@ -70,9 +70,15 @@ class Violator extends Authenticatable
 
     public function getIdPhotoUrlAttribute()
     {
-        return $this->id_photo
-            ? url('storage/id_photos/' . $this->id_photo)
-            : url('storage/id_photos/photo.png');
+        if (!$this->id_photo) {
+            return url('storage/id_photos/photo.png');
+        }
+        // If value already looks like a URL (Cloudinary), return as-is
+        if (preg_match('/^https?:\/\//i', $this->id_photo)) {
+            return $this->id_photo;
+        }
+        // Else assume local filename in storage
+        return url('storage/id_photos/' . $this->id_photo);
     }
 
     /** 🔹 Relationships */

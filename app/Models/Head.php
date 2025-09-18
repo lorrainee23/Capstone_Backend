@@ -61,4 +61,15 @@ class Head extends Authenticatable
     {
         return $this->hasMany(Notification::class, 'sender_id');
     }
+
+    public function getImageUrlAttribute()
+    {
+        if (!$this->image) {
+            return null;
+        }
+        if (preg_match('/^https?:\/\//i', $this->image)) {
+            return $this->image;
+        }
+        return asset('storage/' . $this->image);
+    }
 }

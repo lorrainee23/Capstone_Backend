@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
+use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 
 class ViolatorController extends Controller
 {
@@ -149,6 +150,15 @@ class ViolatorController extends Controller
         $violator->update($request->only([
             'first_name', 'middle_name', 'last_name', 'mobile_number'
         ]));
+
+        if ($request->hasFile('id_photo')) {
+            $upload = Cloudinary::upload($request->file('id_photo')->getRealPath(), [
+                'folder' => 'posu/id_photos',
+                'resource_type' => 'image',
+            ]);
+            $violator->id_photo = $upload->getSecurePath();
+            $violator->save();
+        }
 
         return response()->json([
             'status' => 'success',

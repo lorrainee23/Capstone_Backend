@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Log;
 use App\Traits\UserPermissionsTrait;
 use Illuminate\Support\Facades\Mail;
 use App\Services\AuditLogger;
+use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 
 class EnforcerController extends Controller
 {
@@ -230,7 +231,13 @@ class EnforcerController extends Controller
                     'gender'      => $allData['gender'],
                     'mobile_number' => $allData['mobile_number'],
                     'id_photo'    => $request->hasFile('image')
-                        ? basename($request->file('image')->store('id_photos', 'public'))
+                        ? (function() use ($request) {
+                            $upload = Cloudinary::upload($request->file('image')->getRealPath(), [
+                                'folder' => 'posu/id_photos',
+                                'resource_type' => 'image',
+                            ]);
+                            return $upload->getSecurePath();
+                        })()
                         : null,
                     'barangay'     => $allData['barangay'] ?? null,
                     'city'         => $allData['city'] ?? null,
@@ -241,8 +248,11 @@ class EnforcerController extends Controller
 
             // If violator already exists and a new image was provided, update their ID photo
             if ($request->hasFile('image') && $violator->wasRecentlyCreated === false) {
-                $path = $request->file('image')->store('id_photos', 'public');
-                $violator->id_photo = basename($path);
+                $upload = Cloudinary::upload($request->file('image')->getRealPath(), [
+                    'folder' => 'posu/id_photos',
+                    'resource_type' => 'image',
+                ]);
+                $violator->id_photo = $upload->getSecurePath();
                 $violator->save();
             }
 
@@ -541,9 +551,11 @@ public function updateProfile(Request $request)
     $user->office      = $request->office;
 
     if ($request->hasFile('image')) {
-        $imagePath = $request->file('image')->store('profile_images', 'public');
-
-        $user->image = '/storage/' . $imagePath;
+        $upload = Cloudinary::upload($request->file('image')->getRealPath(), [
+            'folder' => 'posu/profile_images',
+            'resource_type' => 'image',
+        ]);
+        $user->image = $upload->getSecurePath();
     }
 
     $user->save();

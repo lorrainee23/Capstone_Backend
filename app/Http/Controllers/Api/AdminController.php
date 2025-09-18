@@ -37,6 +37,7 @@ use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use App\Services\AuditLogger;
+use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 
 class AdminController extends Controller
 {
@@ -318,8 +319,11 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
         ];
 
         if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('profile_images', 'public');
-            $userData['image'] = $imagePath;
+            $upload = Cloudinary::upload($request->file('image')->getRealPath(), [
+                'folder' => 'posu/profile_images',
+                'resource_type' => 'image',
+            ]);
+            $userData['image'] = $upload->getSecurePath();
         }
 
         $modelClass = $this->getModelClass($userType);
@@ -412,11 +416,11 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
 
         // Handle image upload
         if ($request->hasFile('image')) {
-            if ($user->image) {
-                Storage::disk('public')->delete($user->image);
-            }
-            $imagePath = $request->file('image')->store('profile_images', 'public');
-            $user->image = $imagePath;
+            $upload = Cloudinary::upload($request->file('image')->getRealPath(), [
+                'folder' => 'posu/profile_images',
+                'resource_type' => 'image',
+            ]);
+            $user->image = $upload->getSecurePath();
         }
 
         if ($request->has('first_name')) {

@@ -67,10 +67,13 @@ class Enforcer extends Authenticatable
 
     public function getImageUrlAttribute()
     {
-        if ($this->image) {
-            return asset('storage/' . $this->image);
+        if (!$this->image) {
+            return null;
         }
-        return null;
+        if (preg_match('/^https?:\/\//i', $this->image)) {
+            return $this->image;
+        }
+        return asset('storage/' . $this->image);
     }
     public function receivedNotifications()
     {
