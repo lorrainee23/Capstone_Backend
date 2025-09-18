@@ -47,4 +47,9 @@ return [
      * Controller action to get cloud_image_url from Blade Upload Widget
      */
     'upload_action' => env('CLOUDINARY_UPLOAD_ACTION'),
+
+    /**
+     * Optional default placeholder URL for ID photos
+     */
+    'default_id_photo_url' => env('CLOUDINARY_DEFAULT_ID_PHOTO_URL'),
 ];

@@ -71,7 +71,8 @@ class Violator extends Authenticatable
     public function getIdPhotoUrlAttribute()
     {
         if (!$this->id_photo) {
-            return url('storage/id_photos/photo.png');
+            $configured = config('cloudinary.default_id_photo_url');
+            return $configured ?: url('storage/id_photos/photo.png');
         }
         // If value already looks like a URL (Cloudinary), return as-is
         if (preg_match('/^https?:\/\//i', $this->id_photo)) {
