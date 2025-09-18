@@ -24,16 +24,19 @@ class Notification extends Model
         'read_at',
     ];
 
-    protected $dates = ['read_at','deleted_at'];
+    protected $casts = [
+        'read_at' => 'datetime',
+        'deleted_at' => 'datetime',
+    ];
 
     public function sender()
     {
-        return $this->morphTo(null, 'sender_role', 'sender_id');
+        return $this->morphTo('sender', 'sender_role', 'sender_id');
     }
 
     public function target()
     {
-        return $this->morphTo(null, 'target_type', 'target_id');
+        return $this->morphTo('target', 'target_type', 'target_id');
     }
 
     public function violator()

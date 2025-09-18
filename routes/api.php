@@ -14,7 +14,8 @@ use App\Http\Controllers\Api\ViolatorController;
 */
 
 // Public routes
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'loginViolator']);
+Route::post('/admin/login', [AuthController::class, 'loginOfficials']);
 Route::post('/enforcer-login', [EnforcerController::class, 'login']);
 Route::post('/register', [AuthController::class, 'violatorRegister']);
 Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);

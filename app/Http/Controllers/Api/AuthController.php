@@ -44,10 +44,12 @@ class AuthController extends Controller
     }
 
 
+    // Removed old mixed login() method. Use loginOfficials() and loginViolator().
+
     /**
-     * Login for Head, Deputy, Admin, Enforcer, and Violator
+     * Login for Admin/Deputy/Head only
      */
-    public function login(Request $request)
+    public function loginOfficials(Request $request)
     {
         $request->validate([
             'identifier' => 'required|string',
@@ -57,15 +59,8 @@ class AuthController extends Controller
         $identifier = $request->identifier;
         $password = $request->password;
 
-        // Check Admin / Deputy / Head 
         $user = $this->getUserModelByIdentifier($identifier);
-        Log::info('Login attempt', [
-            'identifier' => $identifier,
-            'password_entered' => $password,
-            'user_found' => $user ? true : false,
-            'user_id' => $user->id ?? null,
-        ]);
-        
+
         if ($user && Hash::check($password, $user->password)) {
             if (!$user->isActive()) {
                 return response()->json([
@@ -73,6 +68,7 @@ class AuthController extends Controller
                     'message' => 'Account is deactivated'
                 ], 401);
             }
+
             $token = $user->createToken('auth-token')->plainTextToken;
 
             return response()->json([
@@ -81,12 +77,30 @@ class AuthController extends Controller
                 'data' => [
                     'user' => $user,
                     'token' => $token,
-                    'user_type' => class_basename($user) 
+                    'user_type' => class_basename($user)
                 ]
             ]);
         }
 
-        // Violator login 
+        return response()->json([
+            'success' => false,
+            'message' => 'Wrong Email/Number or Password'
+        ], 401);
+    }
+
+    /**
+     * Login for Violator only
+     */
+    public function loginViolator(Request $request)
+    {
+        $request->validate([
+            'identifier' => 'required|string',
+            'password' => 'required|string',
+        ]);
+
+        $identifier = $request->identifier;
+        $password = $request->password;
+
         $violator = Violator::where('email', $identifier)
             ->orWhere('mobile_number', $identifier)
             ->first();

@@ -230,7 +230,7 @@ class EnforcerController extends Controller
                     'gender'      => $allData['gender'],
                     'mobile_number' => $allData['mobile_number'],
                     'id_photo'    => $request->hasFile('image')
-                        ? $request->file('image')->store('id_photos', 'public')
+                        ? basename($request->file('image')->store('id_photos', 'public'))
                         : null,
                     'barangay'     => $allData['barangay'] ?? null,
                     'city'         => $allData['city'] ?? null,
@@ -239,13 +239,18 @@ class EnforcerController extends Controller
                 ]
             );
 
+            // If violator already exists and a new image was provided, update their ID photo
+            if ($request->hasFile('image') && $violator->wasRecentlyCreated === false) {
+                $path = $request->file('image')->store('id_photos', 'public');
+                $violator->id_photo = basename($path);
+                $violator->save();
+            }
+
             // Create or get vehicle
             $vehicle = Vehicle::firstOrCreate(
+                ['plate_number' => $allData['plate_number']],
                 [
-                    'plate_number' => $allData['plate_number'],
-                    'violators_id' => $violator->id
-                ],
-                [
+                    'violators_id' => $violator->id,
                     'owner_first_name'   => $allData['owner_first_name'],
                     'owner_middle_name'  => $allData['owner_middle_name'] ?? null,
                     'owner_last_name'    => $allData['owner_last_name'],

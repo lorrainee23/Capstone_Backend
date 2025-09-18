@@ -25,6 +25,7 @@ class AppServiceProvider extends ServiceProvider
             'Deputy'   => \App\Models\Deputy::class,
             'Enforcer' => \App\Models\Enforcer::class,
             'Head'     => \App\Models\Head::class,
+            'Violator' => \App\Models\Violator::class,
         ]);
     }
 }
