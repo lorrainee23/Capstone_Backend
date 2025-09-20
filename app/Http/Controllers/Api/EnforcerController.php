@@ -378,7 +378,7 @@ class EnforcerController extends Controller
                     $vehicleInfo = $vehicle->make . ' ' . $vehicle->model . ' (' . $vehicle->color . ')';
                     $violatorAddress = $violator->barangay . ', ' . $violator->city . ', ' . $violator->province;
                     
-                    Mail::to($request->email)->send(
+                    Mail::to($request->email)->queue(
                         new POSUEmail('citation', [
                             'violator_name' => $violatorName,
                             'ticket_number' => $transaction->ticket_number ?? 'CT-' . date('Y') . '-' . str_pad($transaction->id, 6, '0', STR_PAD_LEFT),

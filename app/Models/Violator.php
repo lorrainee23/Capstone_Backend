@@ -16,7 +16,7 @@ class Violator extends Authenticatable
         'id',
         'email',
         'password',
-        'email_verified',
+        'email_verified_at',
         'first_name',
         'middle_name',
         'last_name',
@@ -37,7 +37,7 @@ class Violator extends Authenticatable
     ];
 
     protected $casts = [
-        'email_verified' => 'boolean',
+        'email_verified_at' => 'datetime',
         'gender' => 'boolean',
         'password' => 'hashed',
         'professional' => 'boolean',
@@ -116,5 +116,10 @@ class Violator extends Authenticatable
     public function getUnpaidFinesAttribute()
     {
         return $this->transactions()->where('status', 'Pending')->sum('fine_amount');
+    }
+
+    public function hasVerifiedEmail()
+    {
+        return !is_null($this->email_verified_at);
     }
 }

@@ -106,6 +106,16 @@ class AuthController extends Controller
             ->first();
 
         if ($violator && Hash::check($password, $violator->password)) {
+            // Check if email verification is required and not completed
+            if ($violator->email && !$violator->hasVerifiedEmail()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Please verify your email address before logging in. Check your email for verification instructions.',
+                    'email_verification_required' => true,
+                    'email' => $violator->email
+                ], 403);
+            }
+
             $token = $violator->createToken('violator-token', ['*'])->plainTextToken;
 
             return response()->json([
@@ -160,36 +170,50 @@ class AuthController extends Controller
         try {
             $violator->password = Hash::make($request->password);
             $violator->save();
-            $token = $violator->createToken('violator-token')->plainTextToken;
 
-            // SEND WELCOME EMAIL - ADD THIS SECTION
+            // Send email verification if email is provided
             if ($violator->email) {
                 try {
                     $fullName = trim($violator->first_name . ' ' . ($violator->middle_name ? $violator->middle_name . ' ' : '') . $violator->last_name);
                     $accountType = $violator->professional ? 'Professional Driver' : 'Non-Professional Driver';
                     
-                    Mail::to($violator->email)->send(
-                        new POSUEmail('welcome', [
+                    // Generate verification token
+                    $verificationToken = Str::random(60);
+                    
+                    // Store verification token in password_reset_tokens table (reusing existing table)
+                    DB::table('password_reset_tokens')->updateOrInsert(
+                        ['email' => $violator->email . '|verification'],
+                        [
+                            'token' => Hash::make($verificationToken),
+                            'created_at' => now()
+                        ]
+                    );
+                    
+                    $frontendBase = rtrim(env('FRONTEND_BASE_URL', 'https://posumoms.netlify.app'), '/');
+                    $verificationUrl = $frontendBase . '/verify-email?token=' . $verificationToken . '&email=' . urlencode($violator->email);
+                    
+                    Mail::to($violator->email)->queue(
+                        new POSUEmail('account_verification', [
                             'user_name' => $violator->first_name,
                             'full_name' => $fullName,
                             'email' => $violator->email,
                             'account_type' => $accountType,
-                            'registration_date' => $violator->updated_at->format('F j, Y'), 
-                            'login_url' => env('FRONTEND_LOGIN_URL', 'http://localhost:8080/login'),
+                            'verification_url' => $verificationUrl,
+                            'verification_token' => $verificationToken,
                         ])
                     );
                 } catch (\Exception $emailError) {
-                    Log::error('Failed to send welcome email: ' . $emailError->getMessage());
+                    Log::error('Failed to send verification email: ' . $emailError->getMessage());
                 }
             }
 
             return response()->json([
                 'success' => true,
-                'message' => 'Registration successful' . ($violator->email ? ' and welcome email sent!' : ''),
+                'message' => 'Registration successful' . ($violator->email ? ' and verification email sent! Please check your email to verify your account.' : ''),
                 'data' => [
                     'violator' => $violator,
-                    'token' => $token,
-                    'user_type' => 'violator'
+                    'user_type' => 'violator',
+                    'email_verification_required' => !empty($violator->email)
                 ]
             ], 201);
 
@@ -202,9 +226,192 @@ class AuthController extends Controller
     }
 
     /**
-     * Send password reset email for all user types
+     * Verify violator email address
      */
-    public function forgotPassword(Request $request)
+    public function verifyEmail(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
+            'token' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $email = $request->email;
+            $token = $request->token;
+
+            // Find violator
+            $violator = Violator::where('email', $email)->first();
+            
+            if (!$violator) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Violator not found.'
+                ], 404);
+            }
+
+            // Check if already verified
+            if ($violator->hasVerifiedEmail()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Email is already verified.'
+                ]);
+            }
+
+            // Check verification token
+            $verificationRecord = DB::table('password_reset_tokens')
+                ->where('email', $email . '|verification')
+                ->first();
+
+            if (!$verificationRecord || !Hash::check($token, $verificationRecord->token)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid or expired verification token.'
+                ], 400);
+            }
+
+            // Check if token is not expired (24 hours)
+            if (now()->diffInHours($verificationRecord->created_at) > 24) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Verification token has expired. Please request a new one.'
+                ], 400);
+            }
+
+            // Verify email
+            $violator->email_verified_at = now();
+            $violator->save();
+
+            // Delete the verification token
+            DB::table('password_reset_tokens')
+                ->where('email', $email . '|verification')
+                ->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Email verified successfully. You can now login to your account.'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Email verification failed: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Send password reset email for violators
+     */
+    public function forgotPasswordViolator(Request $request)
+    {
+        // Normalize identifier: trim, lowercase, flatten arrays
+        $raw = $request->input('identifier');
+        if (is_array($raw)) {
+            $raw = Arr::first($raw);
+        }
+        if (is_string($raw)) {
+            $raw = trim(strtolower($raw));
+        }
+        $request->merge(['identifier' => $raw]);
+
+        $validator = Validator::make($request->all(), [
+            'identifier' => 'required|email',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $identifier = $request->identifier; // email only
+        $user = Violator::where('email', $identifier)->first();
+        $userType = 'Violator';
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No account found with this email.'
+            ], 404);
+        }
+
+        if (!$user->email) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No email address associated with this account. Please contact support.'
+            ], 400);
+        }
+
+        try {
+            // Generate reset token
+            $token = Str::random(60);
+            
+            // Create a unique identifier that includes the user type
+            $emailWithType = $user->email . '|' . strtolower($userType);
+            $frontendBase = rtrim(env('FRONTEND_BASE_URL', 'https://posumoms.netlify.app'), '/');
+            $resetUrl = $frontendBase . '/login?token=' . $token . '&email=' . urlencode($emailWithType);
+            
+            // Store reset token in the password_reset_tokens table
+            DB::table('password_reset_tokens')->updateOrInsert(
+                ['email' => $emailWithType],
+                [
+                    'token' => Hash::make($token),
+                    'created_at' => now()
+                ]
+            );
+
+            // Send password reset email
+            try {
+                $fullName = trim($user->first_name . ' ' . ($user->middle_name ? $user->middle_name . ' ' : '') . $user->last_name);
+                
+                Mail::to($user->email)->queue(
+                    new POSUEmail('password_reset', [
+                        'user_name' => $user->first_name,
+                        'full_name' => $fullName,
+                        'reset_url' => $resetUrl,
+                        'reset_token' => $token,
+                        'expires_in' => '60 minutes',
+                        'request_time' => now()->format('F j, Y \a\t g:i A'),
+                        'ip_address' => $request->ip(),
+                    ])
+                );
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Password reset instructions have been sent to your email address.'
+                ]);
+
+            } catch (\Exception $emailError) {
+                Log::error('Failed to send password reset email: ' . $emailError->getMessage());
+                
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to send password reset email. Please try again later.'
+                ], 500);
+            }
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to process password reset request: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Send password reset email for officials (Admin, Head, Deputy, Enforcer)
+     */
+    public function forgotPasswordOfficials(Request $request)
     {
         // Normalize identifier: trim, lowercase, flatten arrays
         $raw = $request->input('identifier');
@@ -236,7 +443,6 @@ class AuthController extends Controller
             'Head' => \App\Models\Head::class,
             'Deputy' => \App\Models\Deputy::class,
             'Enforcer' => \App\Models\Enforcer::class,
-            'Violator' => \App\Models\Violator::class,
         ];
 
         // Try to find user by email only
@@ -264,13 +470,12 @@ class AuthController extends Controller
         }
 
         try {
-            // Generate reset token
             $token = Str::random(60);
             
             // Create a unique identifier that includes the user type
             $emailWithType = $user->email . '|' . strtolower($userType);
-            $frontendBase = rtrim(env('FRONTEND_BASE_URL', 'http://localhost:8080'), '/');
-            $resetUrl = $frontendBase . '/reset-password?token=' . $token . '&email=' . urlencode($emailWithType);
+            $frontendBase = rtrim(env('FRONTEND_BASE_URL', 'https://posumoms.netlify.app'), '/');
+            $resetUrl = $frontendBase . '/officials-login?token=' . $token . '&email=' . urlencode($emailWithType);
             
             // Store reset token in the password_reset_tokens table
             DB::table('password_reset_tokens')->updateOrInsert(
@@ -285,7 +490,7 @@ class AuthController extends Controller
             try {
                 $fullName = trim($user->first_name . ' ' . ($user->middle_name ? $user->middle_name . ' ' : '') . $user->last_name);
                 
-                Mail::to($user->email)->send(
+                Mail::to($user->email)->queue(
                     new POSUEmail('password_reset', [
                         'user_name' => $user->first_name,
                         'full_name' => $fullName,
@@ -303,8 +508,6 @@ class AuthController extends Controller
                 ]);
 
             } catch (\Exception $emailError) {
-                Log::error('Failed to send password reset email: ' . $emailError->getMessage());
-                
                 return response()->json([
                     'success' => false,
                     'message' => 'Failed to send password reset email. Please try again later.'

@@ -10,7 +10,7 @@ use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Mail\Mailables\Address;
 use Illuminate\Queue\SerializesModels;
 
-class POSUEmail extends Mailable
+class POSUEmail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
@@ -24,6 +24,10 @@ class POSUEmail extends Mailable
     {
         $this->emailType = $emailType;
         $this->data = $data;
+        
+        // Set queue configuration
+        $this->onQueue('emails');
+        $this->delay(now()->addSeconds(5)); // Small delay to ensure proper queuing
     }
 
     /**
@@ -36,11 +40,12 @@ class POSUEmail extends Mailable
             'citation' => 'POSU Traffic Citation Ticket Issued - Immediate Action Required',
             'password_reset' => 'Reset Your POSU Account Password',
             'account_verification' => 'Verify Your POSU Account',
-            'payment_reminder' => 'POSU Citation Payment Reminder - Action Required'
+            'payment_reminder' => 'POSU Citation Payment Reminder - Action Required',
+            'payment_confirmation' => 'POSU Citation Payment Confirmed - Thank You'
         ];
 
         return new Envelope(
-            from: new Address('noreply@echague.gov.ph', 'POSU Traffic Enforcement'),
+            from: new Address(env('MAIL_FROM_ADDRESS', 'noreply@echague.gov.ph'), env('MAIL_FROM_NAME', 'POSU Traffic Enforcement')),
             subject: $subjects[$this->emailType] ?? 'POSU System Notification',
             replyTo: [
                 new Address('support@echague.gov.ph', 'POSU Support Team'),
@@ -59,7 +64,8 @@ class POSUEmail extends Mailable
             'citation' => 'emails.citation',
             'password_reset' => 'emails.password-reset',
             'account_verification' => 'emails.account-verification',
-            'payment_reminder' => 'emails.citation'
+            'payment_reminder' => 'emails.payment-reminder',
+            'payment_confirmation' => 'emails.payment-confirmation'
         ];
 
         return new Content(

@@ -8,25 +8,46 @@
         body {
             margin: 0;
             padding: 0;
-            font-family: 'Arial', sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             line-height: 1.6;
-            color: #333;
-            background-color: #f8fafc;
+            color: #1f2937;
+            background: linear-gradient(135deg, #dc2626 0%, #ef4444 50%, #f87171 100%);
+            min-height: 100vh;
         }
         
         .email-container {
-            max-width: 600px;
-            margin: 0 auto;
+            max-width: 650px;
+            margin: 20px auto;
             background: white;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(220, 38, 38, 0.2);
+            overflow: hidden;
+            position: relative;
         }
         
         .header {
-            background: linear-gradient(135deg, #1e40af, #3b82f6);
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #06b6d4 100%);
             color: white;
-            padding: 30px 40px;
+            padding: 40px;
             text-align: center;
             position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            animation: pulse 4s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.5; }
+            50% { transform: scale(1.1) rotate(180deg); opacity: 0.8; }
         }
         
         .logo {
@@ -92,48 +113,102 @@
         }
         
         .alert-banner {
-            background: linear-gradient(135deg, #dc2626, #ef4444);
+            background: linear-gradient(135deg, #dc2626 0%, #ef4444 50%, #f87171 100%);
             color: white;
-            padding: 20px;
+            padding: 25px;
             text-align: center;
-            font-weight: 600;
-            font-size: 18px;
+            font-weight: 700;
+            font-size: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .alert-banner::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
         }
         
         .content {
-            padding: 40px;
+            padding: 50px 40px;
+            background: white;
         }
         
         .citation-card {
-            background: linear-gradient(135deg, #fef3c7, #fde68a);
-            border-left: 6px solid #f59e0b;
-            border-radius: 12px;
-            padding: 25px;
-            margin: 25px 0;
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border: none;
+            border-radius: 20px;
+            padding: 30px;
+            margin: 30px 0;
+            box-shadow: 0 10px 25px rgba(245, 158, 11, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .citation-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #f59e0b, #d97706, #b45309);
         }
         
         .citation-number {
-            font-size: 24px;
-            font-weight: 700;
+            font-size: 28px;
+            font-weight: 800;
             color: #92400e;
             text-align: center;
-            margin-bottom: 15px;
+            margin-bottom: 20px;
+            text-shadow: 0 2px 4px rgba(146, 64, 14, 0.2);
+            letter-spacing: 1px;
         }
         
         .violation-details {
-            background: #f8fafc;
-            border-radius: 12px;
-            padding: 25px;
-            margin: 25px 0;
-            border: 1px solid #e2e8f0;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-radius: 20px;
+            padding: 30px;
+            margin: 30px 0;
+            border: none;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+            position: relative;
+        }
+
+        .violation-details::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #3b82f6, #1e40af, #1d4ed8);
+            border-radius: 20px 20px 0 0;
         }
         
         .detail-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px solid #e2e8f0;
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        .detail-row:hover {
+            background: rgba(59, 130, 246, 0.05);
+            border-radius: 8px;
+            padding: 15px 10px;
         }
         
         .detail-row:last-child {
@@ -141,68 +216,107 @@
         }
         
         .detail-label {
-            font-weight: 600;
+            font-weight: 700;
             color: #374151;
             flex: 1;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         
         .detail-value {
             flex: 2;
             text-align: right;
             color: #1f2937;
+            font-weight: 600;
+            font-size: 15px;
         }
         
         .violation-type {
             color: #dc2626;
-            font-weight: 600;
+            font-weight: 700;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         
         .fine-amount {
             color: #059669;
-            font-weight: 700;
-            font-size: 18px;
+            font-weight: 800;
+            font-size: 20px;
+            text-shadow: 0 2px 4px rgba(5, 150, 105, 0.2);
         }
         
         .action-section {
-            background: linear-gradient(135deg, #fee2e2, #fecaca);
-            border-radius: 12px;
-            padding: 25px;
-            margin: 25px 0;
-            border: 2px solid #fca5a5;
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            border-radius: 20px;
+            padding: 30px;
+            margin: 30px 0;
+            border: none;
             text-align: center;
+            box-shadow: 0 10px 25px rgba(220, 38, 38, 0.15);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .action-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #dc2626, #ef4444, #f87171);
         }
         
         .action-title {
             color: #991b1b;
-            font-size: 20px;
-            font-weight: 700;
-            margin-bottom: 15px;
+            font-size: 24px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            text-shadow: 0 2px 4px rgba(153, 27, 27, 0.2);
         }
         
         .deadline {
             color: #dc2626;
-            font-size: 18px;
-            font-weight: 600;
+            font-size: 20px;
+            font-weight: 700;
             background: white;
-            padding: 12px 20px;
-            border-radius: 8px;
+            padding: 15px 25px;
+            border-radius: 15px;
             display: inline-block;
-            margin: 10px 0;
+            margin: 15px 0;
+            box-shadow: 0 4px 15px rgba(220, 38, 38, 0.2);
+            border: 2px solid #fecaca;
         }
         
         .instructions {
-            background: #f0f9ff;
-            border-radius: 12px;
-            padding: 25px;
-            margin: 25px 0;
-            border: 1px solid #bae6fd;
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            border-radius: 20px;
+            padding: 30px;
+            margin: 30px 0;
+            border: none;
+            box-shadow: 0 8px 25px rgba(14, 165, 233, 0.1);
+            position: relative;
+        }
+
+        .instructions::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #0ea5e9, #06b6d4, #0891b2);
+            border-radius: 20px 20px 0 0;
         }
         
         .instructions h4 {
             color: #0369a1;
-            font-size: 18px;
-            font-weight: 600;
-            margin: 0 0 15px 0;
+            font-size: 20px;
+            font-weight: 700;
+            margin: 0 0 20px 0;
+            text-shadow: 0 2px 4px rgba(3, 105, 161, 0.2);
         }
         
         .instructions ol {
@@ -211,30 +325,56 @@
         }
         
         .instructions li {
-            margin: 10px 0;
+            margin: 12px 0;
             color: #374151;
+            font-weight: 500;
+            line-height: 1.6;
         }
         
         .contact-info {
-            background: #f9fafb;
-            border-radius: 12px;
-            padding: 25px;
-            margin: 25px 0;
-            border: 1px solid #d1d5db;
+            background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+            border-radius: 20px;
+            padding: 30px;
+            margin: 30px 0;
+            border: none;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.05);
+            position: relative;
+        }
+
+        .contact-info::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #6b7280, #4b5563, #374151);
+            border-radius: 20px 20px 0 0;
         }
         
         .contact-info h4 {
             color: #374151;
-            font-size: 16px;
-            font-weight: 600;
-            margin: 0 0 15px 0;
+            font-size: 18px;
+            font-weight: 700;
+            margin: 0 0 20px 0;
         }
         
         .footer {
-            background: #374151;
+            background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
             color: white;
-            padding: 30px 40px;
+            padding: 40px;
             text-align: center;
+            position: relative;
+        }
+
+        .footer::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
         }
         
         .footer p {
@@ -243,28 +383,34 @@
         }
         
         .footer-link {
-            color: #60a5fa;
+            color: #60a5fa !important;
             text-decoration: none;
+            font-weight: 600;
+            transition: color 0.3s ease;
         }
         
         .footer-link:hover {
-            color: #93c5fd;
+            color: #93c5fd !important;
         }
         
         .disclaimer {
-            font-size: 12px;
-            color: #9ca3af;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
             margin-top: 20px;
-            line-height: 1.4;
+            font-size: 13px;
+            color: #d1d5db;
+            line-height: 1.5;
         }
         
         @media (max-width: 600px) {
             .email-container {
-                margin: 0;
+                margin: 10px;
+                border-radius: 15px;
             }
             
             .header, .content, .footer {
-                padding: 20px;
+                padding: 25px;
             }
             
             .detail-row {
@@ -276,6 +422,14 @@
                 text-align: left;
                 margin-top: 5px;
             }
+
+            .citation-number {
+                font-size: 22px;
+            }
+
+            .action-title {
+                font-size: 20px;
+            }
         }
     </style>
 </head>
@@ -286,7 +440,7 @@
             <h1>REPUBLIC OF THE PHILIPPINES</h1>
             <h2>Province of Isabela</h2>
             <h3>MUNICIPALITY OF ECHAGUE</h3>
-            <a href="https://echague.gov.ph" class="website-link">www.echague.gov.ph</a>
+            <a href="https://posumoms.netlify.app" class="website-link">posumoms.netlify.app</a>
         </div>
 
         <!-- Alert Banner -->
@@ -296,11 +450,25 @@
 
         <!-- Main Content -->
         <div class="content">
-            <h2 style="color: #1f2937; margin: 0 0 20px 0;">Traffic Violation Citation</h2>
+            <div style="text-align: center; margin-bottom: 30px;">
+                <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #dc2626, #ef4444); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 36px; color: white; margin-bottom: 20px; box-shadow: 0 8px 25px rgba(220, 38, 38, 0.3);">
+                    🚨
+                </div>
+                <h1 style="color: #dc2626; margin: 0 0 10px 0; font-size: 32px; font-weight: 800; text-shadow: 0 2px 4px rgba(220, 38, 38, 0.2);">
+                    Traffic Citation Issued
+                </h1>
+                <p style="color: #6b7280; font-size: 18px; margin: 0;">
+                    Official notice from POSU Traffic Enforcement
+                </p>
+            </div>
             
-            <p>Dear {{ $data['violator_name'] ?? 'Violator' }},</p>
-            
-            <p>You have been issued a traffic citation by the POSU Traffic Enforcement team. This is an official notice regarding a traffic violation committed on <strong>{{ $data['violation_date'] ?? date('F j, Y') }}</strong>.</p>
+            <div style="background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); border-radius: 15px; padding: 25px; margin: 30px 0; text-align: center;">
+                <p style="margin: 0; color: #dc2626; font-size: 16px; font-weight: 600;">
+                    Dear <strong>{{ $data['violator_name'] ?? 'Violator' }}</strong>,<br>
+                    You have been issued a traffic citation for a violation committed on 
+                    <strong>{{ $data['violation_date'] ?? date('F j, Y') }}</strong>.
+                </p>
+            </div>
 
             <!-- Citation Card -->
             <div class="citation-card">
@@ -393,7 +561,7 @@
                 
                 <p><strong>POSU Traffic Enforcement</strong><br>
                 Email: support@echague.gov.ph<br>
-                Website: <a href="https://echague.gov.ph" style="color: #3b82f6;">www.echague.gov.ph</a></p>
+                Website: <a href="https://posumoms.netlify.app" style="color: #3b82f6;">posumoms.netlify.app</a></p>
             </div>
 
             <p style="margin: 30px 0 0 0; color: #6b7280; font-size: 14px;">
@@ -406,7 +574,7 @@
         <div class="footer">
             <p><strong>POSU Traffic Enforcement System</strong></p>
             <p>Municipality of Echague, Province of Isabela</p>
-            <p><a href="https://echague.gov.ph" class="footer-link">www.echague.gov.ph</a></p>
+            <p><a href="https://posumoms.netlify.app" class="footer-link">posumoms.netlify.app</a></p>
             
             <div class="disclaimer">
                 This email was sent from an automated system. Please do not reply to this email address. 

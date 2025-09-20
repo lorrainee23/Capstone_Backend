@@ -353,7 +353,7 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
                 $fullName = trim($user->first_name . ' ' . ($user->middle_name ? $user->middle_name . ' ' : '') . $user->last_name);
                 $loginUrl = env('FRONTEND_LOGIN_URL', 'http://localhost:8080/login');
                 
-                Mail::to($user->email)->send(
+                Mail::to($user->email)->queue(
                     new POSUEmail('welcome', [
                         'user_name' => $user->first_name,
                         'full_name' => $fullName,
@@ -1313,6 +1313,35 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
         $transaction->status = $request->input('status', 'Paid');
         $transaction->save();
 
+        // Load relationships for email
+        $transaction->load(['violator', 'violation', 'vehicle']);
+
+        // Send payment confirmation email if marked as paid and violator has email
+        if ($transaction->status === 'Paid' && $previousStatus !== 'Paid' && $transaction->violator && $transaction->violator->email) {
+            try {
+                $violatorName = trim($transaction->violator->first_name . ' ' . ($transaction->violator->middle_name ? $transaction->violator->middle_name . ' ' : '') . $transaction->violator->last_name);
+                $vehicleInfo = $transaction->vehicle ? $transaction->vehicle->make . ' ' . $transaction->vehicle->model . ' (' . $transaction->vehicle->color . ')' : 'N/A';
+                
+                Mail::to($transaction->violator->email)->queue(
+                    new POSUEmail('payment_confirmation', [
+                        'violator_name' => $violatorName,
+                        'ticket_number' => $transaction->ticket_number ?? 'CT-' . date('Y') . '-' . str_pad($transaction->id, 6, '0', STR_PAD_LEFT),
+                        'violation_type' => $transaction->violation->name,
+                        'fine_amount' => $transaction->fine_amount,
+                        'payment_date' => now()->format('F j, Y'),
+                        'payment_datetime' => now()->format('F j, Y - g:i A'),
+                        'violation_date' => $transaction->date_time->format('F j, Y'),
+                        'location' => $transaction->location,
+                        'license_number' => $transaction->violator->license_number,
+                        'vehicle_info' => $vehicleInfo,
+                        'plate_number' => $transaction->vehicle ? $transaction->vehicle->plate_number : 'N/A',
+                    ])
+                );
+            } catch (\Exception $emailError) {
+                Log::error('Failed to send payment confirmation email: ' . $emailError->getMessage());
+            }
+        }
+
         // Audit: transaction updated
         $actor = $request->user('sanctum');
         $actorName = trim(($actor->first_name ?? '') . ' ' . ($actor->last_name ?? ''));
@@ -1331,7 +1360,7 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Transaction updated successfully.',
+            'message' => 'Transaction updated successfully' . ($transaction->status === 'Paid' && $previousStatus !== 'Paid' && $transaction->violator && $transaction->violator->email ? ' and payment confirmation email sent' : '') . '.',
             'data' => $transaction
         ]);
     }

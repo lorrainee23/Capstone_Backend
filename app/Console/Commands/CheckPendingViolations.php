@@ -5,6 +5,9 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use App\Models\Transaction;
 use App\Models\Notification;
+use App\Mail\POSUEmail;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class CheckPendingViolations extends Command
@@ -47,6 +50,32 @@ class CheckPendingViolations extends Command
                         'type'           => 'reminder',
                     ]);
 
+                    // Send email reminder if violator has email
+                    if ($violator->email) {
+                        try {
+                            $violatorName = trim($violator->first_name . ' ' . ($violator->middle_name ? $violator->middle_name . ' ' : '') . $violator->last_name);
+                            $vehicleInfo = $transaction->vehicle ? $transaction->vehicle->make . ' ' . $transaction->vehicle->model . ' (' . $transaction->vehicle->color . ')' : 'N/A';
+                            
+                            Mail::to($violator->email)->queue(
+                                new POSUEmail('payment_reminder', [
+                                    'violator_name' => $violatorName,
+                                    'ticket_number' => $transaction->ticket_number ?? 'CT-' . date('Y') . '-' . str_pad($transaction->id, 6, '0', STR_PAD_LEFT),
+                                    'violation_type' => $transaction->violation->name,
+                                    'fine_amount' => $transaction->fine_amount,
+                                    'days_pending' => $daysPending,
+                                    'violation_date' => $transaction->date_time->format('F j, Y'),
+                                    'location' => $transaction->location,
+                                    'license_number' => $violator->license_number,
+                                    'vehicle_info' => $vehicleInfo,
+                                    'plate_number' => $transaction->vehicle ? $transaction->vehicle->plate_number : 'N/A',
+                                    'reminder_type' => '3-day',
+                                ])
+                            );
+                        } catch (\Exception $emailError) {
+                            Log::error('Failed to send 3-day reminder email: ' . $emailError->getMessage());
+                        }
+                    }
+
                     // Notify Management
                     Notification::create([
                         'sender_id'      => null,
@@ -78,6 +107,32 @@ class CheckPendingViolations extends Command
                         'type'           => 'warning',
                     ]);
 
+                    // Send email warning if violator has email
+                    if ($violator->email) {
+                        try {
+                            $violatorName = trim($violator->first_name . ' ' . ($violator->middle_name ? $violator->middle_name . ' ' : '') . $violator->last_name);
+                            $vehicleInfo = $transaction->vehicle ? $transaction->vehicle->make . ' ' . $transaction->vehicle->model . ' (' . $transaction->vehicle->color . ')' : 'N/A';
+                            
+                            Mail::to($violator->email)->queue(
+                                new POSUEmail('payment_reminder', [
+                                    'violator_name' => $violatorName,
+                                    'ticket_number' => $transaction->ticket_number ?? 'CT-' . date('Y') . '-' . str_pad($transaction->id, 6, '0', STR_PAD_LEFT),
+                                    'violation_type' => $transaction->violation->name,
+                                    'fine_amount' => $transaction->fine_amount,
+                                    'days_pending' => $daysPending,
+                                    'violation_date' => $transaction->date_time->format('F j, Y'),
+                                    'location' => $transaction->location,
+                                    'license_number' => $violator->license_number,
+                                    'vehicle_info' => $vehicleInfo,
+                                    'plate_number' => $transaction->vehicle ? $transaction->vehicle->plate_number : 'N/A',
+                                    'reminder_type' => '5-day',
+                                ])
+                            );
+                        } catch (\Exception $emailError) {
+                            Log::error('Failed to send 5-day warning email: ' . $emailError->getMessage());
+                        }
+                    }
+
                     // ✅ Notify Management
                     Notification::create([
                         'sender_id'      => null,
@@ -107,6 +162,32 @@ class CheckPendingViolations extends Command
                     'message'        => "Your violation (Ticket #{$transaction->ticket_number}) has been escalated to court due to non-payment.",
                     'type'           => 'alert',
                 ]);
+
+                // Send email alert if violator has email
+                if ($violator->email) {
+                    try {
+                        $violatorName = trim($violator->first_name . ' ' . ($violator->middle_name ? $violator->middle_name . ' ' : '') . $violator->last_name);
+                        $vehicleInfo = $transaction->vehicle ? $transaction->vehicle->make . ' ' . $transaction->vehicle->model . ' (' . $transaction->vehicle->color . ')' : 'N/A';
+                        
+                        Mail::to($violator->email)->send(
+                            new POSUEmail('payment_reminder', [
+                                'violator_name' => $violatorName,
+                                'ticket_number' => $transaction->ticket_number ?? 'CT-' . date('Y') . '-' . str_pad($transaction->id, 6, '0', STR_PAD_LEFT),
+                                'violation_type' => $transaction->violation->name,
+                                'fine_amount' => $transaction->fine_amount,
+                                'days_pending' => $daysPending,
+                                'violation_date' => $transaction->date_time->format('F j, Y'),
+                                'location' => $transaction->location,
+                                'license_number' => $violator->license_number,
+                                'vehicle_info' => $vehicleInfo,
+                                'plate_number' => $transaction->vehicle ? $transaction->vehicle->plate_number : 'N/A',
+                                'reminder_type' => '7-day',
+                            ])
+                        );
+                    } catch (\Exception $emailError) {
+                        Log::error('Failed to send 7-day court filing email: ' . $emailError->getMessage());
+                    }
+                }
 
                 // Notify Management
                 Notification::create([

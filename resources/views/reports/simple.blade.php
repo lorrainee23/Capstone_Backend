@@ -15,11 +15,13 @@
 
         .container {
             margin: 0 auto;
-            width: 95%; /* Slightly narrower for Word compatibility */
+            width: 92%; 
         }
 
         .header {
-            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             margin-bottom: 15px;
             position: relative;
         }
@@ -27,13 +29,21 @@
         .header img {
             width: 60px;
             height: 60px;
-            display: inline-block; /* avoid absolute positioning */
-            vertical-align: middle;
-            margin-right: 10px;
+            margin-right: 20px;
+            flex-shrink: 0;
         }
 
-        .header h2, .header h3, .header h4 {
+        .header-text {
+            text-align: center;
+            flex-grow: 1;
+        }
+
+        .header-text h2, .header-text h3, .header-text h4 {
             margin: 2px 0;
+        }
+
+        .header-text p {
+            margin: 5px 0;
         }
 
         table {
@@ -71,8 +81,8 @@
 <body>
     <div class="container">
         <div class="header">
-            <img src="logo.png" alt="Municipality Seal">
-            <div style="display:inline-block; text-align:center;">
+            <img src="{{ asset('resources/assets/posu_logo.png') }}" alt="Municipality Seal">
+            <div class="header-text">
                 <h4>REPUBLIC OF THE PHILIPPINES</h4>
                 <h3>MUNICIPALITY OF ECHAGUE</h3>
                 <h4>TRAFFIC AND OTHER VIOLATIONS</h4>

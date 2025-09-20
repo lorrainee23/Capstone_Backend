@@ -18,7 +18,9 @@ Route::post('/login', [AuthController::class, 'loginViolator']);
 Route::post('/admin/login', [AuthController::class, 'loginOfficials']);
 Route::post('/enforcer-login', [EnforcerController::class, 'login']);
 Route::post('/register', [AuthController::class, 'violatorRegister']);
-Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('/verify-email', [AuthController::class, 'verifyEmail']);
+Route::post('/forgot-password-violator', [AuthController::class, 'forgotPasswordViolator']);
+Route::post('/forgot-password-officials', [AuthController::class, 'forgotPasswordOfficials']);
 Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
 /*
