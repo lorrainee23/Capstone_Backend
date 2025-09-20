@@ -16,7 +16,7 @@ return new class extends Migration
 
             $table->string('email', 255)->nullable();
             $table->string('password', 255)->nullable();
-            $table->boolean('email_verified')->default(false);
+            $table->timestamp('email_verified_at');
             $table->string('first_name', 255);
             $table->string('middle_name', 255)->nullable();
             $table->string('last_name', 255);
