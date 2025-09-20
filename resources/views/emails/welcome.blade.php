@@ -298,7 +298,7 @@
 
             <div class="welcome-card">
                 <div style="text-align: center; margin-bottom: 25px;">
-                    <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #10b981, #059669); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 28px; color: white; margin-bottom: 15px;">
+                    <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #10b981, #059669); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 28px; color: white; margin-bottom: 15px; line-height: 1; text-align: center;">
                         🎉
                     </div>
                     <h3 style="margin: 0 0 10px 0; color: #1e40af; font-size: 24px; font-weight: 700;">
@@ -340,7 +340,7 @@
 
             @if(!empty($data['verification_url']))
             <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 20px; padding: 30px; margin: 30px 0; text-align: center; border: 2px solid #f59e0b;">
-                <div style="width: 50px; height: 50px; background: #f59e0b; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 24px; color: white; margin-bottom: 15px;">
+                <div style="width: 50px; height: 50px; background: #f59e0b; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 24px; color: white; margin-bottom: 15px; line-height: 1; text-align: center;">
                     ✉️
                 </div>
                 <h3 style="margin: 0 0 10px 0; color: #92400e; font-size: 20px; font-weight: 700;">

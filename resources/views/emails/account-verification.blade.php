@@ -248,7 +248,7 @@
         </div>
         <div class="content">
             <div style="text-align: center; margin-bottom: 30px;">
-                <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #10b981, #059669); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 36px; color: white; margin-bottom: 20px; box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);">
+                <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #10b981, #059669); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 36px; color: white; margin-bottom: 20px; box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3); line-height: 1; text-align: center;">
                     ✉️
                 </div>
                 <h1 style="color: #10b981; margin: 0 0 10px 0; font-size: 32px; font-weight: 800; text-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);">
@@ -274,7 +274,7 @@
             </div>
 
             <div class="security-notice">
-                <div style="width: 50px; height: 50px; background: #f59e0b; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 24px; color: white; margin-bottom: 15px;">
+                <div style="width: 50px; height: 50px; background: #f59e0b; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 24px; color: white; margin-bottom: 15px; line-height: 1; text-align: center;">
                     🔒
                 </div>
                 <h3 style="margin:0 0 15px 0; color:#92400e; font-size: 20px; font-weight: 700;">Security Notice</h3>
@@ -284,7 +284,7 @@
             </div>
 
             <div style="background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-radius: 15px; padding: 25px; margin: 30px 0;">
-                <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #6b7280, #4b5563); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 24px; color: white; margin-bottom: 15px;">
+                <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #6b7280, #4b5563); border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 24px; color: white; margin-bottom: 15px; line-height: 1; text-align: center;">
                     🔗
                 </div>
                 <h3 style="margin:0 0 15px 0; color:#374151; font-size: 18px; font-weight: 700;">Alternative Method</h3>

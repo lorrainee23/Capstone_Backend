@@ -15,7 +15,7 @@
 
         .container {
             margin: 0 auto;
-            width: 95%; 
+            width: 92%; 
         }
 
         .header {
@@ -145,7 +145,7 @@
                         </tr>
                     @endforeach
                     <tr class="total-row">
-                        <td colspan="16" style="text-align: left;">PENALTY TO BE COLLECTED</td>
+                        <td colspan="15" style="text-align: left;">PENALTY TO BE COLLECTED</td>
                         <td>₱{{ number_format($grandTotal, 2) }}</td>
                         <td></td>
                     </tr>
