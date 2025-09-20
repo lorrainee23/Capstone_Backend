@@ -189,8 +189,8 @@ class AuthController extends Controller
                         ]
                     );
                     
-                    $frontendBase = rtrim(env('FRONTEND_BASE_URL', 'https://posumoms.netlify.app'), '/');
-                    $verificationUrl = $frontendBase . '/verify-email?token=' . $verificationToken . '&email=' . urlencode($violator->email);
+                    $apiBase = rtrim(env('APP_URL'), '/');
+                    $verificationUrl = $apiBase . '/api/verify-email?token=' . $verificationToken . '&email=' . urlencode($violator->email);
                     
                     Mail::to($violator->email)->send(
                         new POSUEmail('account_verification', [

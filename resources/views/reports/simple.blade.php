@@ -147,7 +147,6 @@
                     <tr class="total-row">
                         <td colspan="15" style="text-align: left;">PENALTY TO BE COLLECTED</td>
                         <td>₱{{ number_format($grandTotal, 2) }}</td>
-                        <td></td>
                     </tr>
                 </tbody>
             </table>
