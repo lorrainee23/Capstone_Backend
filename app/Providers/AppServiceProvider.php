@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Mail\Transports\MailjetTransport;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -27,5 +29,13 @@ class AppServiceProvider extends ServiceProvider
             'Head'     => \App\Models\Head::class,
             'Violator' => \App\Models\Violator::class,
         ]);
+
+        // Register Mailjet transport
+        Mail::extend('mailjet', function (array $config) {
+            return new MailjetTransport(
+                $config['api_key'],
+                $config['secret_key']
+            );
+        });
     }
 }

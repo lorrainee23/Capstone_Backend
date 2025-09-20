@@ -89,6 +89,7 @@ return [
             'transport' => 'mailjet',
             'api_key' => env('MAILJET_APIKEY_PUBLIC'),
             'secret_key' => env('MAILJET_APIKEY_PRIVATE'),
+            'version' => 'v3.1',
         ],
     ],
 
