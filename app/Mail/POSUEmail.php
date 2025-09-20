@@ -27,7 +27,7 @@ class POSUEmail extends Mailable implements ShouldQueue
         
         // Set queue configuration
         $this->onQueue('emails');
-        $this->delay(now()->addSeconds(5)); // Small delay to ensure proper queuing
+        $this->delay(now()->addSeconds(5));
     }
 
     /**

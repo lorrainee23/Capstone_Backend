@@ -31,4 +31,9 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'mailjet' => [
+        'key' => env('MAILJET_APIKEY_PUBLIC'),
+        'secret' => env('MAILJET_APIKEY_PRIVATE'),
+    ],
+
 ];
