@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Http;
 use Symfony\Component\Mailer\SentMessage;
 use Symfony\Component\Mailer\Transport\AbstractTransport;
 use Symfony\Component\Mime\MessageConverter;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 
 class MailjetTransport extends AbstractTransport
 {
@@ -14,6 +15,7 @@ class MailjetTransport extends AbstractTransport
 
     public function __construct($apiKey, $secretKey)
     {
+        parent::__construct(new EventDispatcher());
         $this->apiKey = $apiKey;
         $this->secretKey = $secretKey;
     }
