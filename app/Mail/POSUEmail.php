@@ -9,6 +9,7 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Mail\Mailables\Address;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class POSUEmail extends Mailable implements ShouldQueue
 {
@@ -28,6 +29,8 @@ class POSUEmail extends Mailable implements ShouldQueue
         // Set queue configuration
         $this->onQueue('emails');
         $this->delay(now()->addSeconds(5));
+
+        Log::info("Email job queued: {$this->emailType} to " . ($data['email'] ?? 'unknown'));
     }
 
     /**
@@ -59,7 +62,6 @@ class POSUEmail extends Mailable implements ShouldQueue
     public function content(): Content
     {
         $templates = [
-            // Views exist under resources/views/emails/*.blade.php
             'welcome' => 'emails.welcome',
             'citation' => 'emails.citation',
             'password_reset' => 'emails.password-reset',
@@ -79,11 +81,18 @@ class POSUEmail extends Mailable implements ShouldQueue
 
     /**
      * Get the attachments for the message.
-     *
-     * @return array<int, \Illuminate\Mail\Mailables\Attachment>
      */
     public function attachments(): array
     {
         return [];
+    }
+
+    /**
+     * Handle failures in queued jobs.
+     */
+    public function failed(\Throwable $exception): void
+    {
+        Log::error("Failed sending email: {$this->emailType} to " . ($this->data['email'] ?? 'unknown'));
+        Log::error("Exception: " . $exception->getMessage());
     }
 }
