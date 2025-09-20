@@ -192,7 +192,7 @@ class AuthController extends Controller
                     $frontendBase = rtrim(env('FRONTEND_BASE_URL', 'https://posumoms.netlify.app'), '/');
                     $verificationUrl = $frontendBase . '/verify-email?token=' . $verificationToken . '&email=' . urlencode($violator->email);
                     
-                    Mail::to($violator->email)->queue(
+                    Mail::to($violator->email)->send(
                         new POSUEmail('account_verification', [
                             'user_name' => $violator->first_name,
                             'full_name' => $fullName,
@@ -374,7 +374,7 @@ class AuthController extends Controller
             try {
                 $fullName = trim($user->first_name . ' ' . ($user->middle_name ? $user->middle_name . ' ' : '') . $user->last_name);
                 
-                Mail::to($user->email)->queue(
+                Mail::to($user->email)->send(
                     new POSUEmail('password_reset', [
                         'user_name' => $user->first_name,
                         'full_name' => $fullName,
@@ -490,7 +490,7 @@ class AuthController extends Controller
             try {
                 $fullName = trim($user->first_name . ' ' . ($user->middle_name ? $user->middle_name . ' ' : '') . $user->last_name);
                 
-                Mail::to($user->email)->queue(
+                Mail::to($user->email)->send(
                     new POSUEmail('password_reset', [
                         'user_name' => $user->first_name,
                         'full_name' => $fullName,

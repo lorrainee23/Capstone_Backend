@@ -3,7 +3,6 @@
 namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
@@ -11,7 +10,7 @@ use Illuminate\Mail\Mailables\Address;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-class POSUEmail extends Mailable implements ShouldQueue
+class POSUEmail extends Mailable
 {
     use Queueable, SerializesModels;
 
@@ -25,12 +24,8 @@ class POSUEmail extends Mailable implements ShouldQueue
     {
         $this->emailType = $emailType;
         $this->data = $data;
-        
-        // Set queue configuration
-        $this->onQueue('emails');
-        $this->delay(now()->addSeconds(5));
 
-        Log::info("Email job queued: {$this->emailType} to " . ($data['email'] ?? 'unknown'));
+        Log::info("Email created: {$this->emailType} to " . ($data['email'] ?? 'unknown'));
     }
 
     /**

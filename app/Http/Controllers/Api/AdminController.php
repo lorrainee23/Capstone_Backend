@@ -353,7 +353,7 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
                 $fullName = trim($user->first_name . ' ' . ($user->middle_name ? $user->middle_name . ' ' : '') . $user->last_name);
                 $loginUrl = env('FRONTEND_LOGIN_URL', 'http://localhost:8080/login');
                 
-                Mail::to($user->email)->queue(
+                Mail::to($user->email)->send(
                     new POSUEmail('welcome', [
                         'user_name' => $user->first_name,
                         'full_name' => $fullName,
@@ -1322,7 +1322,7 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
                 $violatorName = trim($transaction->violator->first_name . ' ' . ($transaction->violator->middle_name ? $transaction->violator->middle_name . ' ' : '') . $transaction->violator->last_name);
                 $vehicleInfo = $transaction->vehicle ? $transaction->vehicle->make . ' ' . $transaction->vehicle->model . ' (' . $transaction->vehicle->color . ')' : 'N/A';
                 
-                Mail::to($transaction->violator->email)->queue(
+                Mail::to($transaction->violator->email)->send(
                     new POSUEmail('payment_confirmation', [
                         'violator_name' => $violatorName,
                         'ticket_number' => $transaction->ticket_number ?? 'CT-' . date('Y') . '-' . str_pad($transaction->id, 6, '0', STR_PAD_LEFT),

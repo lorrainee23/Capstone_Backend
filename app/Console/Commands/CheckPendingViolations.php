@@ -56,7 +56,7 @@ class CheckPendingViolations extends Command
                             $violatorName = trim($violator->first_name . ' ' . ($violator->middle_name ? $violator->middle_name . ' ' : '') . $violator->last_name);
                             $vehicleInfo = $transaction->vehicle ? $transaction->vehicle->make . ' ' . $transaction->vehicle->model . ' (' . $transaction->vehicle->color . ')' : 'N/A';
                             
-                            Mail::to($violator->email)->queue(
+                            Mail::to($violator->email)->send(
                                 new POSUEmail('payment_reminder', [
                                     'violator_name' => $violatorName,
                                     'ticket_number' => $transaction->ticket_number ?? 'CT-' . date('Y') . '-' . str_pad($transaction->id, 6, '0', STR_PAD_LEFT),
@@ -113,7 +113,7 @@ class CheckPendingViolations extends Command
                             $violatorName = trim($violator->first_name . ' ' . ($violator->middle_name ? $violator->middle_name . ' ' : '') . $violator->last_name);
                             $vehicleInfo = $transaction->vehicle ? $transaction->vehicle->make . ' ' . $transaction->vehicle->model . ' (' . $transaction->vehicle->color . ')' : 'N/A';
                             
-                            Mail::to($violator->email)->queue(
+                            Mail::to($violator->email)->send(
                                 new POSUEmail('payment_reminder', [
                                     'violator_name' => $violatorName,
                                     'ticket_number' => $transaction->ticket_number ?? 'CT-' . date('Y') . '-' . str_pad($transaction->id, 6, '0', STR_PAD_LEFT),
