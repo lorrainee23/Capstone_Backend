@@ -209,7 +209,7 @@ class AuthController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Registration successful' . ($violator->email ? ' and verification email sent! Please check your email to verify your account.' : ''),
+                'message' => $violator->email ? 'Email verification has been sent to your email' : 'Account created successfully',
                 'data' => [
                     'violator' => $violator,
                     'user_type' => 'violator',
@@ -251,6 +251,10 @@ class AuthController extends Controller
             $violator = Violator::where('email', $email)->first();
             
             if (!$violator) {
+                if (!$request->expectsJson()) {
+                    $frontendBase = rtrim(env('FRONTEND_BASE_URL', 'https://posumoms.netlify.app'), '/');
+                    return redirect($frontendBase . '/login?error=true&message=' . urlencode('Violator not found.'));
+                }
                 return response()->json([
                     'success' => false,
                     'message' => 'Violator not found.'
@@ -259,6 +263,10 @@ class AuthController extends Controller
 
             // Check if already verified
             if ($violator->hasVerifiedEmail()) {
+                if (!$request->expectsJson()) {
+                    $frontendBase = rtrim(env('FRONTEND_BASE_URL', 'https://posumoms.netlify.app'), '/');
+                    return redirect($frontendBase . '/login?verified=true&message=' . urlencode('Email is already verified. You can login now.'));
+                }
                 return response()->json([
                     'success' => true,
                     'message' => 'Email is already verified.'
@@ -271,6 +279,10 @@ class AuthController extends Controller
                 ->first();
 
             if (!$verificationRecord || !Hash::check($token, $verificationRecord->token)) {
+                if (!$request->expectsJson()) {
+                    $frontendBase = rtrim(env('FRONTEND_BASE_URL', 'https://posumoms.netlify.app'), '/');
+                    return redirect($frontendBase . '/login?error=true&message=' . urlencode('Invalid or expired verification token.'));
+                }
                 return response()->json([
                     'success' => false,
                     'message' => 'Invalid or expired verification token.'
@@ -279,6 +291,10 @@ class AuthController extends Controller
 
             // Check if token is not expired (24 hours)
             if (now()->diffInHours($verificationRecord->created_at) > 24) {
+                if (!$request->expectsJson()) {
+                    $frontendBase = rtrim(env('FRONTEND_BASE_URL', 'https://posumoms.netlify.app'), '/');
+                    return redirect($frontendBase . '/login?error=true&message=' . urlencode('Verification token has expired. Please request a new one.'));
+                }
                 return response()->json([
                     'success' => false,
                     'message' => 'Verification token has expired. Please request a new one.'
@@ -294,12 +310,22 @@ class AuthController extends Controller
                 ->where('email', $email . '|verification')
                 ->delete();
 
+            // If this is a direct email click (no Accept: application/json header), redirect to login
+            if (!$request->expectsJson()) {
+                $frontendBase = rtrim(env('FRONTEND_BASE_URL', 'https://posumoms.netlify.app'), '/');
+                return redirect($frontendBase . '/login?verified=true&message=' . urlencode('Email verified successfully. You can now login to your account.'));
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Email verified successfully. You can now login to your account.'
             ]);
 
         } catch (\Exception $e) {
+            if (!$request->expectsJson()) {
+                $frontendBase = rtrim(env('FRONTEND_BASE_URL', 'https://posumoms.netlify.app'), '/');
+                return redirect($frontendBase . '/login?error=true&message=' . urlencode('Email verification failed. Please try again.'));
+            }
             return response()->json([
                 'success' => false,
                 'message' => 'Email verification failed: ' . $e->getMessage()
