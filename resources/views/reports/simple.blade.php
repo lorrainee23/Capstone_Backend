@@ -15,7 +15,7 @@
 
         .container {
             margin: 0 auto;
-            width: 92%; 
+            width: 95%; 
         }
 
         .header {
@@ -27,14 +27,14 @@
         }
 
         .header img {
-            width: 60px;
-            height: 60px;
-            margin-right: 20px;
+            width: 80px;
+            height: 80px;
+            margin-right: 15px;
             flex-shrink: 0;
         }
 
         .header-text {
-            text-align: center;
+            text-align: left;
             flex-grow: 1;
         }
 
@@ -50,6 +50,7 @@
             width: 100%;
             border-collapse: collapse;
             margin-top: 5px;
+            margin-left: -10px;
         }
 
         th, td {

@@ -323,6 +323,9 @@
 <body>
     <div class="email-container">
         <div class="header">
+            <div class="logo">
+                <img src="{{ asset('resources/assets/posu_logo.png') }}" alt="Echague Logo">
+            </div>
             <h1>REPUBLIC OF THE PHILIPPINES</h1>
             <h2>Province of Isabela</h2>
             <h3>MUNICIPALITY OF ECHAGUE</h3>

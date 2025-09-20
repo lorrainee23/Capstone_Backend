@@ -281,7 +281,7 @@
         <!-- Header -->
         <div class="header">
             <div class="logo">
-                <img src="{{ asset('images/posu_logo.jpg', true) }}" alt="Echague Logo">
+                <img src="{{ asset('resources/assets/posu_logo.png') }}" alt="Echague Logo">
             </div>
             <h1>REPUBLIC OF THE PHILIPPINES</h1>
             <h2>Province of Isabela</h2>
