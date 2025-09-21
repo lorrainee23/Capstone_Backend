@@ -196,7 +196,7 @@
             </div>
 
             <div style="text-align: center; margin: 30px 0;">
-                <a href="https://posumoms.netlify.app/login" class="primary-button">🔐 Access Your Account</a>
+                <a href="{{ $data['login_url'] ?? 'https://posumoms.netlify.app/login' }}" class="primary-button">🔐 Access Your Account</a>
             </div>
 
             <div class="security-notice">

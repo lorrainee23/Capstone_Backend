@@ -385,7 +385,7 @@ class AuthController extends Controller
             // Create a unique identifier that includes the user type
             $emailWithType = $user->email . '|' . strtolower($userType);
             $frontendBase = rtrim(env('FRONTEND_BASE_URL', 'https://posumoms.netlify.app'), '/');
-            $resetUrl = $frontendBase . '/login?token=' . $token . '&email=' . urlencode($emailWithType);
+            $resetUrl = $frontendBase . '/reset-password?token=' . $token . '&email=' . urlencode($emailWithType);
             
             // Store reset token in the password_reset_tokens table
             DB::table('password_reset_tokens')->updateOrInsert(
@@ -501,7 +501,7 @@ class AuthController extends Controller
             // Create a unique identifier that includes the user type
             $emailWithType = $user->email . '|' . strtolower($userType);
             $frontendBase = rtrim(env('FRONTEND_BASE_URL', 'https://posumoms.netlify.app'), '/');
-            $resetUrl = $frontendBase . '/officials-login?token=' . $token . '&email=' . urlencode($emailWithType);
+            $resetUrl = $frontendBase . '/reset-password?token=' . $token . '&email=' . urlencode($emailWithType);
             
             // Store reset token in the password_reset_tokens table
             DB::table('password_reset_tokens')->updateOrInsert(

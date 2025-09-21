@@ -69,6 +69,7 @@ class CheckPendingViolations extends Command
                                     'vehicle_info' => $vehicleInfo,
                                     'plate_number' => $transaction->vehicle ? $transaction->vehicle->plate_number : 'N/A',
                                     'reminder_type' => '3-day',
+                                    'login_url' => 'https://posumoms.netlify.app/login',
                                 ])
                             );
                         } catch (\Exception $emailError) {

@@ -24,26 +24,42 @@
             justify-content: center;
             margin-bottom: 15px;
             position: relative;
+            width: 100%;
         }
 
         .header img {
             width: 80px;
             height: 80px;
-            margin-right: 15px;
+            margin-right: 20px;
             flex-shrink: 0;
         }
 
         .header-text {
-            text-align: left;
+            text-align: center;
             flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         .header-text h2, .header-text h3, .header-text h4 {
-            margin: 2px 0;
+            margin: 3px 0;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .header-text h3 {
+            font-size: 14px;
+        }
+
+        .header-text h4 {
+            font-size: 12px;
         }
 
         .header-text p {
             margin: 5px 0;
+            text-align: center;
+            font-weight: bold;
         }
 
         table {
@@ -87,7 +103,7 @@
                 <h4>REPUBLIC OF THE PHILIPPINES</h4>
                 <h3>MUNICIPALITY OF ECHAGUE</h3>
                 <h4>TRAFFIC AND OTHER VIOLATIONS</h4>
-                <h4>S U M M A R Y  O F  R E P O R T</h4>
+                <h4>SUMMARY OF REPORT</h4>
                 <p>{{ now()->format('F d, Y') }}</p>
             </div>
         </div>

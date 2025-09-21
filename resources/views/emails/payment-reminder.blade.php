@@ -213,7 +213,7 @@
             </div>
 
             <div style="text-align: center; margin: 30px 0;">
-                <a href="https://posumoms.netlify.app/login" class="primary-button">💳 Pay Now</a>
+                <a href="{{ $data['login_url'] ?? 'https://posumoms.netlify.app/login' }}" class="primary-button">💳 Pay Now</a>
             </div>
 
             <div class="urgency-notice">

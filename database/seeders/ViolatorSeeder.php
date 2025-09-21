@@ -37,7 +37,6 @@ class ViolatorSeeder extends Seeder
                 $first = $firstNames[array_rand($firstNames)];
                 $last  = $lastNames[array_rand($lastNames)];
                 $middle = $middleNames[array_rand($middleNames)];
-                $email = strtolower($first) . $i . '@example.com';
 
                 $mobile_number = '09' . rand(100000000, 999999999);
                 $license_number = strtoupper(Str::random(2)) . rand(100000000, 999999999);
@@ -46,9 +45,8 @@ class ViolatorSeeder extends Seeder
                     'first_name' => $first,
                     'middle_name' => $middle,
                     'last_name' => $last,
-                    'email' => $email,
                     'mobile_number' => $mobile_number,
-                    'gender' => rand(0,1), // true/false
+                    'gender' => rand(0,1),
                     'professional' => rand(0,1),
                     'license_number' => $license_number,
                     'barangay' => 'Barangay San Jose',
@@ -78,7 +76,7 @@ class ViolatorSeeder extends Seeder
                 $officerId = rand(1,3);
 
                 // Assign dates across 2023, 2024, and 2025
-                $year = [2023, 2024, 2025][array_rand([2023, 2024, 2025])];
+                $year = [2024, 2025][array_rand([2024, 2025])];
                 $month = rand(1, 12);
                 $day = rand(1, 28); // safe day
                 $hour = rand(8, 17);

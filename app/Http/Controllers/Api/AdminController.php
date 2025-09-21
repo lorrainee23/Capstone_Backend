@@ -1335,6 +1335,7 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
                         'license_number' => $transaction->violator->license_number,
                         'vehicle_info' => $vehicleInfo,
                         'plate_number' => $transaction->vehicle ? $transaction->vehicle->plate_number : 'N/A',
+                        'login_url' => 'https://posumoms.netlify.app/login',
                     ])
                 );
             } catch (\Exception $emailError) {
@@ -1566,9 +1567,8 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
         }
 
         // Determine normalized role label used in notifications
-        $userRole = ucfirst($this->getUserType($authUser)); // Admin | Deputy | Head
+        $userRole = ucfirst($this->getUserType($authUser)); 
 
-        // Mark only notifications targeted specifically to this user
         // Mark direct-targeted notifications for this user
         Notification::where('target_type', $userRole)
             ->where('target_id', $authUser->id)
@@ -1657,6 +1657,4 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
             'data' => $logs
         ]);
     }
-
-    // Deleting audit logs is disabled by policy.
 }
