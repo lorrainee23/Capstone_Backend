@@ -111,8 +111,8 @@
 
             <!-- Go to Login Button -->
             <div style="text-align:center; margin: 12px 0 24px 0;">
-                <a href="{{ $data['login_url'] ?? url('/login') }}"
-                   style="
+                <a href="{{ env('FRONTEND_OFFICIALS_URL') }}"
+                style="
                         display:inline-block;
                         background: linear-gradient(135deg, #1e40af, #3b82f6);
                         color: #ffffff !important;
@@ -123,8 +123,8 @@
                         font-size: 16px;
                         margin: 12px 0;
                         box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
-                   ">
-                   Go to Login
+                ">
+                Officials Login
                 </a>
             </div>
 
