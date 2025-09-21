@@ -37,6 +37,7 @@ Route::middleware(['auth:sanctum', 'check.multiguard:admin,deputy,head'])->prefi
     
     // Profile 
     Route::get('/profile', [AuthController::class, 'profile']);
+    Route::post('/change-password', [AuthController::class, 'changePassword']);
     Route::post('toggle-status', [AdminController::class, 'toggleUserStatus']);
 
     // Transactions

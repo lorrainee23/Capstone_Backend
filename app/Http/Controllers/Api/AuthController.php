@@ -677,4 +677,62 @@ class AuthController extends Controller
                 ]);
         } 
     }
+
+    /**
+     * Change password for admin users (Admin, Deputy, Head)
+     */
+    public function changePassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'current_password' => 'required|string',
+            'new_password' => 'required|string|min:8|regex:/^(?=.*[A-Z])(?=.*\d).+$/',
+            'new_password_confirmation' => 'required|string|same:new_password',
+        ], [
+            'new_password.min' => 'Password must be at least 8 characters long.',
+            'new_password.regex' => 'Password must contain at least one uppercase letter and one number.',
+            'new_password_confirmation.same' => 'Password confirmation does not match.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $user = $request->user('sanctum');
+            
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not authenticated'
+                ], 401);
+            }
+
+            // Verify current password
+            if (!Hash::check($request->current_password, $user->password)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Current password is incorrect'
+                ], 422);
+            }
+
+            // Update password
+            $user->password = Hash::make($request->new_password);
+            $user->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Password changed successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to change password: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
