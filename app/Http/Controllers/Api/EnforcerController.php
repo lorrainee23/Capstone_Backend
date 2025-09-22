@@ -435,16 +435,32 @@ class EnforcerController extends Controller
                 $q->withCount('transactions');
             },
             'violation',
-            'vehicle'
+            'vehicle',
+            'apprehendingOfficer:id,first_name,middle_name,last_name,image,username'
         ])
             ->orderBy('ticket_number', 'asc')
             ->paginate($perPage, ['*'], 'page', $page);
+
+        $transactions->getCollection()->transform(function ($transaction) {
+            $officer = $transaction->apprehendingOfficer;
+            $transaction->officer = $officer ? [
+                'id' => $officer->id,
+                'first_name' => $officer->first_name,
+                'middle_name' => $officer->middle_name,
+                'last_name' => $officer->last_name,
+                'full_name' => method_exists($officer, 'getFullNameAttribute') ? $officer->full_name : trim(($officer->first_name ?? '') . ' ' . ($officer->middle_name ?? '') . ' ' . ($officer->last_name ?? '')),
+                'image' => $officer->image,
+                'username' => $officer->username,
+            ] : null;
+            return $transaction;
+        });
 
         return response()->json([
             'status' => 'success',
             'data' => $transactions
         ]);
     }
+
 
     /**
      * Get all violators with transactions

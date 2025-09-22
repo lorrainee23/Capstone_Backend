@@ -16,7 +16,7 @@ class ViolatorSeeder extends Seeder
     public function run(): void
     {
         // Generate 25 violators
-        $totalViolators = 8;
+        $totalViolators = 25;
 
         // Random first names/last names pool
         $firstNames = ['Juan','Maria','Pedro','Ana','Carlos','Jose','Luisa','Miguel','Rosa','Diego'];
