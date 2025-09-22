@@ -220,9 +220,11 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
 
         $viewableUserTypes = $this->getViewableUserTypes($authUser);
 
-        $status = $request->input('status');
-        $search = $request->input('search');
-        $perPage = $request->input('per_page', 15);
+        $status   = $request->input('status');
+        $search   = $request->input('search');
+        $role     = $request->input('role');
+        $perPage  = $request->input('per_page', 15);
+        $page     = $request->input('page', 1);
 
         $users = collect();
 
@@ -233,38 +235,45 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
             if ($search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('first_name', 'like', "%{$search}%")
-                      ->orWhere('last_name', 'like', "%{$search}%")
-                      ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
                 });
             }
             return $query;
         };
 
-        $viewableUserTypes = $this->getViewableUserTypes($authUser);
-        
         foreach ($viewableUserTypes as $userType) {
+            if ($role && $role !== $userType) {
+                continue;
+            }
+
             $modelClass = $this->getModelClass($userType);
-            $userCollection = $applyFilters($modelClass::query())->get()->map(function ($user) use ($userType) {
-                $user->user_type = $userType;
-                return $user;
-            });
+            $userCollection = $applyFilters($modelClass::query())
+                ->get()
+                ->map(function ($user) use ($userType) {
+                    $user->user_type = $userType;
+                    return $user;
+                });
+
             $users = $users->merge($userCollection);
         }
 
-        // Pagination
-        $currentPage = $request->input('page', 1);
-        $offset = ($currentPage - 1) * $perPage;
+        // Pagination (manual collection pagination)
+        $offset = ($page - 1) * $perPage;
         $paginatedUsers = $users->slice($offset, $perPage);
 
         $paginationData = [
-            'data' => $paginatedUsers->values(),
-            'current_page' => $currentPage,
-            'per_page' => $perPage,
-            'total' => $users->count(),
-            'last_page' => ceil($users->count() / $perPage),
+            'data'         => $paginatedUsers->values(),
+            'current_page' => $page,
+            'per_page'     => $perPage,
+            'total'        => $users->count(),
+            'last_page'    => ceil($users->count() / $perPage),
         ];
 
-        return response()->json(['status' => 'success', 'data' => $paginationData]);
+        return response()->json([
+            'status' => 'success',
+            'data'   => $paginationData
+        ]);
     }
 
     public function createUser(Request $request)
