@@ -1043,11 +1043,53 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
         $perPage = $request->input('per_page', 15);
         $page    = $request->input('page', 1);
 
-        $violators = Violator::whereHas('transactions')
+        $name           = trim((string) $request->input('name', ''));
+        $address        = trim((string) $request->input('address', ''));
+        $mobileNumber   = trim((string) $request->input('mobile_number', ''));
+        $gender         = $request->input('gender', ''); // '' | 0 | 1
+        $professional   = $request->input('professional', ''); // '' | 0 | 1
+        $licenseNumber  = trim((string) $request->input('license_number', ''));
+
+        $query = Violator::query()
+            ->whereHas('transactions')
             ->withCount('transactions')
             ->withSum('transactions', 'fine_amount')
-            ->with(['transactions.violation', 'transactions.vehicle', 'transactions.apprehendingOfficer'])
-            ->paginate($perPage, ['*'], 'page', $page);
+            ->with(['transactions.violation', 'transactions.vehicle', 'transactions.apprehendingOfficer']);
+
+        if ($name !== '') {
+            $query->where(function ($q) use ($name) {
+                $q->where('first_name', 'like', "%{$name}%")
+                  ->orWhere('middle_name', 'like', "%{$name}%")
+                  ->orWhere('last_name', 'like', "%{$name}%");
+            });
+        }
+
+        if ($address !== '') {
+            $query->where(function ($q) use ($address) {
+                $q->where('barangay', 'like', "%{$address}%")
+                  ->orWhere('city', 'like', "%{$address}%")
+                  ->orWhere('province', 'like', "%{$address}%");
+            });
+        }
+
+        if ($mobileNumber !== '') {
+            $query->where('mobile_number', 'like', "%{$mobileNumber}%");
+        }
+
+        if ($gender !== '' && $gender !== null) {
+            // Accept '0'/'1' or boolean
+            $query->where('gender', filter_var($gender, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? (int) $gender);
+        }
+
+        if ($professional !== '' && $professional !== null) {
+            $query->where('professional', filter_var($professional, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? (int) $professional);
+        }
+
+        if ($licenseNumber !== '') {
+            $query->where('license_number', 'like', "%{$licenseNumber}%");
+        }
+
+        $violators = $query->paginate($perPage, ['*'], 'page', $page);
 
         $violators->getCollection()->transform(function ($violator) {
             $violator->total_amount = $violator->transactions_sum_fine_amount ?? 0;
@@ -1127,9 +1169,49 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
         $perPage = $request->input('per_page', 15);
         $page    = $request->input('page', 1);
 
-        
-        $vehicles = Vehicle::with('violator') 
-            ->paginate($perPage, ['*'], 'page', $page);
+        $ownerName   = trim((string) $request->input('owner_name', ''));
+        $plateNumber = trim((string) $request->input('plate_number', ''));
+        $make        = trim((string) $request->input('make', ''));
+        $model       = trim((string) $request->input('model', ''));
+        $color       = trim((string) $request->input('color', ''));
+        $vehicleType = trim((string) $request->input('vehicle_type', ''));
+
+        $query = Vehicle::with('violator');
+
+        if ($ownerName !== '') {
+            $query->where(function ($q) use ($ownerName) {
+                $q->where('owner_first_name', 'like', "%{$ownerName}%")
+                  ->orWhere('owner_middle_name', 'like', "%{$ownerName}%")
+                  ->orWhere('owner_last_name', 'like', "%{$ownerName}%")
+                  ->orWhereHas('violator', function ($vq) use ($ownerName) {
+                      $vq->where('first_name', 'like', "%{$ownerName}%")
+                         ->orWhere('middle_name', 'like', "%{$ownerName}%")
+                         ->orWhere('last_name', 'like', "%{$ownerName}%");
+                  });
+            });
+        }
+
+        if ($plateNumber !== '') {
+            $query->where('plate_number', 'like', "%{$plateNumber}%");
+        }
+
+        if ($make !== '') {
+            $query->where('make', 'like', "%{$make}%");
+        }
+
+        if ($model !== '') {
+            $query->where('model', 'like', "%{$model}%");
+        }
+
+        if ($color !== '') {
+            $query->where('color', 'like', "%{$color}%");
+        }
+
+        if ($vehicleType !== '') {
+            $query->where('vehicle_type', $vehicleType);
+        }
+
+        $vehicles = $query->paginate($perPage, ['*'], 'page', $page);
 
         $vehicles->getCollection()->transform(function ($vehicle) {
             if ($vehicle->violator) {
@@ -1278,6 +1360,15 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
         $perPage = $request->input('per_page', 15);
         $page    = $request->input('page', 1);
 
+        $search        = trim((string) $request->input('search', ''));
+        $violationId   = $request->input('violation_id');
+        $vehicleType   = trim((string) $request->input('vehicle_type', ''));
+        $repeat        = $request->input('repeat_offender', ''); // '' | true | false
+        $address       = trim((string) $request->input('address', ''));
+        $dateRange     = trim((string) $request->input('dateRange', ''));
+        $dateFrom      = $request->input('dateFrom');
+        $dateTo        = $request->input('dateTo');
+
         $transactions = Transaction::with([
             'violator' => function ($q) {
                 $q->withCount('transactions');
@@ -1285,9 +1376,71 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
             'violation',
             'vehicle',
             'apprehendingOfficer'
-        ])
-            ->orderBy('id', 'asc')
-            ->paginate($perPage, ['*'], 'page', $page);
+        ])->orderBy('id', 'asc');
+
+        if ($search !== '') {
+            $transactions->where(function ($q) use ($search) {
+                $q->where('ticket_number', 'like', "%{$search}%")
+                  ->orWhereHas('violator', function ($vq) use ($search) {
+                      $vq->where('first_name', 'like', "%{$search}%")
+                         ->orWhere('last_name', 'like', "%{$search}%")
+                         ->orWhere('license_number', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('violation', function ($vq) use ($search) {
+                      $vq->where('name', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        if (!empty($violationId)) {
+            $transactions->where('violation_id', (int) $violationId);
+        }
+
+        if ($vehicleType !== '') {
+            $transactions->whereHas('vehicle', function ($vq) use ($vehicleType) {
+                $vq->where('vehicle_type', $vehicleType);
+            });
+        }
+
+        if ($address !== '') {
+            $transactions->whereHas('violator', function ($vq) use ($address) {
+                $vq->where('barangay', 'like', "%{$address}%")
+                   ->orWhere('city', 'like', "%{$address}%")
+                   ->orWhere('province', 'like', "%{$address}%");
+            });
+        }
+
+        if ($repeat !== '' && $repeat !== null) {
+            $isRepeat = filter_var($repeat, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            if ($isRepeat === true) {
+                $transactions->whereHas('violator', function ($vq) {
+                    $vq->has('transactions', '>=', 2);
+                });
+            } elseif ($isRepeat === false) {
+                $transactions->whereHas('violator', function ($vq) {
+                    $vq->has('transactions', '<=', 1);
+                });
+            }
+        }
+
+        // Date filters
+        if (!empty($dateFrom) && !empty($dateTo)) {
+            $from = Carbon::parse($dateFrom)->startOfDay();
+            $to   = Carbon::parse($dateTo)->endOfDay();
+            $transactions->whereBetween('date_time', [$from, $to]);
+        } elseif ($dateRange !== '') {
+            $now = now();
+            if ($dateRange === 'today') {
+                $transactions->whereDate('date_time', $now->toDateString());
+            } elseif ($dateRange === 'week') {
+                $transactions->whereBetween('date_time', [$now->copy()->subDays(6)->startOfDay(), $now->endOfDay()]);
+            } elseif ($dateRange === 'month') {
+                $transactions->whereYear('date_time', $now->year)
+                             ->whereMonth('date_time', $now->month);
+            }
+        }
+
+        $transactions = $transactions->paginate($perPage, ['*'], 'page', $page);
 
         $totalsByViolator = Transaction::selectRaw('violator_id, SUM(fine_amount) as total_amount')
             ->groupBy('violator_id')
