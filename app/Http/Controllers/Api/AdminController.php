@@ -1060,7 +1060,8 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
             $query->where(function ($q) use ($name) {
                 $q->where('first_name', 'like', "%{$name}%")
                   ->orWhere('middle_name', 'like', "%{$name}%")
-                  ->orWhere('last_name', 'like', "%{$name}%");
+                  ->orWhere('last_name', 'like', "%{$name}%")
+                  ->orWhereRaw("CONCAT_WS(' ', first_name, middle_name, last_name) LIKE ?", ["%{$name}%"]);
             });
         }
 
@@ -1183,10 +1184,12 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
                 $q->where('owner_first_name', 'like', "%{$ownerName}%")
                   ->orWhere('owner_middle_name', 'like', "%{$ownerName}%")
                   ->orWhere('owner_last_name', 'like', "%{$ownerName}%")
+                  ->orWhereRaw("CONCAT_WS(' ', owner_first_name, owner_middle_name, owner_last_name) LIKE ?", ["%{$ownerName}%"]) 
                   ->orWhereHas('violator', function ($vq) use ($ownerName) {
                       $vq->where('first_name', 'like', "%{$ownerName}%")
                          ->orWhere('middle_name', 'like', "%{$ownerName}%")
-                         ->orWhere('last_name', 'like', "%{$ownerName}%");
+                         ->orWhere('last_name', 'like', "%{$ownerName}%")
+                         ->orWhereRaw("CONCAT_WS(' ', first_name, middle_name, last_name) LIKE ?", ["%{$ownerName}%"]);
                   });
             });
         }
@@ -1382,11 +1385,34 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
         if ($search !== '') {
             $transactions->where(function ($q) use ($search) {
                 $q->where('ticket_number', 'like', "%{$search}%")
+                  // Violator name and license
                   ->orWhereHas('violator', function ($vq) use ($search) {
                       $vq->where('first_name', 'like', "%{$search}%")
+                         ->orWhere('middle_name', 'like', "%{$search}%")
                          ->orWhere('last_name', 'like', "%{$search}%")
-                         ->orWhere('license_number', 'like', "%{$search}%");
+                         ->orWhere('license_number', 'like', "%{$search}%")
+                         ->orWhereRaw("CONCAT_WS(' ', first_name, middle_name, last_name) LIKE ?", ["%{$search}%"]);
                   })
+                  // Apprehending officer name
+                  ->orWhereHas('apprehendingOfficer', function ($oq) use ($search) {
+                      $oq->where('first_name', 'like', "%{$search}%")
+                         ->orWhere('middle_name', 'like', "%{$search}%")
+                         ->orWhere('last_name', 'like', "%{$search}%")
+                         ->orWhere('username', 'like', "%{$search}%")
+                         ->orWhereRaw("CONCAT_WS(' ', first_name, middle_name, last_name) LIKE ?", ["%{$search}%"]);
+                  })
+                  // Vehicle fields and owner name
+                  ->orWhereHas('vehicle', function ($vq) use ($search) {
+                      $vq->where('plate_number', 'like', "%{$search}%")
+                         ->orWhere('make', 'like', "%{$search}%")
+                         ->orWhere('model', 'like', "%{$search}%")
+                         ->orWhere('color', 'like', "%{$search}%")
+                         ->orWhere('owner_first_name', 'like', "%{$search}%")
+                         ->orWhere('owner_middle_name', 'like', "%{$search}%")
+                         ->orWhere('owner_last_name', 'like', "%{$search}%")
+                         ->orWhereRaw("CONCAT_WS(' ', owner_first_name, owner_middle_name, owner_last_name) LIKE ?", ["%{$search}%"]);
+                  })
+                  // Violation names (single and multiple)
                   ->orWhereHas('violation', function ($vq) use ($search) {
                       $vq->where('name', 'like', "%{$search}%");
                   })
@@ -1460,6 +1486,26 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
             if ($transaction->violator) {
                 $transaction->violator->total_amount = $totalsByViolator[$transaction->violator->id] ?? 0;
             }
+
+            // Compute attempt number for this specific transaction (1 for first, 2 for second, ...)
+            try {
+                $transaction->attempt_number = Transaction::where('violator_id', $transaction->violator_id)
+                    ->where(function($q) use ($transaction) {
+                        $q->where('date_time', '<', $transaction->date_time)
+                          ->orWhere(function($q2) use ($transaction) {
+                              $q2->where('date_time', $transaction->date_time)
+                                 ->where('id', '<=', $transaction->id);
+                          });
+                    })
+                    ->count();
+                // Count returns number of earlier-or-equal rows; attempt is that count (>=1)
+                if ($transaction->attempt_number < 1) {
+                    $transaction->attempt_number = 1;
+                }
+            } catch (\Throwable $e) {
+                $transaction->attempt_number = 1;
+            }
+
             return $transaction;
         });
 
