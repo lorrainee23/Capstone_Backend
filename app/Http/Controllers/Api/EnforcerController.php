@@ -231,7 +231,7 @@ class EnforcerController extends Controller
                     'last_name'   => $allData['last_name'],
                     'email'       => $allData['email'] ?? null,
                     'gender'      => $allData['gender'],
-                    'mobile_number' => $allData['mobile_number'],
+                    'mobile_number' => $allData['mobile_number'] ?? '',
                     'id_photo'    => $request->hasFile('image')
                         ? (function() use ($request) {
                             $upload = Cloudinary::upload($request->file('image')->getRealPath(), [
