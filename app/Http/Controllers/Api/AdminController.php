@@ -1374,6 +1374,7 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
                 $q->withCount('transactions');
             },
             'violation',
+            'violations',
             'vehicle',
             'apprehendingOfficer'
         ])->orderBy('id', 'asc');
@@ -1388,12 +1389,21 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
                   })
                   ->orWhereHas('violation', function ($vq) use ($search) {
                       $vq->where('name', 'like', "%{$search}%");
+                  })
+                  ->orWhereHas('violations', function ($vq) use ($search) {
+                      $vq->where('name', 'like', "%{$search}%");
                   });
             });
         }
 
         if (!empty($violationId)) {
-            $transactions->where('violation_id', (int) $violationId);
+            $violationId = (int) $violationId;
+            $transactions->where(function ($q) use ($violationId) {
+                $q->where('violation_id', $violationId)
+                  ->orWhereHas('violations', function ($vq) use ($violationId) {
+                      $vq->where('violations.id', $violationId);
+                  });
+            });
         }
 
         if ($vehicleType !== '') {

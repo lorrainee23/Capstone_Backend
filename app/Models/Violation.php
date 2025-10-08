@@ -31,11 +31,20 @@ class Violation extends Model
     ];
 
     /**
-     * Get all transactions for this violation type.
+     * Legacy: direct relationship when a transaction had a single violation_id.
      */
     public function transactions()
     {
         return $this->hasMany(Transaction::class, 'violation_id');
+    }
+
+    /**
+     * Many-to-many transactions that include this violation (new model).
+     */
+    public function transactionsMany()
+    {
+        return $this->belongsToMany(Transaction::class, 'transaction_violation')
+            ->withTimestamps();
     }
 
     /**

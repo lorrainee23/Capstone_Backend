@@ -47,6 +47,15 @@ class Transaction extends Model
     }
 
     /**
+     * Get all violation types attached to this transaction.
+     */
+    public function violations()
+    {
+        return $this->belongsToMany(Violation::class, 'transaction_violation')
+            ->withTimestamps();
+    }
+
+    /**
      * Get the apprehending officer for this transaction.
      */
     public function apprehendingOfficer()

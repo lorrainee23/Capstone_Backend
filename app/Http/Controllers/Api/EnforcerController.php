@@ -190,7 +190,9 @@ class EnforcerController extends Controller
             'professional'    => 'nullable|boolean',
             'gender'          => 'required|boolean',
             'license_number'  => 'required|string|size:11',
-            'violation_id'    => 'required|exists:violations,id',
+            'violation_id'    => 'nullable|exists:violations,id',
+            'violation_ids'   => 'nullable|array|min:1',
+            'violation_ids.*' => 'integer|exists:violations,id',
             'location'        => 'required|string|max:100',
             'vehicle_type'    => 'required|in:Motor,Motorcycle,Van,Car,SUV,Truck,Bus',
             'plate_number'    => 'required|string|max:7',
@@ -274,24 +276,53 @@ class EnforcerController extends Controller
                 ]
             );
 
-            $violation = Violation::findOrFail($allData['violation_id']);
+            // Determine selected violations (support legacy single violation_id or new violation_ids array)
+            $selectedViolationIds = [];
+            if (!empty($allData['violation_ids']) && is_array($allData['violation_ids'])) {
+                $selectedViolationIds = array_values(array_unique(array_map('intval', $allData['violation_ids'])));
+            } elseif (!empty($allData['violation_id'])) {
+                $selectedViolationIds = [(int) $allData['violation_id']];
+            }
+
+            if (empty($selectedViolationIds)) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'At least one violation is required',
+                ], 422);
+            }
+
+            $violations = Violation::whereIn('id', $selectedViolationIds)->get();
+            if ($violations->isEmpty()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Selected violations not found',
+                ], 422);
+            }
+
+            // Sum fines from selected violations unless an explicit fine_amount is provided
+            $computedFine = $violations->sum('fine_amount');
 
             // Create transaction
             $transaction = Transaction::create([
                 'violator_id'          => $violator->id,
                 'vehicle_id'           => $vehicle->id,
-                'violation_id'         => $violation->id,
+                // Keep legacy column populated with the first violation for backward compatibility
+                'violation_id'         => $violations->first()->id,
                 'apprehending_officer' => auth()->id(),
                 'status'               => 'Pending',
                 'location'             => $allData['location'],
                 'date_time'            => now(),
-                'fine_amount'          => $allData['fine_amount'] ?? $violation->fine_amount,
+                'fine_amount'          => $allData['fine_amount'] ?? $computedFine,
             ]);
+
+            // Attach all selected violations to pivot
+            $transaction->violations()->sync($selectedViolationIds);
 
             // Audit: violation recorded
             $actor = auth()->user();
             $actorName = trim(($actor->first_name ?? '') . ' ' . ($actor->last_name ?? ''));
             $ticketLabel = 'Ticket #' . ($transaction->ticket_number ?? $transaction->id);
+            $violationNames = $violations->pluck('name')->implode(', ');
             AuditLogger::log(
                 $actor,
                 'Violation Recorded',
@@ -300,7 +331,7 @@ class EnforcerController extends Controller
                 $ticketLabel,
                 [],
                 $request,
-                "$actorName recorded a violation ($violation->name) for {$violator->first_name} {$violator->last_name}"
+                "$actorName recorded violation(s) ($violationNames) for {$violator->first_name} {$violator->last_name}"
             );
 
             $allowedRoles = ['System','Management','Head','Deputy','Admin','Enforcer','Violator'];
@@ -317,7 +348,7 @@ class EnforcerController extends Controller
                 'violator_id'   => $violator->id,
                 'transaction_id'=> $transaction->id,
                 'title'         => 'New Violation Recorded',
-                'message'       => "You have been cited for {$violation->name}. Fine: ₱{$violation->fine_amount}. Please pay within 7 days to avoid penalties.",
+                'message'       => "You have been cited for {$violationNames}. Fine: ₱" . number_format($transaction->fine_amount, 2) . ". Please pay within 7 days to avoid penalties.",
                 'type'          => 'info',
             ]);
 
@@ -356,7 +387,7 @@ class EnforcerController extends Controller
                     'sender_role' => $senderRole,
                     'target_type' => 'Management',
                     'title'       => 'Violation Recorded',
-                    'message'     => "A new violation ({$violation->name}) was recorded for {$violator->first_name} {$violator->last_name}.",
+                    'message'     => "New violation(s) ({$violationNames}) were recorded for {$violator->first_name} {$violator->last_name}.",
                     'type'        => 'info',
                 ]);
 
@@ -367,7 +398,7 @@ class EnforcerController extends Controller
                 'target_type' => 'Enforcer',
                 'target_id'   => auth()->id(),
                 'title'       => 'Violation Successfully Recorded',
-                'message'     => "You have successfully recorded a violation for {$violator->first_name} {$violator->last_name} ({$violation->name}).",
+                'message'     => "You have successfully recorded violation(s) for {$violator->first_name} {$violator->last_name} ({$violationNames}).",
                 'type'        => 'info',
             ]);
 
@@ -382,8 +413,8 @@ class EnforcerController extends Controller
                         new POSUEmail('citation', [
                             'violator_name' => $violatorName,
                             'ticket_number' => $transaction->ticket_number ?? 'CT-' . date('Y') . '-' . str_pad($transaction->id, 6, '0', STR_PAD_LEFT),
-                            'violation_type' => $violation->name,
-                            'fine_amount' => $violation->fine_amount,
+                            'violation_type' => $violationNames,
+                            'fine_amount' => $transaction->fine_amount,
                             'violation_date' => $transaction->date_time->format('F j, Y'),
                             'violation_datetime' => $transaction->date_time->format('F j, Y - g:i A'),
                             'location' => $request->location,
@@ -405,7 +436,7 @@ class EnforcerController extends Controller
                 'status' => 'success',
                 'message' => 'Violation recorded successfully' . (!empty($allData['email']) ? ' and citation email sent' : ''),
                 'data' => [
-                    'transaction' => $transaction->load(['violator', 'vehicle', 'violation']),
+                    'transaction' => $transaction->load(['violator', 'vehicle', 'violation', 'violations']),
                     'violator'    => $violator,
                     'vehicle'     => $vehicle
                 ]
@@ -435,6 +466,7 @@ class EnforcerController extends Controller
                 $q->withCount('transactions');
             },
             'violation',
+            'violations',
             'vehicle',
             'apprehendingOfficer:id,first_name,middle_name,last_name,image,username'
         ])
