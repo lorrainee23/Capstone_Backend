@@ -186,7 +186,7 @@ class EnforcerController extends Controller
             'middle_name'     => 'nullable|string|max:100',
             'last_name'       => 'required|string|max:100',
             'email'           => 'nullable|email',
-            'mobile_number'   => 'required|string|size:11',
+            'mobile_number'   => 'nullable|string|size:11',
             'professional'    => 'nullable|boolean',
             'gender'          => 'required|boolean',
             'license_number'  => 'required|string|size:11',

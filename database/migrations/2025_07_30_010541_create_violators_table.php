@@ -20,7 +20,7 @@ return new class extends Migration
             $table->string('first_name', 255);
             $table->string('middle_name', 255)->nullable();
             $table->string('last_name', 255);
-            $table->char('mobile_number', 11);
+            $table->char('mobile_number', 11)->nullable();
             $table->boolean('gender');
             $table->timestamp('license_suspended_at')->nullable();
             $table->char('license_number', 16)->unique();
