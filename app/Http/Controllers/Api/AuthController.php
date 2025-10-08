@@ -190,7 +190,7 @@ class AuthController extends Controller
                     );
                     
                     $apiBase = rtrim(env('APP_URL'), '/');
-                    $verificationUrl = $apiBase . '/api/verify-email?token=' . $verificationToken . '&email=' . urlencode($violator->email);
+                    $verificationUrl = $apiBase . '/verify-email?token=' . $verificationToken . '&email=' . urlencode($violator->email);
                     
                     Mail::to($violator->email)->send(
                         new POSUEmail('account_verification', [
