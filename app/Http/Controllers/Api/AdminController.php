@@ -1542,9 +1542,12 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
                 
                 Mail::to($transaction->violator->email)->send(
                     new POSUEmail('payment_confirmation', [
+                        'user_name' => $violatorName,
                         'violator_name' => $violatorName,
+                        'violation_id' => $transaction->ticket_number ?? 'CT-' . date('Y') . '-' . str_pad($transaction->id, 6, '0', STR_PAD_LEFT),
                         'ticket_number' => $transaction->ticket_number ?? 'CT-' . date('Y') . '-' . str_pad($transaction->id, 6, '0', STR_PAD_LEFT),
                         'violation_type' => $transaction->violation->name,
+                        'amount_paid' => $transaction->fine_amount,
                         'fine_amount' => $transaction->fine_amount,
                         'payment_date' => now()->format('F j, Y'),
                         'payment_datetime' => now()->format('F j, Y - g:i A'),
@@ -1553,6 +1556,7 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
                         'license_number' => $transaction->violator->license_number,
                         'vehicle_info' => $vehicleInfo,
                         'plate_number' => $transaction->vehicle ? $transaction->vehicle->plate_number : 'N/A',
+                        'payment_method' => 'Cash', // Default payment method
                         'login_url' => 'https://posumoms.netlify.app/login',
                     ])
                 );

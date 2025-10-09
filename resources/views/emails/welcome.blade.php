@@ -134,15 +134,16 @@
                     <a href="{{ $data['verification_url'] }}"
                        style="
                             display:inline-block;
-                            background: linear-gradient(135deg, #1e40af, #3b82f6);
-                            color: #ffffff !important;
+                            background: #ffffff;
+                            color: #1e40af !important;
                             text-decoration: none;
                             padding: 14px 28px;
                             border-radius: 12px;
                             font-weight: 600;
                             font-size: 16px;
                             margin: 12px 0;
-                            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+                            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+                            border: 2px solid #1e40af;
                        ">
                        Verify Email
                     </a>

@@ -209,7 +209,7 @@ class AuthController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => $violator->email ? 'Email verification has been sent to your email' : 'Account created successfully',
+                'message' => $violator->email ? 'Account created successfully! You can now sign in. An email verification has been sent to your email address.' : 'Account created successfully! You can now sign in.',
                 'data' => [
                     'violator' => $violator,
                     'user_type' => 'violator',
