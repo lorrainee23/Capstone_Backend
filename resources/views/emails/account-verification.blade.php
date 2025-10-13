@@ -12,7 +12,7 @@
         .website-link { color:#fff !important; text-decoration:none; font-size:14px; font-weight:500; border:1px solid rgba(255,255,255,.3); padding:8px 16px; border-radius:20px; display:inline-block; }
         .content { padding:40px; }
         .verify-card { background:#ecfeff; border-left:6px solid #06b6d4; border-radius:12px; padding:20px; margin:20px 0; }
-        .primary-button { display:inline-block; background:#ffffff; color:#1e40af; text-decoration:none; padding:14px 28px; border-radius:12px; font-weight:600; box-shadow:0 4px 16px rgba(0,0,0,.1); border:2px solid #1e40af; }
+        .primary-button { display:inline-block; background:linear-gradient(135deg,#1e40af,#3b82f6); color:#ffff; text-decoration:none; padding:14px 28px; border-radius:12px; font-weight:600; box-shadow:0 4px 16px rgba(59,130,246,.3); }
         .footer { background:#374151; color:#fff; padding:30px 40px; text-align:center; }
         .footer a { color:#fff !important; text-decoration:none; }
     </style>

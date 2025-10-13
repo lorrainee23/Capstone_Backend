@@ -12,6 +12,7 @@ return new class extends Migration
 	public function up(): void
 	{
 		Schema::create('transaction_violation', function (Blueprint $table) {
+			// Match existing PK types: transactions.id is unsignedInteger, violations.id is unsignedTinyInteger
 			$table->unsignedInteger('transaction_id');
 			$table->unsignedTinyInteger('violation_id');
 			$table->timestamps();

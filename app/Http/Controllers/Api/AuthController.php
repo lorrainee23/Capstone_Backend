@@ -190,7 +190,7 @@ class AuthController extends Controller
                     );
                     
                     $apiBase = rtrim(env('APP_URL'), '/');
-                    $verificationUrl = $apiBase . '/verify-email?token=' . $verificationToken . '&email=' . urlencode($violator->email);
+                    $verificationUrl = $apiBase . '/api/verify-email?token=' . $verificationToken . '&email=' . urlencode($violator->email);
                     
                     Mail::to($violator->email)->send(
                         new POSUEmail('account_verification', [
@@ -209,7 +209,7 @@ class AuthController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => $violator->email ? 'Account created successfully! You can now sign in. An email verification has been sent to your email address.' : 'Account created successfully! You can now sign in.',
+                'message' => $violator->email ? 'Email verification has been sent to your email' : 'Account created successfully',
                 'data' => [
                     'violator' => $violator,
                     'user_type' => 'violator',

@@ -12,9 +12,15 @@ return new class extends Migration
             $table->increments('id');
             $table->string('type');
             $table->string('period');
+            $table->date('start_date')->nullable();
+            $table->date('end_date')->nullable();
             $table->json('report_content')->nullable();
             $table->json('summary')->nullable();        
             $table->json('files')->nullable();
+            $table->string('generated_by_type')->nullable();
+            $table->unsignedTinyInteger('generated_by_id')->nullable();
+            $table->string('noted_by_name')->nullable();
+            $table->string('prepared_by_name')->nullable();
             $table->softDeletes();          
             $table->timestamps(); 
         });

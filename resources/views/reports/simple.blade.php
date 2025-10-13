@@ -107,6 +107,7 @@
             </div>
         </div>
 
+
         @if($type === 'all_violators')
             <table>
                 <thead>
@@ -217,10 +218,13 @@
             @if($type === 'all_violators')
                 <p><strong>Total Penalty to be Collected: ₱{{ number_format($grandTotal, 2) }}</strong></p>
             @endif
-            <div class="note">
-                <p>Noted by:</p>
-                <br><br>
-                <p><strong>{{ $noted_by ?? '_____________________' }}</strong></p>
+            <div class="note" style="margin-top: 20px;">
+                <div style="text-align: left; margin-bottom: 20px;">
+                    <p><strong>Prepared By:</strong> {{ $prepared_by ?? '_____________________' }}</p>
+                </div>
+                <div style="text-align: left;">
+                    <p><strong>Noted By:</strong> {{ $noted_by ?? '_____________________' }}</p>
+                </div>
             </div>
         </div>
     </div>

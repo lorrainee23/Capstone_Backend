@@ -71,6 +71,7 @@ Route::middleware(['auth:sanctum', 'check.multiguard:admin,deputy,head'])->prefi
 
     // Reports
     Route::get('/quick-stats', [AdminController::class, 'getStats']);
+    Route::post('/preview-report', [AdminController::class, 'previewReport']);
     Route::post('/generate-report', [AdminController::class, 'generateAdvancedReport']);
     Route::get('/history', [AdminController::class, 'getReportHistory']);
     Route::delete('/history/clear', [AdminController::class, 'clearReportHistory']);

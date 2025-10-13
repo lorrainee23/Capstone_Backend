@@ -184,6 +184,67 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
         $trendDirection = $percentage > 0 ? 'up' : ($percentage < 0 ? 'down' : 'same');
     }
 
+    // Debug: Check if there are any pending transactions
+    $pendingTransactionsCount = Transaction::where('status', 'Pending')->count();
+    \Log::info('Pending transactions count: ' . $pendingTransactionsCount);
+    
+    // Get all violators with pending transactions first
+    $allViolatorsWithPending = Violator::withCount(['transactions' => function($q) {
+        $q->where('status', 'Pending');
+    }])
+    ->withSum(['transactions' => function($q) {
+        $q->where('status', 'Pending');
+    }], 'fine_amount')
+    ->with(['transactions' => function($q) {
+        $q->where('status', 'Pending')
+          ->select('id', 'violator_id', 'location', 'created_at', 'fine_amount');
+    }])
+    ->having('transactions_count', '>', 0)
+    ->get();
+    
+    \Log::info('All violators with pending transactions: ' . $allViolatorsWithPending->count());
+    
+    // Process each violator and check days pending
+    $unsettledViolators = $allViolatorsWithPending->map(function($violator) {
+        $daysPending = $violator->transactions->map(function($transaction) {
+            return now()->diffInDays($transaction->created_at);
+        })->min();
+        
+        \Log::info("Violator {$violator->id}: days pending = {$daysPending}");
+        
+        // Show all pending violators for now, but mark urgency levels
+        return [
+            'id' => $violator->id,
+            'name' => trim(($violator->first_name ?? '') . ' ' . ($violator->middle_name ?? '') . ' ' . ($violator->last_name ?? '')),
+            'pending_count' => $violator->transactions_count,
+            'total_amount' => $violator->transactions_sum_fine_amount ?? 0,
+            'days_pending' => $daysPending,
+            'urgency_level' => $daysPending >= 5 ? 'alert' : ($daysPending >= 3 ? 'warning' : 'info'),
+            'locations' => $violator->transactions->pluck('location')->unique()->values()
+        ];
+    })
+    ->sortByDesc('total_amount')
+    ->values();
+    
+    // Get location data for heatmap (all pending transactions)
+    $locationData = Transaction::where('status', 'Pending')
+        ->selectRaw('location, COUNT(*) as count, SUM(fine_amount) as total_amount')
+        ->groupBy('location')
+        ->orderByDesc('count')
+        ->get()
+        ->map(function($item) {
+            return [
+                'location' => $item->location,
+                'count' => $item->count,
+                'total_amount' => $item->total_amount
+            ];
+        });
+    
+    \Log::info('Unsettled violators count: ' . $unsettledViolators->count());
+    \Log::info('Location data count: ' . $locationData->count());
+    \Log::info('Unsettled violators data: ' . $unsettledViolators->toJson());
+    \Log::info('Location data: ' . $locationData->toJson());
+
     return response()->json([
         'status' => 'success',
         'data'   => [
@@ -193,6 +254,12 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
             'yearly_trends'        => $yearlyTrends,
             'common_violations'    => $commonViolations,
             'enforcer_performance' => $enforcerPerformance,
+            'unsettled_violators'  => $unsettledViolators,
+            'location_heatmap'     => $locationData,
+            'debug_info'           => [
+                'pending_transactions_count' => $pendingTransactionsCount,
+                'unsettled_violators_count' => $unsettledViolators->count()
+            ],
             'trends'               => [
                 'transactions' => [
                     'percentage' => $percentage,
@@ -491,6 +558,14 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
 
         $dateRange = $this->calculateDateRange($request->period, $request->start_date, $request->end_date);
 
+        // Get the current user for report attribution
+        $actor = $request->user('sanctum');
+        $actorName = trim(($actor->first_name ?? '') . ' ' . ($actor->middle_name ?? '') . ' ' . ($actor->last_name ?? ''));
+        if ($actor->extension) {
+            $actorName .= ' ' . $actor->extension;
+        }
+        $actorName = trim($actorName);
+
         // Helper to safely access array keys
         $getKey = fn($array, $key, $default = 'N/A') => is_array($array) && array_key_exists($key, $array) ? $array[$key] : $default;
 
@@ -658,6 +733,8 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
                     'rows' => $rows,
                     'totalPenalty' => $totalPenalty,
                     'dateRange' => $dateRange,
+                    'noted_by' => '',
+                    'prepared_by' => $actorName,
                 ])->render();
 
                 $pdfPath = storage_path("app/report_{$timestamp}.pdf");
@@ -684,6 +761,8 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
                     'rows' => $rows,
                     'totalPenalty' => $totalPenalty,
                     'dateRange' => $dateRange,
+                    'noted_by' => '',
+                    'prepared_by' => $actorName,
                 ])->render();
 
                 $binary = Pdf::loadHTML($html)->output();
@@ -703,6 +782,8 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
         $report = Report::create([
             'type' => $type ?: 'combined',
             'period' => $request->period,
+            'start_date' => $request->start_date,
+            'end_date' => $request->end_date,
             'report_content' => $selectedData,
             'summary' => [
                 'total_penalty' => (float) $totalPenalty,
@@ -711,11 +792,13 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
                 'enforcer_performance' => $enforcerPerformance->toArray(),
             ],
             'files' => $files,
+            'generated_by_type' => class_basename($actor),
+            'generated_by_id' => $actor->id,
+            'noted_by_name' => '',
+            'prepared_by_name' => $actorName,
         ]);
 
         // Audit: report generated
-        $actor = $request->user('sanctum');
-        $actorName = trim(($actor->first_name ?? '') . ' ' . ($actor->last_name ?? ''));
         $desc = "$actorName generated a '{$report->type}' report for period '{$request->period}'";
         AuditLogger::log(
             $actor,
@@ -761,16 +844,154 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
         }
     }
 
+    public function previewReport(Request $request)
+    {
+        $request->validate([
+            'type' => 'required|string',
+            'period' => 'required|in:today,yesterday,last_7_days,last_30_days,last_3_months,last_6_months,last_year,year_to_date,custom',
+            'start_date' => 'required_if:period,custom|date',
+            'end_date' => 'required_if:period,custom|date|after:start_date',
+        ]);
+
+        // Get date range based on period
+        $dateRange = $this->calculateDateRange($request->period, $request->start_date, $request->end_date);
+
+        // Get data based on type
+        $type = $request->input('type');
+        $data = $this->getReportData($type, $dateRange);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'type' => $type,
+                'period' => $request->period,
+                'date_range' => $dateRange,
+                'preview_data' => $data,
+                'total_records' => is_array($data) ? count($data) : 0,
+            ]
+        ]);
+    }
+
+    private function getReportData($type, $dateRange)
+    {
+        switch ($type) {
+            case 'all_violators':
+                return $this->getAllViolatorsData($dateRange);
+            case 'common_violations':
+                return $this->getCommonViolationsData($dateRange);
+            case 'enforcer_performance':
+                return $this->getEnforcerPerformanceData($dateRange);
+            case 'total_revenue':
+                return $this->getTotalRevenueData($dateRange);
+            default:
+                return [];
+        }
+    }
+
+    private function getAllViolatorsData($dateRange)
+    {
+        return Transaction::with(['violator', 'violation', 'vehicle', 'apprehendingOfficer'])
+            ->whereBetween('date_time', [$dateRange['start'], $dateRange['end']])
+            ->get()
+            ->map(function ($transaction) {
+                return [
+                    'Violator Name' => $transaction->violator ? trim(($transaction->violator->first_name ?? '') . ' ' . ($transaction->violator->middle_name ?? '') . ' ' . ($transaction->violator->last_name ?? '')) : 'N/A',
+                    'Violation Name' => $transaction->violation->name ?? 'N/A',
+                    'Penalty Amount' => $transaction->fine_amount ?? 0,
+                    'Ticket Date' => $transaction->date_time ? $transaction->date_time->format('Y-m-d') : 'N/A',
+                    'Status' => $transaction->status ?? 'N/A',
+                ];
+            })
+            ->take(10) // Preview only first 10 records
+            ->toArray();
+    }
+
+    private function getCommonViolationsData($dateRange)
+    {
+        return Violation::withCount(['transactions' => function ($query) use ($dateRange) {
+            $query->whereBetween('date_time', [$dateRange['start'], $dateRange['end']]);
+        }])
+            ->orderBy('transactions_count', 'desc')
+            ->take(10)
+            ->get()
+            ->map(function ($violation) {
+                return [
+                    'Violation Name' => $violation->name,
+                    'Count' => $violation->transactions_count,
+                ];
+            })
+            ->toArray();
+    }
+
+    private function getEnforcerPerformanceData($dateRange)
+    {
+        return Enforcer::with(['transactions' => function ($q) use ($dateRange) {
+            $q->whereBetween('date_time', [$dateRange['start'], $dateRange['end']]);
+        }])
+            ->get()
+            ->map(function ($enforcer) {
+                $transactions = $enforcer->transactions;
+                $totalTransactions = $transactions->count();
+                $paidTransactions = $transactions->where('status', 'Paid')->count();
+
+                return [
+                    'Enforcer Name' => trim(($enforcer->first_name ?? '') . ' ' . ($enforcer->last_name ?? '')),
+                    'Violations Issued' => $totalTransactions,
+                    'Collection Rate (%)' => $totalTransactions > 0 ? round(($paidTransactions / $totalTransactions) * 100, 1) : 0,
+                    'Total Fines' => (float) $transactions->sum('fine_amount'),
+                ];
+            })
+            ->filter(fn($item) => $item['Violations Issued'] > 0)
+            ->take(10)
+            ->values()
+            ->toArray();
+    }
+
+    private function getTotalRevenueData($dateRange)
+    {
+        $totalPenalty = Transaction::whereBetween('date_time', [$dateRange['start'], $dateRange['end']])
+            ->sum('fine_amount');
+
+        return [['Total Revenue' => (float) $totalPenalty]];
+    }
+
     public function getReportHistory(Request $request)
     {
         $includeDeleted = $request->query('include_deleted', false);
+        $perPage = $request->query('per_page', 15);
+        $type = $request->query('type');
+        $startDate = $request->query('start_date');
+        $endDate = $request->query('end_date');
 
-        $reports = $includeDeleted
-            ? Report::withTrashed()->latest()->get() 
-            : Report::latest()->get();
+        $query = $includeDeleted
+            ? Report::withTrashed()->latest()
+            : Report::latest();
+
+        // Apply filters
+        if ($type) {
+            $query->where('type', $type);
+        }
+
+        if ($startDate) {
+            $query->whereDate('created_at', '>=', $startDate);
+        }
+
+        if ($endDate) {
+            $query->whereDate('created_at', '<=', $endDate);
+        }
+
+        $reports = $query->paginate($perPage);
 
         return response()->json([
-            'data' => $reports
+            'data' => $reports->items(),
+            'pagination' => [
+                'current_page' => $reports->currentPage(),
+                'last_page' => $reports->lastPage(),
+                'per_page' => $reports->perPage(),
+                'total' => $reports->total(),
+                'from' => $reports->firstItem(),
+                'to' => $reports->lastItem(),
+            ]
         ]);
     }
 
@@ -1542,12 +1763,9 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
                 
                 Mail::to($transaction->violator->email)->send(
                     new POSUEmail('payment_confirmation', [
-                        'user_name' => $violatorName,
                         'violator_name' => $violatorName,
-                        'violation_id' => $transaction->ticket_number ?? 'CT-' . date('Y') . '-' . str_pad($transaction->id, 6, '0', STR_PAD_LEFT),
                         'ticket_number' => $transaction->ticket_number ?? 'CT-' . date('Y') . '-' . str_pad($transaction->id, 6, '0', STR_PAD_LEFT),
                         'violation_type' => $transaction->violation->name,
-                        'amount_paid' => $transaction->fine_amount,
                         'fine_amount' => $transaction->fine_amount,
                         'payment_date' => now()->format('F j, Y'),
                         'payment_datetime' => now()->format('F j, Y - g:i A'),
@@ -1556,7 +1774,6 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
                         'license_number' => $transaction->violator->license_number,
                         'vehicle_info' => $vehicleInfo,
                         'plate_number' => $transaction->vehicle ? $transaction->vehicle->plate_number : 'N/A',
-                        'payment_method' => 'Cash', // Default payment method
                         'login_url' => 'https://posumoms.netlify.app/login',
                     ])
                 );

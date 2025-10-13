@@ -18,6 +18,7 @@ class Admin extends Authenticatable
         'first_name',
         'middle_name',
         'last_name',
+        'extension',
         'username',
         'office',
         'email',
@@ -45,6 +46,9 @@ class Admin extends Authenticatable
             $name .= ' ' . $this->middle_name;
         }
         $name .= ' ' . $this->last_name;
+        if ($this->extension) {
+            $name .= ' ' . $this->extension;
+        }
         return $name;
     }
 

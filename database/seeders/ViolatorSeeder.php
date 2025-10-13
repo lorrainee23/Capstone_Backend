@@ -85,13 +85,17 @@ class ViolatorSeeder extends Seeder
 
                 $transactionDate = Carbon::create($year, $month, $day, $hour, $minute, $second);
 
+                // Specific locations for the heatmap
+                $locations = ['ISU', 'Savemore', 'Banchetto'];
+                $selectedLocation = $locations[array_rand($locations)];
+
                 Transaction::create([
                     'violator_id' => $violator->id,
                     'vehicle_id' => $vehicle->id,
                     'violation_id' => $violation->id,
                     'apprehending_officer' => $officerId,
                     'status' => 'Pending',
-                    'location' => 'Barangay San Jose',
+                    'location' => $selectedLocation,
                     'date_time' => $transactionDate,
                     'fine_amount' => $violation->fine_amount,
                 ]);
