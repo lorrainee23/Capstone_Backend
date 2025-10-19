@@ -798,14 +798,16 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
             'prepared_by_name' => $actorName,
         ]);
 
-        // Audit: report generated
-        $desc = "$actorName generated a '{$report->type}' report for period '{$request->period}'";
+        // Audit: report generated with user-friendly description
+        $reportTypeLabel = $this->getReportTypeLabel($report->type);
+        $periodLabel = $this->getPeriodLabel($request->period);
+        $desc = "$actorName generated a '$reportTypeLabel' report for the period '$periodLabel'";
         AuditLogger::log(
             $actor,
             'Report Generated',
             'Report',
             $report->id,
-            $report->type,
+            $reportTypeLabel,
             [],
             $request,
             $desc
@@ -1044,6 +1046,39 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
         return response()->json([
             'message' => 'Report history cleared successfully (files deleted).'
         ]);
+    }
+
+    /**
+     * Get user-friendly report type label
+     */
+    private function getReportTypeLabel($type)
+    {
+        $labels = [
+            'total_revenue' => 'Total Revenue',
+            'all_violators' => 'All Violators',
+            'common_violations' => 'Common Violations',
+            'enforcer_performance' => 'Enforcer Performance'
+        ];
+        return $labels[$type] ?? ucfirst(str_replace('_', ' ', $type));
+    }
+
+    /**
+     * Get user-friendly period label
+     */
+    private function getPeriodLabel($period)
+    {
+        $labels = [
+            'today' => 'Today',
+            'yesterday' => 'Yesterday',
+            'last_7_days' => 'Last 7 Days',
+            'last_30_days' => 'Last 30 Days',
+            'last_3_months' => 'Last 3 Months',
+            'last_6_months' => 'Last 6 Months',
+            'last_year' => 'Last Year',
+            'year_to_date' => 'Year to Date',
+            'custom' => 'Custom Range'
+        ];
+        return $labels[$period] ?? ucfirst(str_replace('_', ' ', $period));
     }
 
     /**
@@ -1529,12 +1564,12 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
         AuditLogger::log(
             $actor,
             'Violation Created',
-            'Violation',
+            'All Violators',
             $violation->id,
             $violation->name,
             [],
             $request,
-            "$actorName created violation '{$violation->name}'"
+            "$actorName created a new violation type '{$violation->name}' for the system"
         );
 
         return response()->json(['status' => 'success', 'message' => 'Violation created', 'data' => $violation], 201);
@@ -1562,12 +1597,12 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
         AuditLogger::log(
             $actor,
             'Violation Updated',
-            'Violation',
+            'All Violators',
             $violation->id,
             $violation->name,
             [],
             $request,
-            "$actorName updated violation '{$violation->name}'"
+            "$actorName updated the violation type '{$violation->name}' in the system"
         );
 
         return response()->json(['status' => 'success', 'message' => 'Violation updated', 'data' => $violation]);
@@ -1790,12 +1825,12 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
         AuditLogger::log(
             $actor,
             'Transaction Updated',
-            'Transaction',
+            'All Violators',
             $transaction->id,
             $ticketLabel,
             [],
             $request,
-            "$actorName $verb $ticketLabel"
+            "$actorName $verb the payment status for $ticketLabel"
         );
 
         return response()->json([
