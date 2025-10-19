@@ -20,7 +20,7 @@ return new class extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password', 255);
             $table->string('image', 255)->nullable();
-            $table->enum('status', ['active', 'inactive', 'deactivate'])->default('active');
+            $table->enum('status', ['activated', 'inactive', 'deactivated'])->default('activated');
             $table->softDeletes();
             $table->timestamps();
         });

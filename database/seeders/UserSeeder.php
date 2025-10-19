@@ -25,7 +25,7 @@ class UserSeeder extends Seeder
             'email' => 'admin@moms.com',
             'office'=> 'POSU',
             'password' => Hash::make('password123'),
-            'status' => 'active'
+            'status' => 'activated'
         ]);
 
         // 1 Head
@@ -37,7 +37,7 @@ class UserSeeder extends Seeder
             'email' => 'head@moms.com',
             'office'=> 'POSU',
             'password' => Hash::make('password123'),
-            'status' => 'active'
+            'status' => 'activated'
         ]);
          Head::create([
             'id' => 2,
@@ -47,7 +47,7 @@ class UserSeeder extends Seeder
             'email' => 'john@moms.com',
             'office'=> 'POSU',
             'password' => Hash::make('password123'),
-            'status' => 'active'
+            'status' => 'activated'
         ]);
 
 
@@ -60,7 +60,7 @@ class UserSeeder extends Seeder
             'email' => 'deputy@moms.com',
             'office'=> 'POSU',
             'password' => Hash::make('password123'),
-            'status' => 'active'
+            'status' => 'activated'
         ]);
 
         // 3 Enforcers
@@ -72,7 +72,7 @@ class UserSeeder extends Seeder
             'office' => 'POSU',
             'email' => 'enforcer1@moms.com',
             'password' => Hash::make('password123'),
-            'status' => 'active'
+            'status' => 'activated'
         ]);
 
         Enforcer::create([
@@ -83,7 +83,7 @@ class UserSeeder extends Seeder
             'office' => 'PNP ISmart',
             'email' => 'enforcer2@moms.com',
             'password' => Hash::make('password123'),
-            'status' => 'active'
+            'status' => 'activated'
         ]);
 
         Enforcer::create([
@@ -94,7 +94,7 @@ class UserSeeder extends Seeder
             'office' => 'PNP ISmart',
             'email' => 'enforcer3@moms.com',
             'password' => Hash::make('password123'),
-            'status' => 'deactivate'
+            'status' => 'deactivated'
         ]);
     }
 }

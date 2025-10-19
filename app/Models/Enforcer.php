@@ -47,7 +47,7 @@ class Enforcer extends Authenticatable
 
     public function isActive()
     {
-        return $this->status === 'active';
+        return $this->status === 'activated';
     }
 
     public function transactions()

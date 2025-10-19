@@ -31,7 +31,7 @@
             <div class="verify-card">
                 <p style="margin:0 0 8px 0;">Click the button below to verify:</p>
                 <div style="text-align:center; margin-top:10px;">
-                    <a href="{{ $data['verification_url'] ?? '#' }}" class="primary-button">Verify Email</a>
+                    <a href="{{ $data['verification_url'] ?? '#' }}" class="primary-button" style="display: inline-block; background: linear-gradient(135deg, #1e40af, #3b82f6); color: #ffffff !important; text-decoration: none; padding: 14px 28px; border-radius: 12px; font-weight: 600; box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);">Verify Email</a>
                 </div>
             </div>
             <p style="color:#6b7280; font-size:14px;">If you did not create an account, you can ignore this message.</p>

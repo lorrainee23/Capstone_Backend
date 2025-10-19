@@ -197,7 +197,7 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
     }], 'fine_amount')
     ->with(['transactions' => function($q) {
         $q->where('status', 'Pending')
-          ->select('id', 'violator_id', 'location', 'created_at', 'fine_amount');
+          ->select('id', 'violator_id', 'location', 'created_at', 'date_time', 'fine_amount');
     }])
     ->having('transactions_count', '>', 0)
     ->get();
@@ -207,8 +207,11 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
     // Process each violator and check days pending
     $unsettledViolators = $allViolatorsWithPending->map(function($violator) {
         $daysPending = $violator->transactions->map(function($transaction) {
-            return now()->diffInDays($transaction->created_at);
+            return now()->diffInDays($transaction->date_time);
         })->min();
+        
+        // Get the most recent apprehension date
+        $latestApprehension = $violator->transactions->max('date_time');
         
         \Log::info("Violator {$violator->id}: days pending = {$daysPending}");
         
@@ -220,7 +223,8 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
             'total_amount' => $violator->transactions_sum_fine_amount ?? 0,
             'days_pending' => $daysPending,
             'urgency_level' => $daysPending >= 5 ? 'alert' : ($daysPending >= 3 ? 'warning' : 'info'),
-            'locations' => $violator->transactions->pluck('location')->unique()->values()
+            'locations' => $violator->transactions->pluck('location')->unique()->values(),
+            'apprehension_date' => $latestApprehension ? $latestApprehension->format('M d, Y') : 'N/A'
         ];
     })
     ->sortByDesc('total_amount')
@@ -798,16 +802,14 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
             'prepared_by_name' => $actorName,
         ]);
 
-        // Audit: report generated with user-friendly description
-        $reportTypeLabel = $this->getReportTypeLabel($report->type);
-        $periodLabel = $this->getPeriodLabel($request->period);
-        $desc = "$actorName generated a '$reportTypeLabel' report for the period '$periodLabel'";
+        // Audit: report generated
+        $desc = "$actorName generated a '{$report->type}' report for period '{$request->period}'";
         AuditLogger::log(
             $actor,
             'Report Generated',
             'Report',
             $report->id,
-            $reportTypeLabel,
+            $report->type,
             [],
             $request,
             $desc
@@ -853,14 +855,20 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
             'period' => 'required|in:today,yesterday,last_7_days,last_30_days,last_3_months,last_6_months,last_year,year_to_date,custom',
             'start_date' => 'required_if:period,custom|date',
             'end_date' => 'required_if:period,custom|date|after:start_date',
+            'limit' => 'sometimes|integer|min:1|max:1000',
+            'per_page' => 'sometimes|integer|min:1|max:1000',
+            'page_size' => 'sometimes|integer|min:1|max:1000',
         ]);
 
         // Get date range based on period
         $dateRange = $this->calculateDateRange($request->period, $request->start_date, $request->end_date);
 
+        // Get pagination parameters
+        $limit = $request->input('limit', $request->input('per_page', $request->input('page_size', 100)));
+
         // Get data based on type
         $type = $request->input('type');
-        $data = $this->getReportData($type, $dateRange);
+        $data = $this->getReportData($type, $dateRange, $limit);
 
         return response()->json([
             'status' => 'success',
@@ -874,23 +882,23 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
         ]);
     }
 
-    private function getReportData($type, $dateRange)
+    private function getReportData($type, $dateRange, $limit = 100)
     {
         switch ($type) {
             case 'all_violators':
-                return $this->getAllViolatorsData($dateRange);
+                return $this->getAllViolatorsData($dateRange, $limit);
             case 'common_violations':
-                return $this->getCommonViolationsData($dateRange);
+                return $this->getCommonViolationsData($dateRange, $limit);
             case 'enforcer_performance':
-                return $this->getEnforcerPerformanceData($dateRange);
+                return $this->getEnforcerPerformanceData($dateRange, $limit);
             case 'total_revenue':
-                return $this->getTotalRevenueData($dateRange);
+                return $this->getTotalRevenueData($dateRange, $limit);
             default:
                 return [];
         }
     }
 
-    private function getAllViolatorsData($dateRange)
+    private function getAllViolatorsData($dateRange, $limit = 100)
     {
         return Transaction::with(['violator', 'violation', 'vehicle', 'apprehendingOfficer'])
             ->whereBetween('date_time', [$dateRange['start'], $dateRange['end']])
@@ -904,17 +912,17 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
                     'Status' => $transaction->status ?? 'N/A',
                 ];
             })
-            ->take(10) // Preview only first 10 records
+            ->take($limit)
             ->toArray();
     }
 
-    private function getCommonViolationsData($dateRange)
+    private function getCommonViolationsData($dateRange, $limit = 100)
     {
         return Violation::withCount(['transactions' => function ($query) use ($dateRange) {
             $query->whereBetween('date_time', [$dateRange['start'], $dateRange['end']]);
         }])
             ->orderBy('transactions_count', 'desc')
-            ->take(10)
+            ->take($limit)
             ->get()
             ->map(function ($violation) {
                 return [
@@ -925,7 +933,7 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
             ->toArray();
     }
 
-    private function getEnforcerPerformanceData($dateRange)
+    private function getEnforcerPerformanceData($dateRange, $limit = 100)
     {
         return Enforcer::with(['transactions' => function ($q) use ($dateRange) {
             $q->whereBetween('date_time', [$dateRange['start'], $dateRange['end']]);
@@ -944,12 +952,12 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
                 ];
             })
             ->filter(fn($item) => $item['Violations Issued'] > 0)
-            ->take(10)
+            ->take($limit)
             ->values()
             ->toArray();
     }
 
-    private function getTotalRevenueData($dateRange)
+    private function getTotalRevenueData($dateRange, $limit = 100)
     {
         $totalPenalty = Transaction::whereBetween('date_time', [$dateRange['start'], $dateRange['end']])
             ->sum('fine_amount');
@@ -1046,39 +1054,6 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
         return response()->json([
             'message' => 'Report history cleared successfully (files deleted).'
         ]);
-    }
-
-    /**
-     * Get user-friendly report type label
-     */
-    private function getReportTypeLabel($type)
-    {
-        $labels = [
-            'total_revenue' => 'Total Revenue',
-            'all_violators' => 'All Violators',
-            'common_violations' => 'Common Violations',
-            'enforcer_performance' => 'Enforcer Performance'
-        ];
-        return $labels[$type] ?? ucfirst(str_replace('_', ' ', $type));
-    }
-
-    /**
-     * Get user-friendly period label
-     */
-    private function getPeriodLabel($period)
-    {
-        $labels = [
-            'today' => 'Today',
-            'yesterday' => 'Yesterday',
-            'last_7_days' => 'Last 7 Days',
-            'last_30_days' => 'Last 30 Days',
-            'last_3_months' => 'Last 3 Months',
-            'last_6_months' => 'Last 6 Months',
-            'last_year' => 'Last Year',
-            'year_to_date' => 'Year to Date',
-            'custom' => 'Custom Range'
-        ];
-        return $labels[$period] ?? ucfirst(str_replace('_', ' ', $period));
     }
 
     /**
@@ -1564,12 +1539,12 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
         AuditLogger::log(
             $actor,
             'Violation Created',
-            'All Violators',
+            'Violation',
             $violation->id,
             $violation->name,
             [],
             $request,
-            "$actorName created a new violation type '{$violation->name}' for the system"
+            "$actorName created violation '{$violation->name}'"
         );
 
         return response()->json(['status' => 'success', 'message' => 'Violation created', 'data' => $violation], 201);
@@ -1597,12 +1572,12 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
         AuditLogger::log(
             $actor,
             'Violation Updated',
-            'All Violators',
+            'Violation',
             $violation->id,
             $violation->name,
             [],
             $request,
-            "$actorName updated the violation type '{$violation->name}' in the system"
+            "$actorName updated violation '{$violation->name}'"
         );
 
         return response()->json(['status' => 'success', 'message' => 'Violation updated', 'data' => $violation]);
@@ -1825,12 +1800,12 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
         AuditLogger::log(
             $actor,
             'Transaction Updated',
-            'All Violators',
+            'Transaction',
             $transaction->id,
             $ticketLabel,
             [],
             $request,
-            "$actorName $verb the payment status for $ticketLabel"
+            "$actorName $verb $ticketLabel"
         );
 
         return response()->json([
