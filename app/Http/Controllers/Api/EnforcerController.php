@@ -193,7 +193,7 @@ class EnforcerController extends Controller
             'violation_id'    => 'nullable|exists:violations,id',
             'violation_ids'   => 'nullable|array|min:1',
             'violation_ids.*' => 'integer|exists:violations,id',
-            'location'        => 'required|string|max:100',
+            'location'        => 'nullable|string|max:100',
             'vehicle_type'    => 'required|in:Motor,Motorcycle,Van,Car,SUV,Truck,Bus',
             'plate_number'    => 'required|string|max:7',
             'make'            => 'required|string|max:100',
@@ -209,6 +209,11 @@ class EnforcerController extends Controller
             'owner_city'            => 'nullable|string|max:255',
             'owner_province'        => 'nullable|string|max:255',
             'image'           => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            // GPS Location fields
+            'gps_latitude'    => 'nullable|numeric|between:-90,90',
+            'gps_longitude'   => 'nullable|numeric|between:-180,180',
+            'gps_accuracy'    => 'nullable|numeric|min:0',
+            'gps_timestamp'   => 'nullable|date',
         ]);
 
         if ($validator->fails()) {
@@ -310,9 +315,14 @@ class EnforcerController extends Controller
                 'violation_id'         => $violations->first()->id,
                 'apprehending_officer' => auth()->id(),
                 'status'               => 'Pending',
-                'location'             => $allData['location'],
+                'location'             => $allData['location'] ?? 'GPS Location',
                 'date_time'            => now(),
                 'fine_amount'          => $allData['fine_amount'] ?? $computedFine,
+                // GPS Location data
+                'gps_latitude'         => $allData['gps_latitude'] ?? null,
+                'gps_longitude'        => $allData['gps_longitude'] ?? null,
+                'gps_accuracy'         => $allData['gps_accuracy'] ?? null,
+                'gps_timestamp'        => $allData['gps_timestamp'] ?? null,
             ]);
 
             // Attach all selected violations to pivot

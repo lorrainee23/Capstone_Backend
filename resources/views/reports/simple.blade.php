@@ -192,7 +192,6 @@
                         <th>NO.</th>
                         <th>ENFORCER NAME</th>
                         <th>VIOLATIONS ISSUED</th>
-                        <th>COLLECTION RATE (%)</th>
                         <th>TOTAL FINES</th>
                     </tr>
                 </thead>
@@ -202,7 +201,6 @@
                             <td>{{ $index + 1 }}</td>
                             <td>{{ $row['Enforcer Name'] ?? $row['enforcer_name'] ?? 'N/A' }}</td>
                             <td>{{ $row['Violations Issued'] ?? $row['violations_issued'] ?? 0 }}</td>
-                            <td>{{ $row['Collection Rate (%)'] ?? $row['collection_rate'] ?? 0 }}%</td>
                             <td>₱{{ number_format($row['Total Fines'] ?? $row['total_fines'] ?? 0, 2) }}</td>
                         </tr>
                     @endforeach
@@ -215,16 +213,13 @@
         @endif
 
         <div class="footer">
-            @if($type === 'all_violators')
-                <p><strong>Total Penalty to be Collected: ₱{{ number_format($grandTotal, 2) }}</strong></p>
-            @endif
             <div class="note" style="margin-top: 20px;">
-                <div style="text-align: left; margin-bottom: 20px;">
-                    <p><strong>Prepared By:</strong> {{ $prepared_by ?? '_____________________' }}</p>
-                </div>
                 <div style="text-align: left;">
-                    <p><strong>Noted By:</strong> {{ $noted_by ?? '_____________________' }}</p>
+                    <p>NOTED BY:</p>
+                    <p style="margin-top: 30px;"><strong>ALBERT QUINTIN B. IBARRA</strong></p>
+                    <p>HEAD</p>
                 </div>
+                
             </div>
         </div>
     </div>

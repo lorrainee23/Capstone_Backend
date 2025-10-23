@@ -26,6 +26,10 @@ class Transaction extends Model
         'date_time',
         'fine_amount',
         'receipt',
+        'gps_latitude',
+        'gps_longitude',
+        'gps_accuracy',
+        'gps_timestamp',
     ];
 
     /**
@@ -36,6 +40,10 @@ class Transaction extends Model
     protected $casts = [
         'date_time' => 'datetime',
         'fine_amount' => 'decimal:2',
+        'gps_latitude' => 'decimal:8',
+        'gps_longitude' => 'decimal:8',
+        'gps_accuracy' => 'decimal:2',
+        'gps_timestamp' => 'datetime',
     ];
 
     /**

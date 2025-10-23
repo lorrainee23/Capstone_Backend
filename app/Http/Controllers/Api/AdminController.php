@@ -107,10 +107,10 @@ class AdminController extends Controller
         'total_revenue'        => (clone $transactionQuery)->where('status', 'Paid')->sum('fine_amount'),
         'pending_revenue'      => (clone $transactionQuery)->where('status', 'Pending')->sum('fine_amount'),
         'repeat_offenders'     => $repeatOffenders,
-        'active_enforcers'     => Enforcer::where('status', 'active')->count(),
-        'active_admins'        => Admin::where('status', 'active')->count(),
-        'active_deputies'      => Deputy::where('status', 'active')->count(),
-        'active_heads'         => Head::where('status', 'active')->count(),
+        'active_enforcers'     => Enforcer::where('status', 'activated')->count(),
+        'active_admins'        => Admin::where('status', 'activated')->count(),
+        'active_deputies'      => Deputy::where('status', 'activated')->count(),
+        'active_heads'         => Head::where('status', 'activated')->count(),
     ];
 
     // Trends 
@@ -230,19 +230,57 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
     ->sortByDesc('total_amount')
     ->values();
     
-    // Get location data for heatmap (all pending transactions)
-    $locationData = Transaction::where('status', 'Pending')
-        ->selectRaw('location, COUNT(*) as count, SUM(fine_amount) as total_amount')
-        ->groupBy('location')
+    // Get location data for heatmap (all pending transactions with GPS coordinates)
+    $locationQuery = Transaction::where('status', 'Pending')
+        ->whereNotNull('gps_latitude')
+        ->whereNotNull('gps_longitude');
+    
+    // Apply period filter if specified
+    $heatmapPeriod = $request->get('heatmap_period', 'all');
+    if ($heatmapPeriod !== 'all') {
+        switch ($heatmapPeriod) {
+            case 'today':
+                $locationQuery->whereDate('created_at', $now->toDateString());
+                break;
+            case 'week':
+                $locationQuery->whereBetween('created_at', [
+                    $now->startOfWeek()->toDateTimeString(),
+                    $now->endOfWeek()->toDateTimeString()
+                ]);
+                break;
+            case 'month':
+                $locationQuery->whereMonth('created_at', $now->month)
+                    ->whereYear('created_at', $now->year);
+                break;
+        }
+    }
+    
+    $locationData = $locationQuery
+        ->selectRaw('ROUND(gps_latitude, 4) as gps_latitude, ROUND(gps_longitude, 4) as gps_longitude, COUNT(*) as count, SUM(fine_amount) as total_amount')
+        ->groupByRaw('ROUND(gps_latitude, 4), ROUND(gps_longitude, 4)')
         ->orderByDesc('count')
         ->get()
         ->map(function($item) {
             return [
-                'location' => $item->location,
-                'count' => $item->count,
+                'location' => 'GPS Location',
+                'gps_latitude' => $item->gps_latitude,
+                'gps_longitude' => $item->gps_longitude,
+                'count' => (int)$item->count,
                 'total_amount' => $item->total_amount
             ];
         });
+    
+    // Debug: Log all transactions with GPS coordinates
+    $allGpsTransactions = Transaction::where('status', 'Pending')
+        ->whereNotNull('gps_latitude')
+        ->whereNotNull('gps_longitude')
+        ->get(['id', 'location', 'gps_latitude', 'gps_longitude', 'fine_amount', 'created_at']);
+    
+    \Log::info('All GPS transactions count: ' . $allGpsTransactions->count());
+    \Log::info('All GPS transactions: ' . $allGpsTransactions->toJson());
+    
+    // Debug: Log location data for heatmap
+    \Log::info('Location heatmap data: ' . $locationData->toJson());
     
     \Log::info('Unsettled violators count: ' . $unsettledViolators->count());
     \Log::info('Location data count: ' . $locationData->count());
@@ -376,7 +414,7 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
             'username'     => 'required|string|max:255|unique:admins,username|unique:heads,username|unique:deputies,username|unique:enforcers,username',
             'office'       => 'required|string|max:255',
             'password'     => 'required|string|min:6',
-            'status'       => 'required|in:active,inactive,deactivate',
+            'status'       => 'required|in:activated,inactive,deactivated',
             'image'        => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'user_type'    => 'required|in:' . implode(',', $manageableTypes),
         ]);
@@ -486,7 +524,7 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
             'last_name'   => 'sometimes|string|max:255',
             'username'    => 'sometimes|string|max:255|unique:' . $user->getTable() . ',username,' . $id,
             'email'       => 'sometimes|email|unique:' . $user->getTable() . ',email,' . $id,
-            'status'      => 'sometimes|in:active,inactive,deactivate',
+            'status'      => 'sometimes|in:activated,inactive,deactivated',
             'image'       => 'sometimes|nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
@@ -1223,7 +1261,7 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
         $validator = Validator::make($request->all(), [
             'user_type' => 'required|in:' . implode(',', $manageableTypes),
             'id' => 'required|integer',
-            'status' => 'required|in:active,inactive,deactivate',
+            'status' => 'required|in:activated,inactive,deactivated',
         ]);
 
         if ($validator->fails()) {
