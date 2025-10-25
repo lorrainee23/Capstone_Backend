@@ -255,16 +255,21 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
         }
     }
     
+    // Group by location name and get the most common GPS coordinates for each location
     $locationData = $locationQuery
-        ->selectRaw('ROUND(gps_latitude, 4) as gps_latitude, ROUND(gps_longitude, 4) as gps_longitude, COUNT(*) as count, SUM(fine_amount) as total_amount')
-        ->groupByRaw('ROUND(gps_latitude, 4), ROUND(gps_longitude, 4)')
+        ->selectRaw('location, 
+                     AVG(gps_latitude) as gps_latitude, 
+                     AVG(gps_longitude) as gps_longitude, 
+                     COUNT(*) as count, 
+                     SUM(fine_amount) as total_amount')
+        ->groupBy('location')
         ->orderByDesc('count')
         ->get()
         ->map(function($item) {
             return [
-                'location' => 'GPS Location',
-                'gps_latitude' => $item->gps_latitude,
-                'gps_longitude' => $item->gps_longitude,
+                'location' => $item->location ?: 'Unknown Location',
+                'gps_latitude' => round($item->gps_latitude, 6),
+                'gps_longitude' => round($item->gps_longitude, 6),
                 'count' => (int)$item->count,
                 'total_amount' => $item->total_amount
             ];
