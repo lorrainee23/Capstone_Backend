@@ -266,8 +266,25 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
         ->orderByDesc('count')
         ->get()
         ->map(function($item) {
+            // Clean up location names
+            $locationName = trim($item->location);
+            
+            // If location is empty, null, or generic, generate a meaningful name
+            if (empty($locationName) || 
+                $locationName === 'GPS Location' || 
+                $locationName === 'Unknown Location' ||
+                strpos($locationName, 'Location at') === 0) {
+                
+                // Create a more meaningful location name based on coordinates
+                $lat = round($item->gps_latitude, 4);
+                $lng = round($item->gps_longitude, 4);
+                
+                // Try to get a better location name using reverse geocoding
+                $locationName = $this->getBetterLocationName($lat, $lng);
+            }
+            
             return [
-                'location' => $item->location ?: 'Unknown Location',
+                'location' => $locationName,
                 'gps_latitude' => round($item->gps_latitude, 6),
                 'gps_longitude' => round($item->gps_longitude, 6),
                 'count' => (int)$item->count,
@@ -315,6 +332,131 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
             ],
         ]
     ]);
+}
+
+/**
+ * Get a better location name using multiple strategies
+ */
+private function getBetterLocationName($latitude, $longitude)
+{
+    // Strategy 1: Check if coordinates are in known areas of Echague
+    $knownAreas = $this->getKnownEchagueAreas($latitude, $longitude);
+    if ($knownAreas) {
+        return $knownAreas;
+    }
+    
+    // Strategy 2: Try reverse geocoding with multiple providers
+    $reverseGeocoded = $this->reverseGeocodeLocation($latitude, $longitude);
+    if ($reverseGeocoded && !str_contains($reverseGeocoded, 'Location at')) {
+        return $reverseGeocoded;
+    }
+    
+    // Strategy 3: Create a descriptive location based on coordinates
+    $lat = round($latitude, 4);
+    $lng = round($longitude, 4);
+    
+    // Check if coordinates are in Echague, Isabela area
+    if ($lat >= 16.6 && $lat <= 16.8 && $lng >= 121.6 && $lng <= 121.8) {
+        return "Echague, Isabela Area";
+    }
+    
+    return "Location at {$lat}, {$lng}";
+}
+
+/**
+ * Check if coordinates are in known areas of Echague
+ */
+private function getKnownEchagueAreas($latitude, $longitude)
+{
+    // Define known areas in Echague with their approximate coordinates
+    $knownAreas = [
+        // Echague Town Center
+        ['name' => 'Echague Town Center', 'lat_min' => 16.700, 'lat_max' => 16.720, 'lng_min' => 121.660, 'lng_max' => 121.680],
+        
+        // Near Municipal Hall
+        ['name' => 'Near Echague Municipal Hall', 'lat_min' => 16.705, 'lat_max' => 16.715, 'lng_min' => 121.665, 'lng_max' => 121.675],
+        
+        // Market Area
+        ['name' => 'Echague Market Area', 'lat_min' => 16.695, 'lat_max' => 121.710, 'lng_min' => 121.650, 'lng_max' => 121.670],
+        
+        // Residential Areas
+        ['name' => 'Echague Residential Area', 'lat_min' => 16.680, 'lat_max' => 16.740, 'lng_min' => 121.640, 'lng_max' => 121.690],
+    ];
+    
+    foreach ($knownAreas as $area) {
+        if ($latitude >= $area['lat_min'] && $latitude <= $area['lat_max'] &&
+            $longitude >= $area['lng_min'] && $longitude <= $area['lng_max']) {
+            return $area['name'];
+        }
+    }
+    
+    return null;
+}
+
+/**
+ * Reverse geocode GPS coordinates to get a readable location name
+ */
+private function reverseGeocodeLocation($latitude, $longitude)
+{
+    try {
+        $client = new \GuzzleHttp\Client();
+        $response = $client->get("https://nominatim.openstreetmap.org/reverse", [
+            'query' => [
+                'format' => 'json',
+                'lat' => $latitude,
+                'lon' => $longitude,
+                'addressdetails' => 1,
+                'zoom' => 18
+            ],
+            'headers' => [
+                'User-Agent' => 'POSU-System/1.0'
+            ]
+        ]);
+        
+        $data = json_decode($response->getBody(), true);
+        
+        if (isset($data['address'])) {
+            $address = $data['address'];
+            
+            // Build a readable address
+            $parts = [];
+            
+            if (!empty($address['house_number'])) {
+                $parts[] = $address['house_number'];
+            }
+            
+            if (!empty($address['road'])) {
+                $parts[] = $address['road'];
+            } elseif (!empty($address['street'])) {
+                $parts[] = $address['street'];
+            }
+            
+            if (!empty($address['suburb'])) {
+                $parts[] = $address['suburb'];
+            }
+            
+            if (!empty($address['city'])) {
+                $parts[] = $address['city'];
+            } elseif (!empty($address['town'])) {
+                $parts[] = $address['town'];
+            }
+            
+            if (!empty($address['state'])) {
+                $parts[] = $address['state'];
+            }
+            
+            if (!empty($parts)) {
+                return implode(', ', $parts);
+            }
+        }
+        
+        // Fallback to coordinates if reverse geocoding fails
+        return "Location at {$latitude}, {$longitude}";
+        
+    } catch (\Exception $e) {
+        \Log::error('Reverse geocoding failed: ' . $e->getMessage());
+        return "Location at {$latitude}, {$longitude}";
+    }
 }
 
     /* ==============================
