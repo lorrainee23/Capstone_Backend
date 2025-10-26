@@ -21,7 +21,7 @@ return new class extends Migration
             $table->timestamp('warning_sent_at')->nullable();
             $table->timestamp('court_filed_at')->nullable();
 
-            $table->string('location', 100)->nullable();
+            $table->string('location', 100);
             $table->dateTime('date_time');
             $table->decimal('fine_amount', 10, 2);
             $table->string('receipt', 255)->nullable();

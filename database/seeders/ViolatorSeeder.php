@@ -15,79 +15,74 @@ class ViolatorSeeder extends Seeder
 {
     public function run(): void
     {
-        // Generate 25 violators
-        $totalViolators = 25;
-
-        // Random first names/last names pool
-        $firstNames = ['Juan','Maria','Pedro','Ana','Carlos','Jose','Luisa','Miguel','Rosa','Diego'];
-        $middleNames = ['Juan','Maria','Pedro','Ana','Carlos','Jose','Luisa','Miguel','Rosa','Diego'];
-        $lastNames  = ['Dela Cruz','Santos','Reyes','Lopez','Garcia','Martinez','Rodriguez','Gonzalez','Perez','Torres'];
-
-        // Vehicle options
-        $plateLetters = ['ABC','DEF','GHI','JKL','MNO','PQR','STU','VWX','YZA','BCD'];
-        $vehicleModels = [
-            'Honda Wave 125','Yamaha Mio 125','Suzuki Raider 150',
-            'Kawasaki Rouser 200','Honda Click 160','Yamaha NMAX 155',
-            'Suzuki Burgman 200','Kymco Like 150'
+        // Generate specific test locations with exact violation counts
+        $testLocations = [
+            [
+                'name' => 'Echague Poblacion Road',
+                'lat' => 16.721955,
+                'lng' => 121.685299,
+                'violation_count' => 51
+            ],
+            [
+                'name' => 'Savemore Market',
+                'lat' => 16.705410004969956,
+                'lng' => 121.67657061323274,
+                'violation_count' => 101
+            ],
+            [
+                'name' => 'Echague Police Station',
+                'lat' => 16.715707547619218,
+                'lng' => 121.68292386994924,
+                'violation_count' => 21
+            ]
         ];
 
-        for ($i = 0; $i < $totalViolators; $i++) {
-            DB::beginTransaction();
-            try {
-                $first = $firstNames[array_rand($firstNames)];
-                $last  = $lastNames[array_rand($lastNames)];
-                $middle = $middleNames[array_rand($middleNames)];
+        // Create test data for specific locations
+        foreach ($testLocations as $testLocation) {
+            echo "Creating {$testLocation['violation_count']} violations for {$testLocation['name']}...\n";
+            
+            // Create a violator for this location
+            $violator = Violator::create([
+                'first_name' => 'Test',
+                'middle_name' => 'Heatmap',
+                'last_name' => 'User',
+                'mobile_number' => '09' . rand(100000000, 999999999),
+                'gender' => rand(0, 1),
+                'professional' => rand(0, 1),
+                'license_number' => 'TEST' . rand(100000000, 999999999),
+                'barangay' => 'Test Barangay',
+                'city' => 'Echague',
+                'province' => 'Isabela',
+                'password' => bcrypt('password123'),
+            ]);
 
-                $mobile_number = '09' . rand(100000000, 999999999);
-                $license_number = strtoupper(Str::random(2)) . rand(100000000, 999999999);
+            // Create a vehicle for this violator
+            $vehicle = Vehicle::create([
+                'violators_id' => $violator->id,
+                'owner_first_name' => 'Test',
+                'owner_middle_name' => 'Heatmap',
+                'owner_last_name' => 'User',
+                'make' => 'Honda',
+                'model' => 'Test Model',
+                'vehicle_type' => 'Motorcycle',
+                'owner_barangay' => 'Test Barangay',
+                'owner_city' => 'Echague',
+                'owner_province' => 'Isabela',
+                'plate_number' => 'TEST' . rand(1000, 9999),
+                'color' => 'Red',
+            ]);
 
-                $violator = Violator::create([
-                    'first_name' => $first,
-                    'middle_name' => $middle,
-                    'last_name' => $last,
-                    'mobile_number' => $mobile_number,
-                    'gender' => rand(0,1),
-                    'professional' => rand(0,1),
-                    'license_number' => $license_number,
-                    'barangay' => 'Barangay San Jose',
-                    'city' => 'Echague',
-                    'province' => 'Isabela',
-                    'id_photo' => null,
-                    'password' => bcrypt('password123'),
-                ]);
-
-                $plate_number = $plateLetters[array_rand($plateLetters)] . rand(1000, 9999);
-                $vehicle = Vehicle::create([
-                    'violators_id' => $violator->id,
-                    'owner_first_name' => $first,
-                    'owner_middle_name' => $middle,
-                    'owner_last_name' => $last,
-                    'make' => 'Honda',
-                    'model' => $vehicleModels[array_rand($vehicleModels)],
-                    'vehicle_type' => ['Motor','Van','Motorcycle','Truck','Bus'][rand(0,4)],
-                    'owner_barangay' => 'Barangay San Jose',
-                    'owner_city' => 'Echague',
-                    'owner_province' => 'Isabela',
-                    'plate_number' => $plate_number,
-                    'color' => ['Red','Blue','Black','White','Gray','Green'][rand(0,5)], 
-                ]);
-
+            // Create multiple transactions for this location
+            for ($i = 0; $i < $testLocation['violation_count']; $i++) {
                 $violation = Violation::inRandomOrder()->first();
-                $officerId = rand(1,3);
+                $officerId = rand(1, 3);
 
-                // Assign dates across 2023, 2024, and 2025
-                $year = [2024, 2025][array_rand([2024, 2025])];
-                $month = rand(1, 12);
-                $day = rand(1, 28); // safe day
-                $hour = rand(8, 17);
-                $minute = rand(0, 59);
-                $second = rand(0, 59);
-
-                $transactionDate = Carbon::create($year, $month, $day, $hour, $minute, $second);
-
-                // Specific locations for the heatmap
-                $locations = ['ISU', 'Savemore', 'Banchetto'];
-                $selectedLocation = $locations[array_rand($locations)];
+                // Create transactions over the past 6 months
+                $transactionDate = Carbon::now()
+                    ->subMonths(rand(0, 6))
+                    ->subDays(rand(0, 30))
+                    ->subHours(rand(8, 17))
+                    ->subMinutes(rand(0, 59));
 
                 Transaction::create([
                     'violator_id' => $violator->id,
@@ -95,16 +90,16 @@ class ViolatorSeeder extends Seeder
                     'violation_id' => $violation->id,
                     'apprehending_officer' => $officerId,
                     'status' => 'Pending',
-                    'location' => $selectedLocation,
+                    'location' => $testLocation['name'],
+                    'gps_latitude' => $testLocation['lat'],
+                    'gps_longitude' => $testLocation['lng'],
                     'date_time' => $transactionDate,
                     'fine_amount' => $violation->fine_amount,
                 ]);
-
-                DB::commit();
-            } catch (\Exception $e) {
-                DB::rollBack();
-                echo "Failed for violator {$i}: {$e->getMessage()}\n";
             }
+            
+            echo "✅ Created {$testLocation['violation_count']} violations for {$testLocation['name']}\n";
         }
+
     }
 }

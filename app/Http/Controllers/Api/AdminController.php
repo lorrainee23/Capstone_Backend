@@ -59,6 +59,8 @@ class AdminController extends Controller
         $startOfWeek = $now->copy()->startOfWeek();
         $endOfWeek = $now->copy()->endOfWeek();
         $transactionQuery->whereBetween('date_time', [$startOfWeek, $endOfWeek]);
+    } elseif ($period === 'today') {
+        $transactionQuery->whereDate('date_time', $now->toDateString());
     }
 
     $totalViolators = Violator::whereHas('transactions', function($q) use ($period, $now) {
@@ -69,6 +71,8 @@ class AdminController extends Controller
               ->whereMonth('date_time', $now->month);
         } elseif ($period === 'week') {
             $q->whereBetween('date_time', [$now->copy()->startOfWeek(), $now->copy()->endOfWeek()]);
+        } elseif ($period === 'today') {
+            $q->whereDate('date_time', $now->toDateString());
         }
     })->count();
 
@@ -81,6 +85,8 @@ class AdminController extends Controller
                   ->whereMonth('date_time', $now->month);
             } elseif ($period === 'week') {
                 $q->whereBetween('date_time', [$now->copy()->startOfWeek(), $now->copy()->endOfWeek()]);
+            } elseif ($period === 'today') {
+                $q->whereDate('date_time', $now->toDateString());
             }
         });
     };
@@ -94,6 +100,8 @@ class AdminController extends Controller
                   ->whereMonth('date_time', $now->month);
             } elseif ($period === 'week') {
                 $q->whereBetween('date_time', [$now->copy()->startOfWeek(), $now->copy()->endOfWeek()]);
+            } elseif ($period === 'today') {
+                $q->whereDate('date_time', $now->toDateString());
             }
         }])
         ->having('transactions_count', '>', 1)
@@ -136,12 +144,34 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
     ->orderBy('year', 'asc')
     ->get();
 
-    $commonViolations = Violation::withCount('transactions')
+    $commonViolations = Violation::withCount(['transactions' => function($q) use ($period, $now) {
+        if ($period === 'year') {
+            $q->whereYear('date_time', $now->year);
+        } elseif ($period === 'month') {
+            $q->whereYear('date_time', $now->year)
+              ->whereMonth('date_time', $now->month);
+        } elseif ($period === 'week') {
+            $q->whereBetween('date_time', [$now->copy()->startOfWeek(), $now->copy()->endOfWeek()]);
+        } elseif ($period === 'today') {
+            $q->whereDate('date_time', $now->toDateString());
+        }
+    }])
         ->orderBy('transactions_count', 'desc')
         ->limit(5)
         ->get();
 
-    $enforcerPerformance = Enforcer::with('transactions')->get();
+    $enforcerPerformance = Enforcer::with(['transactions' => function($q) use ($period, $now) {
+        if ($period === 'year') {
+            $q->whereYear('date_time', $now->year);
+        } elseif ($period === 'month') {
+            $q->whereYear('date_time', $now->year)
+              ->whereMonth('date_time', $now->month);
+        } elseif ($period === 'week') {
+            $q->whereBetween('date_time', [$now->copy()->startOfWeek(), $now->copy()->endOfWeek()]);
+        } elseif ($period === 'today') {
+            $q->whereDate('date_time', $now->toDateString());
+        }
+    }])->get();
 
     // Trend percentage (affected by period)
     if ($period === 'all') {
@@ -172,6 +202,9 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
                 $now->copy()->subWeek()->startOfWeek(), 
                 $now->copy()->subWeek()->endOfWeek()
             ]);
+        } elseif ($period === 'today') {
+            $currentPeriodQuery->whereDate('date_time', $now->toDateString());
+            $previousPeriodQuery->whereDate('date_time', $now->copy()->subDay()->toDateString());
         }
 
         $currentTransactions = $currentPeriodQuery->count();
@@ -228,6 +261,7 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
         ];
     })
     ->sortByDesc('total_amount')
+    ->take(10)
     ->values();
     
     // Get location data for heatmap (all pending transactions with GPS coordinates)
@@ -269,11 +303,22 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
             // Clean up location names
             $locationName = trim($item->location);
             
-            // If location is empty, null, or generic, generate a meaningful name
+            // Debug: Log what we're processing
+            \Log::info("Processing location: '{$locationName}' with count: {$item->count}");
+            
+            // Only generate new names for truly generic/empty locations
+            // Preserve ALL specific location names (from mobile app, seeder, etc.)
             if (empty($locationName) || 
                 $locationName === 'GPS Location' || 
                 $locationName === 'Unknown Location' ||
-                strpos($locationName, 'Location at') === 0) {
+                strpos($locationName, 'Location at') === 0 ||
+                strpos($locationName, 'Echague, Isabela Area') === 0 ||
+                strpos($locationName, 'Echague Town Center') === 0 ||
+                strpos($locationName, 'Near Echague Municipal Hall') === 0 ||
+                strpos($locationName, 'Echague Market Area') === 0 ||
+                strpos($locationName, 'Echague Residential Area') === 0) {
+                
+                \Log::info("Generating new name for: '{$locationName}'");
                 
                 // Create a more meaningful location name based on coordinates
                 $lat = round($item->gps_latitude, 4);
@@ -281,7 +326,12 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
                 
                 // Try to get a better location name using reverse geocoding
                 $locationName = $this->getBetterLocationName($lat, $lng);
+                
+                \Log::info("Generated new name: '{$locationName}'");
+            } else {
+                \Log::info("Preserving original name: '{$locationName}'");
             }
+            // If location name is not empty and not generic, keep it as is
             
             return [
                 'location' => $locationName,
@@ -377,10 +427,15 @@ private function getKnownEchagueAreas($latitude, $longitude)
         ['name' => 'Near Echague Municipal Hall', 'lat_min' => 16.705, 'lat_max' => 16.715, 'lng_min' => 121.665, 'lng_max' => 121.675],
         
         // Market Area
-        ['name' => 'Echague Market Area', 'lat_min' => 16.695, 'lat_max' => 121.710, 'lng_min' => 121.650, 'lng_max' => 121.670],
+        ['name' => 'Echague Market Area', 'lat_min' => 16.695, 'lat_max' => 16.710, 'lng_min' => 121.650, 'lng_max' => 121.670],
         
         // Residential Areas
         ['name' => 'Echague Residential Area', 'lat_min' => 16.680, 'lat_max' => 16.740, 'lng_min' => 121.640, 'lng_max' => 121.690],
+        
+        // Specific Locations with Accurate Coordinates
+        ['name' => 'Echague Police Station Area', 'lat_min' => 16.715, 'lat_max' => 16.716, 'lng_min' => 121.682, 'lng_max' => 121.684],
+        ['name' => 'Savemore Market Area', 'lat_min' => 16.705, 'lat_max' => 16.706, 'lng_min' => 121.676, 'lng_max' => 121.677],
+        ['name' => 'Echague Poblacion Road Area', 'lat_min' => 16.721, 'lat_max' => 16.722, 'lng_min' => 121.685, 'lng_max' => 121.686],
     ];
     
     foreach ($knownAreas as $area) {
@@ -400,6 +455,28 @@ private function reverseGeocodeLocation($latitude, $longitude)
 {
     try {
         $client = new \GuzzleHttp\Client();
+        
+        // Try Mapbox first (better for rural areas)
+        try {
+            $mapboxResponse = $client->get("https://api.mapbox.com/geocoding/v5/mapbox.places/{$longitude},{$latitude}.json", [
+                'query' => [
+                    'access_token' => env('MAPBOX_ACCESS_TOKEN', 'pk.eyJ1IjoieXVqb2hucmF5IiwiYSI6ImNtaDczcG94MDBubGgybHNieml0ZmJ6bmwifQ.KRR3neB3mYayV6L8sN71uA'),
+                    'types' => 'address,poi,place',
+                    'limit' => 1
+                ]
+            ]);
+            
+            $mapboxData = json_decode($mapboxResponse->getBody(), true);
+            
+            if (isset($mapboxData['features']) && count($mapboxData['features']) > 0) {
+                $feature = $mapboxData['features'][0];
+                return $feature['place_name'] ?? $feature['text'] ?? "Location at {$latitude}, {$longitude}";
+            }
+        } catch (\Exception $e) {
+            \Log::info('Mapbox geocoding failed, trying OpenStreetMap: ' . $e->getMessage());
+        }
+        
+        // Fallback to OpenStreetMap
         $response = $client->get("https://nominatim.openstreetmap.org/reverse", [
             'query' => [
                 'format' => 'json',
