@@ -5,6 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Violator;
+use App\Models\Admin;
+use App\Models\Deputy;
+use App\Models\Head;
+use App\Models\Enforcer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -251,13 +255,24 @@ class AuthController extends Controller
             $violator = Violator::where('email', $email)->first();
             
             if (!$violator) {
+                // If not a violator, check if email belongs to an official to redirect them properly
+                $isOfficial = Admin::where('email', $email)->exists()
+                    || Deputy::where('email', $email)->exists()
+                    || Head::where('email', $email)->exists()
+                    || Enforcer::where('email', $email)->exists();
+
                 if (!$request->expectsJson()) {
+                    if ($isOfficial) {
+                        $officialsLogin = env('FRONTEND_OFFICIALS_URL', 'http://localhost:8080/officials-login');
+                        return redirect(rtrim($officialsLogin, '/') . '?error=true&message=' . urlencode('Email verification is not required for officials. Please sign in.'));
+                    }
                     $loginUrl = env('FRONTEND_LOGIN_URL', 'http://localhost:8080/login');
                     return redirect(rtrim($loginUrl, '/') . '?error=true&message=' . urlencode('Violator not found.'));
                 }
+
                 return response()->json([
                     'success' => false,
-                    'message' => 'Violator not found.'
+                    'message' => $isOfficial ? 'Email verification is not required for officials.' : 'Violator not found.'
                 ], 404);
             }
 
@@ -310,7 +325,7 @@ class AuthController extends Controller
                 ->where('email', $email . '|verification')
                 ->delete();
 
-            // If this is a direct email click (no Accept: application/json header), redirect to login
+            // If this is a direct email click (no Accept: application/json header), redirect to violator login
             if (!$request->expectsJson()) {
                 $loginUrl = env('FRONTEND_LOGIN_URL', 'http://localhost:8080/login');
                 return redirect(rtrim($loginUrl, '/') . '?verified=true&message=' . urlencode('Email verified successfully. You can now login to your account.'));
