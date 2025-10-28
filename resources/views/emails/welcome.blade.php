@@ -111,7 +111,7 @@
 
             <!-- Go to Login Button -->
             <div style="text-align:center; margin: 12px 0 24px 0;">
-                <a href="http://localhost:8080/officials-login"
+                <a href="{{ env('FRONTEND_OFFICIALS_URL', 'http://localhost:8080/officials-login') }}"
                 style="
                         display:inline-block;
                         background: linear-gradient(135deg, #1e40af, #3b82f6);
