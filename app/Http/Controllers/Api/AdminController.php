@@ -37,7 +37,6 @@ use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use App\Services\AuditLogger;
-use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 
 class AdminController extends Controller
 {
@@ -306,11 +305,15 @@ $yearlyTrends = Transaction::selectRaw('YEAR(date_time) as year, COUNT(*) as cou
             // Debug: Log what we're processing
             \Log::info("Processing location: '{$locationName}' with count: {$item->count}");
             
-            // Only generate new names for truly generic/empty locations
+            // Only generate new names for truly generic/empty locations OR GPS coordinates
             // Preserve ALL specific location names (from mobile app, seeder, etc.)
+            // Check if location looks like GPS coordinates (e.g., "14.1234, 121.5678")
+            $isGpsCoordinate = preg_match('/^-?\d+\.\d+,\s*-?\d+\.\d+$/', trim($locationName));
+            
             if (empty($locationName) || 
                 $locationName === 'GPS Location' || 
                 $locationName === 'Unknown Location' ||
+                $isGpsCoordinate ||
                 strpos($locationName, 'Location at') === 0 ||
                 strpos($locationName, 'Echague, Isabela Area') === 0 ||
                 strpos($locationName, 'Echague Town Center') === 0 ||
@@ -661,11 +664,8 @@ private function reverseGeocodeLocation($latitude, $longitude)
         ];
 
         if ($request->hasFile('image')) {
-            $upload = Cloudinary::upload($request->file('image')->getRealPath(), [
-                'folder' => 'posu/profile_images',
-                'resource_type' => 'image',
-            ]);
-            $userData['image'] = $upload->getSecurePath();
+            $path = $request->file('image')->store('profile_images', 'public');
+            $userData['image'] = $path;
         }
 
         $modelClass = $this->getModelClass($userType);
@@ -758,11 +758,8 @@ private function reverseGeocodeLocation($latitude, $longitude)
 
         // Handle image upload
         if ($request->hasFile('image')) {
-            $upload = Cloudinary::upload($request->file('image')->getRealPath(), [
-                'folder' => 'posu/profile_images',
-                'resource_type' => 'image',
-            ]);
-            $user->image = $upload->getSecurePath();
+            $path = $request->file('image')->store('profile_images', 'public');
+            $user->image = $path;
         }
 
         if ($request->has('first_name')) {
@@ -1547,7 +1544,8 @@ private function reverseGeocodeLocation($latitude, $longitude)
             ->whereHas('transactions')
             ->withCount('transactions')
             ->withSum('transactions', 'fine_amount')
-            ->with(['transactions.violation', 'transactions.vehicle', 'transactions.apprehendingOfficer']);
+            ->with(['transactions.violation', 'transactions.vehicle', 'transactions.apprehendingOfficer'])
+            ->orderBy('id', 'desc');
 
         if ($name !== '') {
             $query->where(function ($q) use ($name) {
@@ -1670,7 +1668,7 @@ private function reverseGeocodeLocation($latitude, $longitude)
         $color       = trim((string) $request->input('color', ''));
         $vehicleType = trim((string) $request->input('vehicle_type', ''));
 
-        $query = Vehicle::with('violator');
+        $query = Vehicle::with('violator')->orderBy('id', 'desc');
 
         if ($ownerName !== '') {
             $query->where(function ($q) use ($ownerName) {
@@ -1853,19 +1851,20 @@ private function reverseGeocodeLocation($latitude, $longitude)
 
     public function getTransactions(Request $request)
     {
-        $perPage = $request->input('per_page', 15);
-        $page    = $request->input('page', 1);
+        try {
+            $perPage = $request->input('per_page', 15);
+            $page    = $request->input('page', 1);
 
-        $search        = trim((string) $request->input('search', ''));
-        $violationId   = $request->input('violation_id');
-        $vehicleType   = trim((string) $request->input('vehicle_type', ''));
-        $repeat        = $request->input('repeat_offender', ''); // '' | true | false
-        $address       = trim((string) $request->input('address', ''));
-        $dateRange     = trim((string) $request->input('dateRange', ''));
-        $dateFrom      = $request->input('dateFrom');
-        $dateTo        = $request->input('dateTo');
+            $search        = trim((string) $request->input('search', ''));
+            $violationId   = $request->input('violation_id');
+            $vehicleType   = trim((string) $request->input('vehicle_type', ''));
+            $repeat        = $request->input('repeat_offender', ''); // '' | true | false
+            $address       = trim((string) $request->input('address', ''));
+            $dateRange     = trim((string) $request->input('dateRange', ''));
+            $dateFrom      = $request->input('dateFrom');
+            $dateTo        = $request->input('dateTo');
 
-        $transactions = Transaction::with([
+            $transactions = Transaction::with([
             'violator' => function ($q) {
                 $q->withCount('transactions');
             },
@@ -1873,17 +1872,16 @@ private function reverseGeocodeLocation($latitude, $longitude)
             'violations',
             'vehicle',
             'apprehendingOfficer'
-        ])->orderBy('id', 'asc');
+        ])->orderBy('id', 'desc');
 
         if ($search !== '') {
             $transactions->where(function ($q) use ($search) {
                 $q->where('ticket_number', 'like', "%{$search}%")
-                  // Violator name and license
+                  // Violator name (license_number removed - it's encrypted)
                   ->orWhereHas('violator', function ($vq) use ($search) {
                       $vq->where('first_name', 'like', "%{$search}%")
                          ->orWhere('middle_name', 'like', "%{$search}%")
                          ->orWhere('last_name', 'like', "%{$search}%")
-                         ->orWhere('license_number', 'like', "%{$search}%")
                          ->orWhereRaw("CONCAT_WS(' ', first_name, middle_name, last_name) LIKE ?", ["%{$search}%"]);
                   })
                   // Apprehending officer name
@@ -1894,10 +1892,9 @@ private function reverseGeocodeLocation($latitude, $longitude)
                          ->orWhere('username', 'like', "%{$search}%")
                          ->orWhereRaw("CONCAT_WS(' ', first_name, middle_name, last_name) LIKE ?", ["%{$search}%"]);
                   })
-                  // Vehicle fields and owner name
+                  // Vehicle fields and owner name (plate_number removed - it's encrypted)
                   ->orWhereHas('vehicle', function ($vq) use ($search) {
-                      $vq->where('plate_number', 'like', "%{$search}%")
-                         ->orWhere('make', 'like', "%{$search}%")
+                      $vq->where('make', 'like', "%{$search}%")
                          ->orWhere('model', 'like', "%{$search}%")
                          ->orWhere('color', 'like', "%{$search}%")
                          ->orWhere('owner_first_name', 'like', "%{$search}%")
@@ -1980,6 +1977,21 @@ private function reverseGeocodeLocation($latitude, $longitude)
                 $transaction->violator->total_amount = $totalsByViolator[$transaction->violator->id] ?? 0;
             }
 
+            // Process location field - convert generic locations to better names
+            $locationName = trim($transaction->location ?? '');
+            if (empty($locationName) || 
+                $locationName === 'GPS Location' || 
+                $locationName === 'Unknown Location' ||
+                strpos($locationName, 'Location at') === 0) {
+                
+                // If we have GPS coordinates, try to generate a better name
+                if ($transaction->gps_latitude && $transaction->gps_longitude) {
+                    $lat = round($transaction->gps_latitude, 4);
+                    $lng = round($transaction->gps_longitude, 4);
+                    $transaction->location = $this->getBetterLocationName($lat, $lng);
+                }
+            }
+
             // Compute attempt number for this specific transaction (1 for first, 2 for second, ...)
             try {
                 $transaction->attempt_number = Transaction::where('violator_id', $transaction->violator_id)
@@ -2003,6 +2015,16 @@ private function reverseGeocodeLocation($latitude, $longitude)
         });
 
         return response()->json(['status' => 'success', 'data' => $transactions]);
+        
+        } catch (\Exception $e) {
+            \Log::error('Error in getTransactions: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to load transactions: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function updateTransaction(Request $request, $id)
@@ -2046,7 +2068,7 @@ private function reverseGeocodeLocation($latitude, $longitude)
                         'license_number' => $transaction->violator->license_number,
                         'vehicle_info' => $vehicleInfo,
                         'plate_number' => $transaction->vehicle ? $transaction->vehicle->plate_number : 'N/A',
-                        'login_url' => 'https://posumoms.netlify.app/login',
+                        'login_url' => 'https://posuechague.site/login',
                     ])
                 );
             } catch (\Exception $emailError) {
