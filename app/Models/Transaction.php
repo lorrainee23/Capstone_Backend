@@ -47,6 +47,11 @@ class Transaction extends Model
     ];
 
     /**
+     * Append computed attributes to JSON
+     */
+    protected $appends = ['formatted_location'];
+
+    /**
      * Get the violation type for this transaction.
      */
     public function violation()
@@ -125,7 +130,90 @@ class Transaction extends Model
         return '₱' . number_format($this->fine_amount, 2);
     }
     /**
-     * Get formatted fine amount.
+     * Get human-readable location (converts GPS coordinates to address if needed)
+     */
+    public function getFormattedLocationAttribute()
+    {
+        $value = $this->attributes['location'] ?? null;
+        
+        // If location looks like GPS coordinates (contains comma and numbers), try to convert
+        if ($value && preg_match('/^-?\d+\.\d+,\s*-?\d+\.\d+$/', trim($value))) {
+            // Check if we have GPS coordinates stored
+            if ($this->gps_latitude && $this->gps_longitude) {
+                // Try to get cached address or perform reverse geocoding
+                $address = $this->reverseGeocode($this->gps_latitude, $this->gps_longitude);
+                if ($address && $address !== $value) {
+                    return $address;
+                }
+            }
+        }
+        
+        return $value ?: 'N/A';
+    }
+
+    /**
+     * Reverse geocode GPS coordinates to human-readable address using Mapbox
+     */
+    private function reverseGeocode($latitude, $longitude)
+    {
+        try {
+            // Use Mapbox Geocoding API for reverse geocoding
+            $mapboxToken = env('MAPBOX_ACCESS_TOKEN', 'pk.eyJ1IjoieXVqb2hucmF5IiwiYSI6ImNtaDczcG94MDBubGgybHNieml0ZmJ6bmwifQ.KRR3neB3mYayV6L8sN71uA');
+            $url = "https://api.mapbox.com/geocoding/v5/mapbox.places/{$longitude},{$latitude}.json?access_token={$mapboxToken}&types=address,poi,place&limit=1";
+            
+            $ch = curl_init();
+            curl_setopt($ch, CURLOPT_URL, $url);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+            curl_setopt($ch, CURLOPT_USERAGENT, 'POSU-Backend/1.0');
+            
+            $response = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            
+            if ($httpCode === 200 && $response) {
+                $data = json_decode($response, true);
+                
+                if (isset($data['features']) && !empty($data['features'])) {
+                    $feature = $data['features'][0];
+                    
+                    // Get place_name which is the formatted address
+                    if (!empty($feature['place_name'])) {
+                        return $feature['place_name'];
+                    }
+                    
+                    // Fallback: build from context
+                    if (!empty($feature['context'])) {
+                        $parts = [];
+                        
+                        // Add the main place text
+                        if (!empty($feature['text'])) {
+                            $parts[] = $feature['text'];
+                        }
+                        
+                        // Add context components
+                        foreach ($feature['context'] as $context) {
+                            if (!empty($context['text'])) {
+                                $parts[] = $context['text'];
+                            }
+                        }
+                        
+                        if (!empty($parts)) {
+                            return implode(', ', $parts);
+                        }
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            \Log::warning('Mapbox reverse geocoding failed: ' . $e->getMessage());
+        }
+        
+        // Return coordinates as fallback
+        return "{$latitude}, {$longitude}";
+    }
+
+    /**
+     * Boot the model
      */
     protected static function booted()
     {
